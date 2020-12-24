@@ -1,7 +1,7 @@
 ---
 title: "ENVH 556 Week 1 Lab:  Becoming familiar with R, RStudio, RMarkdown"
 author: "Lianne Sheppard for ENVH 556"
-date: "Created Winter 2019; updated `r format(Sys.time(), '%d %B, %Y')`"
+date: "Created Winter 2021; updated `r format(Sys.time(), '%d %B, %Y')`"
 output: 
     html_document:
         toc: true
@@ -16,7 +16,8 @@ each R Markdown file.  We display them during this first lab so you can see them
 in the output.  Ordinarily we would not show them.
 
 ```{r setup, include=TRUE}
-#------------setup-------------
+#-----setup-------------
+
 # This chunk won't appear in your output when knitting because include=FALSE
 # (which hides everything).
 #
@@ -32,7 +33,9 @@ in the output.  Ordinarily we would not show them.
 # the index (boldfaced) and print in your appendix.  This facilitates review of
 # the code. I recommend using chunk names and putting them at least as a
 # comment at the beginning of the chunk.
-##
+#
+# For more about `knitr` chunk options see: https://yihui.org/knitr/options/
+
 knitr::opts_chunk$set(
     echo = TRUE,
     cache = FALSE,
@@ -40,12 +43,12 @@ knitr::opts_chunk$set(
     message = FALSE,
     warning = FALSE
 )
-##TODO: check online; see help for opts_chunk{knitr}
 
 ```
 
 ```{r clear.workspace, eval=FALSE, echo=TRUE}
-#---------clear.workspace------------
+#-----clear workspace------------
+
 # Clear the environment without clearing knitr
 #
 # This chunk is useful for code development because it simulates the knitr
@@ -64,23 +67,24 @@ if (!is.null(sessionInfo()$otherPkgs)) {
 
 ```
 
-```{r load.libraries.with.pacman, include=TRUE}
-#-----load.libraries.with.pacman--------------
-# Ordinarily we set include=FALSE for this chunk; just showing it for the first 
-# lab.
+```{r load.packages.with.pacman, include=TRUE}
+#-----load packages with pacman--------------
+
+# Ordinarily we set the chunk header to include=FALSE for this chunk; just 
+# showing it for the first lab.
 
 # Load pacman into memory, installing as needed
 my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
-# Load the other packages, installing as needed.  Some reasons for packages:
-# doBy: summaryBy  -- Don't load:  now replaced by tidyr
-# reshape2:  melt() --Don't load:  now replaced by tidyr
+# Load the other packages, installing as needed.  As you progress, it is good
+# practice to load specific packages, but for now we'll load all of the 
+# `tidyverse` for convenience. Some reasons for packages:
 # knitr:  kable()
 # ggplot2: Don't load:  part of tidyverse
 # readr:   Don't load:  part of tidyverse
-# dplyr:   Don't load:  part of tidyverse  (replaces plyr -- don't load plyr!)
-# Hmisc:  describe
+# dplyr:   Don't load:  part of tidyverse
+# Hmisc:  Miscellaneous funcitons helpful for data analysis
 # EnvStats: geoMean, geoSD, probability plotting functions
 pacman::p_load(tidyverse, knitr, Hmisc, EnvStats)
 
@@ -95,7 +99,7 @@ Markdown through the context of the course content.  This is also your first
 opportunity to develop a lab write-up for ENVH 556 using R Markdown.
 
 Note:  It is in your best interest to learn modern R tools, such as those
-included in [tidyverse](https://www.tidyverse.org).  Our goal in this class is
+included in the [tidyverse](https://www.tidyverse.org).  Our goal in this class is
 to prioritize these tools as much as possible while recognizing that there are
 many ways to accomplish the same task and we don't want to get too bogged down
 in the best way to accomplish our goals.
@@ -145,54 +149,63 @@ paths set up.
       `dir.create()` command will make a directory if it doesn't exist.  The 
       `file.path()` command allows you to refer easily to paths across operating 
       systems.
-    + See the following chunks to accomplish this:
-```{r getwd}
-#-----getwd--------
-ProjectPath <- getwd()
-#ProjectPath
-#
-```
-   
-```{r datasets.path}
-#------datasets.path--------
-datapath <- file.path(ProjectPath, "Datasets")
-dir.create(datapath, showWarnings=FALSE, recursive = TRUE)
+    + See the following chunk to accomplish this:
+    
+```{r set.file paths}
+#-----set file paths--------
+
+# create a variable for the project path
+project_path <- getwd()
+
+# create a variable for the data path
+data_path <- file.path(project_path, "Datasets")
+
+# create directory, if one does not already exist
+dir.create(data_path, showWarnings = FALSE, recursive = TRUE)
 
 ```
+
 * Read in the data 
      + The data we will use have already been converted to an R dataset.  Make 
      sure the "DEMSCombinedPersonal.rds" dataset is in your Datasets directory 
-     defined by `datapath`.
+     defined by `data_path`.
+     
 ```{r read.data, eval=TRUE, error=TRUE}
-#-----read.data--------
+#-----read data--------
+
 # Note:  for simplicity of typing in this lab we're calling the dataset DEMS,
 # even though it is only one of several DEMS datasets we will use in this
 # course.
-DEMS <- readRDS(file.path(datapath, "DEMSCombinedPersonal.rds"))
+DEMS <- readRDS(file.path(data_path, "DEMSCombinedPersonal.rds"))
 
 ```
 
 As an alternative, you can also read the data file from a web site:
 
 ```{r read.data.from.a.web.site, eval=TRUE}
-#-----read.data.from.a.web.site--------
+#-----read data from a web site--------
+
 # Download the data file from a web site if it is not already downloaded, then
 # read in the file
 
-DEMS.file <- "DEMSCombinedPersonal.rds"
-DEMS.path <- file.path(datapath, DEMS.file)
+# first, specify file name and path
+DEMS_file <- "DEMSCombinedPersonal.rds"
+DEMS_path <- file.path(data_path, DEMS_file)
 
 # Only download the file if it's not already present
-if (!file.exists(DEMS.path)) {
+if (!file.exists(DEMS_path)) {
     url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
-                 DEMS.file, sep = '/')
-    download.file(url = url, destfile = DEMS.path)
+                 DEMS_file, sep = '/')
+    download.file(url = url, destfile = DEMS_path)
 }
 
 # Output a warning message if the file cannot be found
-if (file.exists(DEMS.path)) {
-    DEMS <- readRDS(file = DEMS.path)
-} else warning(paste("Can't find", DEMS.file, "!"))
+if (file.exists(DEMS_path)) {
+    DEMS <- readRDS(file = DEMS_path)
+} else warning(paste("Can't find", DEMS_file, "!"))
+
+# remove temporary variables
+rm(url, DEMS_file, DEMS_path)
 
 ```
 
@@ -207,32 +220,33 @@ have been read in correctly and get a basic understanding of their structure.
 Here are some basic questions you should ask every time you read in a new
 dataset:
 
-* How many observations are in your dataset?  Does this number correspond to
+  * How many observations are in your dataset?  Does this number correspond to
   the originating dataset?
-* What are the variable names in the file? How are they formatted?  
+  * What are the variable names in the file? How are they formatted?  
 
 #### Here are some commands that will allow you to answer these questions:
 
 From base R:
 
-+ `class(DEMS)` tells you what class the object DEMS belongs to
-+ `names(DEMS)` lists the variable names  
-+ `dim(DEMS)` gives the dimensions of DEMS
-+ `sapply(DEMS, class)` tells you the class of every variable (column)
-+ `typeof(DEMS)` says what is the storage mode or R internal type of this object
-+ `View(DEMS)`  to open a browser to look at the entire dataset  
+  * `class(DEMS)` tells you what class the object DEMS belongs to
+  * `names(DEMS)` lists the variable names  
+  * `dim(DEMS)` gives the dimensions of DEMS
+  * `sapply(DEMS, class)` tells you the class of every variable (column)
+  * `typeof(DEMS)` says what is the storage mode or R internal type of this object
+  * `View(DEMS)`  to open a browser to look at the entire dataset  
 
 From `tidyverse`:
 
-+ `(DEMSt <- as_tibble(DEMS))`  create a tibble version and look at DEMS in the 
-  tibble format
-+ `select(DEMSt, facilityno, ecdata, nodata, no2data)` allows you to zoom in on 
-  specific variables in the DEMS tibble.
+  * `(DEMS <- as_tibble(DEMS))`  create a tibble version and look at DEMS in the 
+    tibble format
+  * `select(DEMS, facilityno, ecdata, nodata, no2data)` allows you to zoom in on 
+    specific variables in the DEMS tibble.
 
 Replace the comment in the chunk below with some of these commands.
 
-```{r data.description1}
-#----------data.description1---------- 
+```{r data.description.1}
+#-----data description 1---------- 
+
 # STUDENTS may want to edit this chunk to look at the data differently
 
 # Here is a first pass at commands to use to check your data we expect this to 
@@ -248,15 +262,19 @@ names(DEMS)
 # This gives us details on the type of each variable in the dataset
 sapply(DEMS, class) 
 
-# Now for a tidyverse option.  We will also save the version in case we want to
+# Now for a tidyverse option.  We will also save this version in case we want to
 # use tidverse commands.
 
-# Create and print the tibble DEMSt (The parentheses surrounding the command
-# tell R to print the result of the assignment.)
-(DEMSt <- as_tibble(DEMS)) 
+# Now lets make the DEMS data frame into a tibble Tibbles are tidyverse 
+# dataframes with some extra functionality and a friendly display. Occasionally 
+# you will run into functions that will work with "data.frame" objects but not 
+# "tibble" objects. 
+# (The parentheses surrounding the command tell R to print the result of the 
+#assignment.)
+(DEMS <- as_tibble(DEMS)) 
 
 # Our application of select zooms in to focus on the key exposure data
-select(DEMSt, facilityno, u_s, ecdata, nodata, no2data) 
+select(DEMS, facilityno, u_s, ecdata, nodata, no2data) 
 
 ```
 
@@ -264,20 +282,21 @@ select(DEMSt, facilityno, u_s, ecdata, nodata, no2data)
 
 Here are some commands:
 
-+ `head(DEMS)` shows the first 6 rows of the dataset
-+ `tail(DEMS, 1)` shows the last row of the dataset
-+ `head(DEMS$facilityno, 20)` shows the first 20 rows of a subset of variables
-+ `summary(DEMS)` gives a basic summary of each variable
-+ `describe(DEMS)` is another useful basic summary of the dataset, from the 
-  Hmisc package ("a concise statistical description")
-+ `xtabs(~facilityno, data=DEMS)` Note: `faciltyno` is a factor, ordered by 
-  facility number
-+ `xtabs(~facilityid, data=DEMS)` Note: `facilityid` is a character variable, 
-  ordered by facility letter
+  * `head(DEMS)` shows the first 6 rows of the dataset
+  * `tail(DEMS, 1)` shows the last row of the dataset
+  * `head(DEMS$facilityno, 20)` shows the first 20 rows of a subset of variables
+  * `summary(DEMS)` gives a basic summary of each variable
+  * `describe(DEMS)` is another useful basic summary of the dataset, from the 
+    Hmisc package ("a concise statistical description")
+  * `xtabs(~facilityno, data=DEMS)` Note: `faciltyno` is a factor, ordered by 
+    facility number
+  * `xtabs(~facilityid, data=DEMS)` Note: `facilityid` is a character variable, 
+    ordered by facility letter
 
 
-```{r data.description2}
-#-----------------data.description2-------
+```{r data.description.2}
+#-----data description 2-------
+
 # Here is a first pass at commands for students to try to better understand the data
 # # first 6 rows and ALL variables (columns):
 head(DEMS) 
@@ -285,7 +304,7 @@ head(DEMS)
 # a basic summary of each variable
 summary(DEMS) 
 
-# a different basic summary of each variable
+# a different basic summary of each variable from `Hmisc`
 describe(DEMS) 
 
 # tallies of the number of observations by facilityno
@@ -300,23 +319,25 @@ The specifics of what you evaluate depend upon the context of the problem.  In
 our case we have published papers we can rely upon to determine whether our data
 are what we expect.  Here are some questions for the DEMS personal data:
 
-* How many observations are in your dataset overall and by facility?  Do these
+  * How many observations are in your dataset overall and by facility?  Do these
 numbers correspond to the originating datasets?  (You can check against the
 papers.)
-* Note that there are missing data in this dataset.  As you proceed, you will
+  * Note that there are missing data in this dataset.  As you proceed, you will
 want to verify whether they are consistent with your expectations.  Presence of
 missing data requires additional attention to how you will handle these values
 in R.
     + Which variables have missing values?
     + Which variable(s) have the most missing data?
 
-```{r data.description3}
-#----------data.description3------------------
+```{r data.description.3}
+#-----data description 3------------------
+
 # STUDENTS ADD code to look at the data:
 # Which commands from above will allow you to verify observation numbers and
 # missing value counts?
 # In this dataset it is important to understand summaries within mines.  Which
 # commands from above will facilitate that?  (We will learn more below too.)
+
 ```
 
 ## Basic data description
@@ -329,36 +350,36 @@ distirbution of variables.
 
 ### Tables and computing descriptive statistics 
 
-
-* What do you observe about the distribution?  
-* Do the descriptive statistics vary by facility?  
+  * What do you observe about the distribution?  
+  * Do the descriptive statistics vary by facility?  
 
 Here are some commands:
 
-+ `min(DEMS$ecdata,na.rm=TRUE)` is the minimum after missing values omitted
-+ `mean(DEMS$ecdata,na.rm=TRUE)` is the mean after missing values omitted
-+ `sd(DEMS$ecdata,na.rm=TRUE)` is the standard deviation after missing values 
-  omitted
-+ `summaryFull(DEMS[,c("ecdata","nodata","no2data")])` is a full set of summary
-  statistics from the EnvStats package.  It only works for numeric variables.
-+ `fivenum(DEMS$ecdata)` shows the five number summary of ecdata (min, lower
-  hinge (close to the 25th percentile), median, upper hinge, maximum).  Note no
-  need to tell it to remove missing missing values here.  Five number summaries
-  are used in box plots and give you a basic understanding of the distribution 
-  of a variable.
-+ From the EnvStats package, `geoMean(ecdata,na.rm=TRUE)` gives the geometric 
-  mean while `geoSD(ecdata,na.rm=TRUE)` gives the GSD.
+  * `min(DEMS$ecdata,na.rm=TRUE)` is the minimum after missing values omitted
+  * `mean(DEMS$ecdata,na.rm=TRUE)` is the mean after missing values omitted
+  * `sd(DEMS$ecdata,na.rm=TRUE)` is the standard deviation after missing values 
+    omitted
+  * `summaryFull(DEMS[,c("ecdata","nodata","no2data")])` is a full set of summary
+    statistics from the EnvStats package.  It only works for numeric variables.
+  * `fivenum(DEMS$ecdata)` shows the five number summary of ecdata (min, lower
+    hinge (close to the 25th percentile), median, upper hinge, maximum).  Note no
+    need to tell it to remove missing missing values here.  Five number summaries
+    are used in box plots and give you a basic understanding of the distribution 
+    of a variable.
+  * From the EnvStats package, `geoMean(ecdata,na.rm=TRUE)` gives the geometric 
+    mean while `geoSD(ecdata,na.rm=TRUE)` gives the GSD.
 
 To produce summary statistics by facility:  Here are two ideas.  Which do you
 prefer and why?
 
-* A simple table of summary statistics using `tapply` and `cbind`.  Note the
+  * A simple table of summary statistics using `tapply` and `cbind`.  Note the
   extra attention needed to handle missing data for the sample size. (What do 
   you notice about the sample sizes here vs. when you just counted 
   observations?  What is the cause of the difference?)
 
 ```{r simple.table, echo=FALSE}
-#------simple.table using tapply and cbind ----------
+#-----simple.table using tapply and cbind ----------
+
 #This uses facilityno, a factor variable
 xbar<- tapply(DEMS$ecdata, DEMS$facilityno, mean, na.rm=TRUE)
 sd  <- tapply(DEMS$ecdata, DEMS$facilityno, sd, na.rm=TRUE)
@@ -375,14 +396,22 @@ kable(cbind(mean=xbar, SD=sd, N=n))
 * Here is a `tidyverse` option using `dplyr`:
 
 ```{r table.with.dplyr}
-#----table.with.dplyr------
-facility_ec <- DEMS %>% group_by(facilityno) %>% 
-    dplyr::summarize(N = sum(!is.na(ecdata)),
-              Nmiss = sum(is.na(ecdata)),
-              mean = mean(ecdata, na.rm = TRUE),
-              sd = sd(ecdata, na.rm = TRUE),
-              se = sd/sqrt(N)
+#-----table with dplyr------
+
+# dplyr uses verbs for function names. You'll get more comfortable with them 
+# as you practice. Also, watch spelling, for instance, `summarise()` versus 
+# `summarize()`. In this case summarize()` may call the `Hmisc` function 
+# rather than the `dplyr` function.
+facility_ec <- DEMS %>% 
+  group_by(facilityno) %>% 
+  summarise(N = sum(!is.na(ecdata)),
+            Nmiss = sum(is.na(ecdata)),
+            mean = mean(ecdata, na.rm = TRUE),
+            sd = sd(ecdata, na.rm = TRUE),
+            se = sd/sqrt(N)
     )
+
+# show tibble
 facility_ec
 
 # And here is the same result printed using kable
@@ -398,23 +427,24 @@ can be more confident that your answer is correct.
 
 #### Make a histogram of ecdata. Add a density curve to the histogram.    
 
-(@) `ggplot2` (part of `tidyverse`)  has great tools for plotting.  First we
-    show a basic histogram.  Then we switch to the density scale and overlay a
-    normal density with the same mean and variance as the data.  Finally we 
-    overlay a density plot.
-    
-    (a) See chunk comments and the notes following the chunk for option
-        suggestions.
-    
-    (b) `ggplot` gives warnings about omitted data and messages about better
-        options to choose.  You can prevent these messages from showing up in 
-        your rendered document by using the chunk option `warning=FALSE` and
-        `message=FALSE`.  They will show up in the R Markdown console instead if 
-        you set these to `FALSE`.  (Note:  We set these options globally in our 
-        setup chunk above so we don't need to repeat them below.)
+`ggplot2` (part of `tidyverse`)  has great tools for plotting.  First we
+show a basic histogram.  Then we switch to the density scale and overlay a
+normal density with the same mean and variance as the data.  Finally we 
+overlay a density plot.
+
+See chunk comments and the notes following the chunk for option
+suggestions.
+
+`ggplot` gives warnings about omitted data and messages about better
+options to choose.  You can prevent these messages from showing up in 
+your rendered document by using the chunk option `warning=FALSE` and
+`message=FALSE`.  They will show up in the R Markdown console instead if 
+you set these to `FALSE`.  (Note:  We set these options globally in our 
+setup chunk above so we don't need to repeat them below.)
 
 ```{r hist.in.tidyverse, warning=FALSE, message=FALSE}
-#------hist.in.tidyverse---------
+#-----hist in tidyverse---------
+
 # Plot 1 with histogram only and count on the y axis (the default) the default
 # binwidth is 30 and often you will want to change it; see plot 2 for a narrower
 # binwidth.
@@ -427,21 +457,26 @@ p <- ggplot(data=DEMS, aes(ecdata, na.rm=TRUE)) +
     geom_histogram(aes(y=..density..), colour="black", fill="white", 
                    binwidth=20) 
 
-# Overlay a normal density plot; need to create some variables to do this
+# To overlay a normal density plot, we need to create some variables first
 N <- sum(!is.na(DEMS$ecdata))
 
 # Divide the range 0-1000 into N equal increments
 x <- seq(0, 1000, length.out=N) 
 df <- with(DEMS[!is.na(DEMS$ecdata), ], 
            data.frame(x, y = dnorm(x, mean(ecdata), sd(ecdata))))
+
+# add normal plot to histogram
 p + geom_line(data = df, aes(x = x, y = y), color = "red")
 
 # Plot 3 now also overlays a kernel density plot.  The alpha parameter (range
 # 0-1) controls the degree of transparency, while the `fill="red"` ensures the
 # overlaid density is a specific color.  We are using the default bandwidth (bw)
-# here.
+# here.  We've also included a few style options, such as axis expansion so the 
+# bars aren't "floating" and an overall theme.
 p +  geom_line(data = df, aes(x = x, y = y), color = "red") +
-  geom_density(alpha=.2, fill="red")
+  geom_density(alpha=.2, fill="red") + 
+  scale_y_continuous(expand = expand_scale(mult = c(0, .1))) +
+  theme_bw()
 
 ```
 
@@ -456,30 +491,27 @@ e.g. `kernel="gaussian"` (which is the default).
 
 ## Create and work with transformed data
 
-Typically exposure data appear to be log-normally distributed.  This section we
-transform and plot the transformed data.
+Typically exposure data appear to be log-normally distributed.  In this section 
+we transform and plot the transformed data.
 
 ### Logarithmic transformations using `dplyr`:
 
-(@) `mutate( DEMS, ln_ecdata = log(ecdata) )` creates the natural 
+  * `mutate( DEMS, ln_ecdata = log(ecdata) )` creates the natural 
     log-transformed variable in the DEMS data frame.
-(@) `mutate( DEMS, log10_ecdata = log10(ecdata) )` creates the base 10
+  * `mutate( DEMS, log10_ecdata = log10(ecdata) )` creates the base 10
     log-transformed variable in the DEMS data frame.
     
 Note that `mutate` adds the new variables to the end of the dataset.  For more
 functions you can use with `mutate` to create new variables, see R4DS pp. 56-58.
 
 ```{r transform.vars}
-#-------transform.vars------
-# The following two variables will be added to the DEMS dataframe at the end of
-# the frame:
-DEMS<-mutate(DEMS,
-    ln_ecdata = log(ecdata)
-    )
+#-----transform vars------
 
-DEMS<-mutate(DEMS,
-    log10_ecdata = log10(ecdata)
-    )
+# The following two variables will be added to the DEMS dataframe at the end of
+# the data frame:
+DEMS <- DEMS %>% 
+  mutate(ln_ecdata = log(ecdata), 
+         log10_ecdata = log10(ecdata) )
 
 ```
 
@@ -513,7 +545,7 @@ ggplot(data = <DATA> ) +
     <COORDINATE_FUNCTION> +
     <FACET_FUNCTION> +
     <LABEL_FUNCTION>
-# For more details see R4DS p. 34 (2017 version)
+
 ```
 
 where the added pieces are `<STAT>`: statistics to put on the plot, `<POSITION>`
@@ -523,16 +555,16 @@ to allow you to divide the plot into subplots, and `<LABEL_FUNCTION>` in order
 to add titles, axis labels, etc.
 
 For more details on `ggplot` see R4DS, the [R for Data
-Science](https://r4ds.had.co.nz/) book by Hadley Wickham and Garrett Grolemund.
-In particular, Chapter 1 gives a nice introductory overview and Chapter 22
-focuses on the details you need to facilitate good communication.
+Science](https://r4ds.had.co.nz/data-visualisation.html) book by Hadley Wickham 
+and Garrett Grolemund.
 
 ### Scatterplots:  Now plot the relationship between NO (nodata)  and REC (ecdata). 
 
 `ggplot2` makes this easy:  
 
 ```{r scatterplot.in.tidyverse, echo=TRUE, warning=FALSE, message=FALSE}
-#------scatterplot.in.tidyverse------------
+#-----scatterplot in tidyverse------------
+
 # Plot 1: simple way to use ggplot to ask for a scatterplot
 qplot(nodata, ecdata, data=DEMS) 
 
@@ -554,7 +586,7 @@ ggplot(data = DEMS, aes(nodata, ecdata, na.rm = TRUE)) +
     geom_point() + stat_smooth(method = "loess") +
     labs(title = "Scatterplot of the DEMS NO (ppm) vs. REC (ug/m3) data",
         x = "NO (ppm)",
-        y = "REC (ug/m3)") 
+        y = "REC (ug/m3)" ) 
 
 # Plot 5 adds different colors and smoothers for underground vs. surface data
 ggplot(data = DEMS, aes(nodata, ecdata, na.rm = TRUE)) +
@@ -571,13 +603,15 @@ ggplot(data = DEMS, aes(nodata, ecdata, na.rm = TRUE)) +
     )
     
 # Plot 6 adds facets to plot 1 + colors for underground vs surface 
-# Note1:  the scales="free" option allows a different scale for each plot.  In
+# Note 1:  the scales="free" option allows a different scale for each plot.  In
 # this case it makes the individual plots more informative. 
-# Note2:  the smoother was failing for facilty E for unknown reasons; without
-# scales="free" all the plots had huge ranges
-ggplot(data = DEMS, aes(na.rm = TRUE)) +
-    geom_point(mapping = aes(nodata, ecdata, color = u_snum)) +
-    facet_wrap(~ facilityno, nrow = 2, scales = "free") +
+# Note 2:  the smoother for facilty E is behaving strangely becuase so many 
+# of the values are equal to zero. 
+# Note 3: with facets, you see facility D21 has no `nodata`
+ggplot(data = DEMS, aes(nodata, ecdata, color = u_snum)) +
+    geom_point() +
+    facet_wrap(~ facilityno, nrow = 2, scales = "free") + 
+    geom_smooth(se = FALSE) +
     labs(
     title = paste(
         "Scatterplot of the DEMS NO (ppm) vs. REC (ug/m3) data \n",
@@ -587,7 +621,8 @@ ggplot(data = DEMS, aes(na.rm = TRUE)) +
     x = "NO (ppm)",
     y = "REC (ug/m3)",
     color = "Measurement\nlocation"
-    )
+    ) + 
+  theme_bw()
     
 ```
 
