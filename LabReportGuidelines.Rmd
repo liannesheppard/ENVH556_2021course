@@ -1,7 +1,7 @@
 ---
 title: "Lab Report Guidelines"
 author: "ENVH 556"
-date: "Created for Winter 2019; printed `r format(Sys.time(), '%d %B, %Y')`"
+date: "Created for Winter 2021; printed `r format(Sys.time(), '%d %B, %Y')`"
 output: 
     html_document:
         fig_caption: yes
@@ -18,8 +18,8 @@ editor_options:
 # -------- Set-up ---------
 
 # Some useful knitr options:
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, tidy=FALSE, 
-  tidy.opts=list(width.cutoff=80, blank=FALSE), cache=FALSE, messages=FALSE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, tidy = FALSE, 
+  tidy.opts=list(width.cutoff=80, blank = FALSE), cache = FALSE, messages = FALSE)
 
 # Set R option:  here we show only 2 digits when displaying
 #options(digits = 2)
@@ -38,7 +38,7 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed
 # Key principle:  Only load the packages you will need
-pacman::p_load(knitr, tidyverse)
+pacman::p_load(knitr)
 
 
 ```
@@ -96,7 +96,7 @@ What covariates are important?
 ### How are we processing the data?  
 If the data will be filtered or grouped, what cutoffs will be used?  
 
-#### Describe the analysis approach, i.e. the methods used in the analysis  
+### Describe the analysis approach, i.e. the methods used in the analysis  
 What statistical tests are being used?  
 What sensitivity analyses are planned?  
 
@@ -114,8 +114,7 @@ Summarize your results in text, tables and figures. In most lab assignments you 
 
 The discussion provides the context for the results.  This is the place for interpretation in light of your objectives.  You can also include a discussion of the implications of the findings, bring in additional perspectives, and/or ask questions you have.  For instance, this is a place to discuss the limitations of the data and your analysis.  You may also wish to address data quality issues, caveats or limitations of the approach, and possible next steps.
 
-It is useful to organize the discussion around the objectives.  For each objective, include a statement or two about how that objective has or hasn't been met.
-    * Keep reporting of objectives in the same order.
+It is useful to organize the discussion around the objectives.  For each objective, include a statement or two about how that objective has or hasn't been met. Keep reporting of objectives in the same order.
 
 ---
 
@@ -169,11 +168,9 @@ code](https://google.github.io/styleguide/Rguide.xml), [Advanced R Guide (Hadley
 
 ### Appendix 2 (required):  Session information, embedded code, and functions used
 
-#### Three code chunks to include in every code appendix
+Include the session information, embedded code, and functions used in a code appendix.  The output is also shown in the compiled html file for these guidelines. Note that there is very little code embedded in these guidelines and no functions, so the second two chunks produce little or no oputput.  Generally your files will have much longer code appendices.
 
-Include the following three chunks in your code appendix.  The output is also shown in the compiled html file for these guidelines. Note that there is very little code embedded in these guidelines and no functions, so the second two chunks produce little or no oputput.  Generally your files will have much longer code appendices.
-
-##### Session Information
+#### Session Information
 
 ```{r session info}
 #-----session info------
@@ -181,14 +178,14 @@ sessionInfo()
 
 ```
 
-##### Code embedded in the R Markdown file
+#### Code embedded in the R Markdown file
 
 ```{r code appendix, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
 #---------code appendix-------
 
 ```
 
-##### Functions used in the R Markdown file
+#### Functions used in the R Markdown file
 
 ```{r Functions used in this Rmd, eval = TRUE}
 #----------- functions used in this Rmd ------------
@@ -206,8 +203,8 @@ lapply(c(lsf.str()), getAnywhere)
 # Lab Report Presentation Guidelines
 
 ## ENVH 556 Lab Reports
-
-1.	Suggested maximum length: 2 pages for text plus a maximum of 5 figures and/or tables. (Text length is based on text with 1.5 spacing, and no less than 11 point font).  To facilitate review and comments, please compile your R Markdown file into a word or pdf file, not a html file.  
+<!------ REVIEW these instructions before finalizing ------>
+1.	Suggested maximum length: 2 pages for text plus a maximum of 5 figures and/or tables. (Text length is based on text with 1.5 spacing, and no less than 11 point font).  To facilitate review and comments, please compile your R Markdown file into a word or pdf file, not a html file.
 2.	Text should be brief. Use the introduction and methods sections to provide background and context. Use the results and discussion sections to answer all the questions posed in the assignment. Make sure the document stands alone as a comprehensible document to the reader.  
 3.	All figures and tables need appropriately descriptive captions/titles. Pay attention to table formatting, including significant digits, labels, headings for rows/columns, and that all necessary information is included (e.g. in footnotes). Additional guidance on creating tables:  
     a.	No vertical lines. Use horizontal lines to demarcate sections of a table (not every line)  
@@ -237,9 +234,9 @@ lapply(c(lsf.str()), getAnywhere)
 
 * A surprising large amount of the report can be written before the detailed analysis has begun.
 
-* You can use the `eval=FALSE` option to prevent the code from being run before you are ready
+* You can render an .Rmd with the `eval = FALSE` option to prevent the code from being run before you are ready, while drafting your lab report.
 
-* Circulating drafts of the introduction plus data & methods sections before the data analysis begins can be very helpful and *save time*
+* Writing drafts of the introduction, data, and methods sections before the data analysis begins can be very helpful and *save time*.
 
 ---
 
@@ -253,13 +250,9 @@ lapply(c(lsf.str()), getAnywhere)
 
 * If a block of code processes data, include a few lines of data before and after to show how the processing worked.  (e.g., Use `head()` and/or `tail()` or `tidyverse` options).
 
-* Write functions for blocks of code that are reused extensively.
-      * Use descriptive function names  
+* Write functions for blocks of code that are reused extensively, using descriptive function names.  
 
-* Use descriptive names for datasets and variables
-     * Name data frames and matices as well as their columns (and their rows, as appropriate)
-     * Refer to your entries by name, not number
-
+* Use descriptive names for datasets and variables, including referring to variables by name rather than position when indexing.
 
 ---
 
@@ -267,26 +260,26 @@ lapply(c(lsf.str()), getAnywhere)
 
 * Does everyone on your team have a common understanding of the goals?
 
-* Make sure it is clear what negative and positive mean in a each specific context
+* Make sure it is clear what negative and positive mean in a each specific context.
 
-* Think about what is inferred from each plot you show
-    * Describe what allows you to make this inference
-    * Think about what the plot would look like if there were no structure in the data  
+* Think about what is inferred from each plot you show:
+    + Describe what allows you to make this inference.
+    + Think about what the plot would look like if there were no structure in the data.
 
-* Make sure it is clear what each chunk of code is meant to do
+* Make sure it is clear what each chunk of code is meant to do.
 
 ---
 
 ### Some ideas for sanity checks
 
 * How do you know you are analyzing the data you think you are analyzing?  
-     * Have you verified the sample size is correct at each data massaging step?
-     * How do you know data have been merged correctly?
+     + Have you verified the sample size is correct at each data massaging step?
+     + How do you know data have been merged correctly?
 
-* Have you clearly described the data?  
-    * What low-dimensional summaries of the data have you plotted?  Do they make sense?
+* Clearly describe the data:  
+    + What low-dimensional summaries of the data have you tabulated/plotted?  
+    + Do they make sense given your understanding of what you *should* have?
 
 * What do you expect to see if the data are purely noise?
 
 ---
-
