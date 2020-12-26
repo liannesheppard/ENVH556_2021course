@@ -91,10 +91,10 @@ You are welcome to do your work locally on your laptop, but we will not be able
 to provide support for local installations.  You will need the most recent 
 version of RStudio and R.  An easy way to do this is to follow directions on a 
 tutorial program (Swirl) which begins by walking you through the process of 
-downloading R and RStudio.  Here is the link to the Swirl tutorial:  
-<https://swirlstats.com/students.html>.  If you need to become 
-familiar with R and RStudio, try the first few lessons of the 'Basics of R 
-Programming' series you will find within Swirl.
+downloading R and RStudio.  Here is the link to the Swirl tutorial: 
+[https://swirlstats.com/students.html](https://swirlstats.com/students.html). The 
+first few Swirl lessons cover the "Basics of R Programming" which may help new 
+R users become familiar with R and RStudio.
 
 To work locally, make sure you have installed the `rmarkdown` package.  For this 
 document, you will also need to install `knitr`.  If, at any point during this 
@@ -136,6 +136,9 @@ Here are several good R Markdown resources from [RStudio](https://rmarkdown.rstu
   * The [Reference Guide](https://rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf)
   * The [Cheat Sheet](https://github.com/rstudio/cheatsheets/raw/master/rmarkdown-2.0.pdf)
   * The [Definitive Guide](https://bookdown.org/yihui/rmarkdown/)
+
+The post [Getting Started with R Markdown — Guide and Cheatsheet](https://www.r-bloggers.com/2020/07/getting-started-with-r-markdown-guide-and-cheatsheet/) 
+on R-bloggers is also very helpful.
 
 # Anatomy of a `.Rmd` file
 
