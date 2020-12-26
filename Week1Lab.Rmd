@@ -113,7 +113,7 @@ introduce you to multiple useful commands and help you get a basic understanding
 of the dataset.
 
 The underlying data to be used in the lab is from the DEMS study and is
-described in Coble et al 2010.  We are focusing on the personal data collected
+described in [Coble et al 2010](https://academic.oup.com/annweh/article/54/7/747/202635).  We are focusing on the personal data collected
 by NIOSH between 1998 and 2001.  In this lab we will mostly use the `ecdata`
 variable which is a measurement of exposure to respirable elemental carbon, also
 called REC.  The data were collected from workers from a cross-section of jobs
@@ -452,10 +452,11 @@ ggplot(data=DEMS, aes(ecdata, na.rm=TRUE)) +
     geom_histogram(colour="black", fill="white")
 
 # Plot 2 with density base plot, just the histogram, now named 'p' for ease of
-# re-use:
+# re-use and a different theme:
 p <- ggplot(data=DEMS, aes(ecdata, na.rm=TRUE)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="white", 
-                   binwidth=20) 
+                   binwidth=20) + 
+    theme_classic()
 
 # To overlay a normal density plot, we need to create some variables first
 N <- sum(!is.na(DEMS$ecdata))
@@ -629,14 +630,15 @@ ggplot(data = DEMS, aes(nodata, ecdata, color = u_snum)) +
 
 Note:  If you make such scatterplots by facility with data on the log base 10
 scale and the axes swapped, you should be able to produce plots that look like
-the results in Figure 2 of Coble et al (2010).  (We will show you how to
-transform data in R next week.)
+the results in Figure 2 of [Coble et al 2010](https://academic.oup.com/annweh/article/54/7/747/202635).  (We will show 
+you how to transform data in R next week.) 
+<!-- CZ:  we do show log-transformation in this lab -->
 
 ---
 
 # Homework exercises
 
-Note:  Refer to the lab write-up guidelines (*LabReportGuidelines.html*) posted
+Note:  Refer to the lab write-up guidelines [(*LabReportGuidelines.html*)](https://canvas.uw.edu/courses/1434471/files/70861493?fd_cookie_set=1) posted
 on Canvas for the format and content of your lab report.  You may also be
 interested in some of the tips on the Canvas Wiki page: *Helpful Hints on Lab
 Report Write-ups*. <!-- TODO:  Add hyperlinks -->
@@ -662,13 +664,15 @@ Report Write-ups*. <!-- TODO:  Add hyperlinks -->
          NO and OC?  Make sure to document the change to the variables in your 
          lab write-up.
 
-    (b) Getting GM and/or GSD in a table in R:  This lab doesn't show ow to get
-        the GM and GSD using `tidyverse`; it should be possible using `dplyr`,
-        perhaps with `mutate`.  You can use the `EnvStats` package with `tapply` and
-        `cbind`.  To get the AM, ASD, GM, GSD, N in order:
+    (b) Getting GM and/or GSD in a table in R:  This lab doesn't show how to get
+        the GM and GSD using `tidyverse`; for example using `dplyr` `group_by()` 
+        and `mutate()` functions though you could (and may wish to). Instead, 
+        for demonstration, we show how to use the `EnvStats` package with 
+        `tapply` and `cbind`.  To get the AM, ASD, GM, GSD, N in order:
          
 ```{r table.with.GM+GSD}
-#----table.with.GM+GSD using tapply and cbind ----------
+#-----table with GM+GSD using tapply and cbind----------
+
 #This uses facilityno, a factor variable
 xbar <- tapply(DEMS$ecdata, DEMS$facilityno, mean,    na.rm=TRUE)
 sd   <- tapply(DEMS$ecdata, DEMS$facilityno, sd,      na.rm=TRUE)
@@ -690,7 +694,8 @@ believable.  However, I think this is the huge range of the data and not an
 error.)
 
 ```{r UGtable.with.GM+GSD}
-#----UGtable.with.GM+GSD using tapply and cbind ----------
+#-----UGtable.with.GM+GSD using tapply and cbind----------
+
 # This uses facilityno, a factor variable
 DEMSu <- DEMS[DEMS$u_s == "u", ]
 xbar  <- tapply(DEMSu$ecdata, DEMSu$facilityno, mean,    na.rm=TRUE)
@@ -830,7 +835,8 @@ document your code and session information.  This supports the reproducibility
 of your work.
 
 ```{r session.info}
-#---session.info: beginning of Appendix -----------
+#-----session information: beginning of Appendix -----------
+
 # This allows reproducibility by documenting the version of R and every package
 # you used.
 sessionInfo()
@@ -838,6 +844,5 @@ sessionInfo()
 ```
 
 ```{r appendix, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, include=TRUE}
-# ---------appendix------------
+#-----appendix------------
 ```
-
