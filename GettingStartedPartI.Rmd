@@ -1,9 +1,9 @@
 ---
 title: "Getting Started with R, RStudio, & R Markdown for ENVH 556:  Part I"
-author: "Lianne Sheppard"
+author: "ENVH 556 Instructors"
 date: "Created for Winter 2021; printed `r format(Sys.time(), '%d %B, %Y')`"
 output:
-  pdf_document:
+  html_document:
     toc: true
     toc_depth: 3
     number_sections: true
@@ -34,7 +34,7 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed
 # Key principle:  Only load the packages you will need
-pacman::p_load(knitr, readr, dplyr, ggplot2, formatR)
+pacman::p_load(knitr, readr, dplyr, ggplot2, formatR,tinytex)
 
 ```
 
@@ -49,8 +49,7 @@ your development in this course.
 
 ## Credit
 
-This document was modified and expanded from one created by Emily Voldal in fall 
-2018.  It also incorporates input from Brian High.
+This document has benefitted by work done by Emily Voldal, Brian High, Lianne Sheppard, and Chris Zuidema.
 
 **The output (e.g. `.html` or `.pdf`) and source (`.Rmd`) documents are optimally used 
 side-by-side so that you can see both the code and its result.  Before you 
