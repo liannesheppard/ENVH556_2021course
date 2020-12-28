@@ -723,65 +723,9 @@ kable(round(cbind(AM=xbar, SD=sd, GM=gm, GSD=gsd, N=n), 2))
 
 ---
 
-# Appendix 1: Base R and older package commands for reference {-}
+# Appendix 1: Base R commands for reference {-}
 
-### A1.1 Tables {-}
-
-The following approaches to making tables are available, though not recommended.
-These include a. the `ddply()` function in the `plyr` package, b.
-`summarizeBy()` from the `doBy` package, and c. `aggregate()` which is part of
-base R but more difficult to use.
-
-(a) with `ddply()`:  Out of date so code hidden  
-
-```{r table.with.ddply, echo=FALSE, eval=FALSE}
-#------------------table.with.ddply------------------
-# Note: this is obsolete b/c replaced with dplyr
-# Note:  summarize can be spelled with an "s" or "z"
-facility_ec <- ddply(DEMS, .(facilityno), plyr::summarize,
-                     N=sum(!is.na(ecdata)),
-                     Nmiss=sum(is.na(ecdata)),
-                     mean=mean(ecdata, na.rm=TRUE),
-                     sd=sd(ecdata, na.rm=TRUE),
-                     se=sd/sqrt(N))
-facility_ec
-
-```
-
-(b) with `summaryBy()` from the `doBy` package:  Out of date so code hidden  
-
-```{r table.with.summaryBy, echo=FALSE, eval=FALSE}
-#---------------table.with.summaryBy----------------
-# Note: this is obsolete b/c replaced by dplyr
-fun <- function(x){ 
-    c(
-        m = mean(x, na.rm = TRUE),
-        sd = sd(x, na.rm = TRUE),
-        n = sum(!is.na(x)),
-        Nmiss = sum(is.na(x))
-        )
-}
-# the se hasn't worked for me yet
-summaryBy(ecdata ~ facilityno, data = DEMS, FUN = fun)
-summaryBy(no2data ~ facilityno, data = DEMS, FUN = fun)
-summaryBy(nodata ~ facilityno, data = DEMS, FUN = fun)
-
-```
-
-(c) with `aggregate()`:  
-    The following gives means of 3 variables.  Note:  by comparing the results 
-    from facility H6, we can see that the the missing data were removed 
-    separately by each variable.
-
-```{r table.with.aggregate, echo=TRUE, eval=FALSE}
-#----------------table.with.aggregate-------
-# part of the stats package
-aggregate(DEMS[c("ecdata", "no2data", "nodata")],
-          list(facility = DEMS$facilityno), mean, na.rm = TRUE)
-
-```
-
-### A1.2 Base R option for a histogram of ecdata with a density curve added to the histogram {-}
+### A1.1 Histogram of ecdata with a density curve added to the histogram {-}
 
 To get a basic histogram, use `hist`.  For a density plot, use `plot()` with
 `density()`.  (You need to explicitly remove the missing values to use the
@@ -801,7 +745,7 @@ plot(density(DEMS$ecdata[!is.na(DEMS$ecdata)]))
 
 ```
 
-### A1.3 Logarithmic transformations in base R: {-}
+### A1.2 Logarithmic transformations: {-}
 
 (a) `DEMS$ln_ecdata <- log(DEMS$ecdata)` creates the natural log-transformed
    variable in the DEMS data frame.
@@ -809,7 +753,7 @@ plot(density(DEMS$ecdata[!is.na(DEMS$ecdata)]))
 (b) `DEMS$log10_ecdata <- log10(DEMS$ecdata)` creates the base 10 log-transformed
    variable in the DEMS data frame.
 
-### A1.4 Base R option for a basic scatterplot and overlaid regression line {-}
+### A1.3 Basic scatterplot and overlaid regression line {-}
 
 ```{r scatterplot.in.baseR}
 #----------------scatterplot.in.baseR-------
