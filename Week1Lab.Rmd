@@ -11,7 +11,7 @@ output:
 
 ---
 
-Note:  The following three chunks should typically appear at the beginning of
+Note:  The code in the following three chunks should typically appear at the beginning of
 each R Markdown file.  We display them during this first lab so you can see them
 in the output.  Ordinarily we would not show them.
 
@@ -99,10 +99,11 @@ Markdown through the context of the course content.  This is also your first
 opportunity to develop a lab write-up for ENVH 556 using R Markdown.
 
 Note:  It is in your best interest to learn modern R tools, such as those
-included in the [tidyverse](https://www.tidyverse.org).  Our goal in this class is
-to prioritize these tools as much as possible while recognizing that there are
-many ways to accomplish the same task and we don't want to get too bogged down
-in the best way to accomplish our goals.
+included in the [`tidyverse`](https://www.tidyverse.org).  In this class we tend 
+to prioritize `tidyvrese` approaches, but recognize there are often many packages 
+and options to accomplish the same task. We want to deliver course materials 
+without getting too bogged down in the debate about the "best" or "highest 
+performing" packages.
 
 ---
 
@@ -143,15 +144,13 @@ Complete the following steps to set up the lab
       *LabReportGuidelines.Rmd* file.
 
 * In the R Markdown file you are using for this lab make sure you have your file
-paths set up.
-    + First assign your current path to a variable name (see *getwd* chunk).  
-    + Then tell R where your data reside (see *datasets.path* chunk).  The 
-      `dir.create()` command will make a directory if it doesn't exist.  The 
-      `file.path()` command allows you to refer easily to paths across operating 
-      systems.
-    + See the following chunk to accomplish this:
+paths set up (see *set file paths* chunk below).
+    + First assign your current path to a variable name.  
+    + Then tell R where your data reside.  The `dir.create()` command will make 
+    a directory if it doesn't exist.  The `file.path()` command allows you to 
+    refer easily to paths across operating systems.
     
-```{r set.file paths}
+```{r set.file.paths}
 #-----set file paths--------
 
 # create a variable for the project path
@@ -170,23 +169,25 @@ dir.create(data_path, showWarnings = FALSE, recursive = TRUE)
      sure the "DEMSCombinedPersonal.rds" dataset is in your Datasets directory 
      defined by `data_path`.
      
-```{r read.data, eval=TRUE, error=TRUE}
+```{r read.data, eval=FALSE, error=TRUE}
 #-----read data--------
 
-# Note:  for simplicity of typing in this lab we're calling the dataset DEMS,
+# Note 1:  for simplicity of typing in this lab we're calling the dataset DEMS,
 # even though it is only one of several DEMS datasets we will use in this
-# course.
+# course. 
+# Note 2: In this chunk heading eval = FALSE so that if it is run, we don't get an 
+# error if the file is not present in the "Datasets" folder. This would work if 
+# the `.rds` file were already downloaded and is a bit simpler compared to the 
+# more robust but more complicated code below.  
 DEMS <- readRDS(file.path(data_path, "DEMSCombinedPersonal.rds"))
 
 ```
 
-As an alternative, you can also read the data file from a web site:
+As an alternative, the following code checks to see if the file is already 
+present, and if not, downloads the data from a web site before reading it in:
 
-```{r read.data.from.a.web.site, eval=TRUE}
-#-----read data from a web site--------
-
-# Download the data file from a web site if it is not already downloaded, then
-# read in the file
+```{r read.data.from.a.website, eval=TRUE}
+#-----read data from a website--------
 
 # first, specify file name and path
 DEMS_file <- "DEMSCombinedPersonal.rds"
@@ -451,8 +452,8 @@ setup chunk above so we don't need to repeat them below.)
 ggplot(data=DEMS, aes(ecdata, na.rm=TRUE)) +
     geom_histogram(colour="black", fill="white")
 
-# Plot 2 with density base plot, just the histogram, now named 'p' for ease of
-# re-use and a different theme:
+# Plot 2 with density base plot, just the histogram, now assigned to object 
+# named 'p' for ease of re-use and a different theme:
 p <- ggplot(data=DEMS, aes(ecdata, na.rm=TRUE)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="white", 
                    binwidth=20) + 
@@ -603,10 +604,10 @@ ggplot(data = DEMS, aes(nodata, ecdata, na.rm = TRUE)) +
     color = "Measurement\nlocation"
     )
     
-# Plot 6 adds facets to plot 1 + colors for underground vs surface 
+# Plot 6 adds facets to plot 1 + a new color theme for underground vs surface 
 # Note 1:  the scales="free" option allows a different scale for each plot.  In
 # this case it makes the individual plots more informative. 
-# Note 2:  the smoother for facilty E is behaving strangely becuase so many 
+# Note 2:  the smoother for facility E is behaving strangely because so many 
 # of the values are equal to zero. 
 # Note 3: with facets, you see facility D21 has no `nodata`
 ggplot(data = DEMS, aes(nodata, ecdata, color = u_snum)) +
@@ -623,6 +624,7 @@ ggplot(data = DEMS, aes(nodata, ecdata, color = u_snum)) +
     y = "REC (ug/m3)",
     color = "Measurement\nlocation"
     ) + 
+  scale_color_brewer(palette = "Dark2") +
   theme_bw()
     
 ```
@@ -630,18 +632,14 @@ ggplot(data = DEMS, aes(nodata, ecdata, color = u_snum)) +
 
 Note:  If you make such scatterplots by facility with data on the log base 10
 scale and the axes swapped, you should be able to produce plots that look like
-the results in Figure 2 of [Coble et al 2010](https://academic.oup.com/annweh/article/54/7/747/202635).  (We will show 
-you how to transform data in R next week.) 
-<!-- CZ:  we do show log-transformation in this lab -->
+the results in Figure 2 of [Coble et al 2010](https://academic.oup.com/annweh/article/54/7/747/202635).
 
 ---
 
 # Homework exercises
 
 Note:  Refer to the lab write-up guidelines [(*LabReportGuidelines.html*)](https://canvas.uw.edu/courses/1434471/files/70861493?fd_cookie_set=1) posted
-on Canvas for the format and content of your lab report.  You may also be
-interested in some of the tips on the Canvas Wiki page: *Helpful Hints on Lab
-Report Write-ups*. <!-- TODO:  Add hyperlinks -->
+on Canvas for the format and content of your lab report.
 
 (1) Make table(s) summarizing four exposure variables in this dataset:  Nitrogen
     oxide, nitrogen dioxide, respirable organic carbon, and respirable elemental
@@ -724,6 +722,9 @@ kable(round(cbind(AM=xbar, SD=sd, GM=gm, GSD=gsd, N=n), 2))
 ---
 
 # Appendix 1: Base R commands for reference {-}
+
+While new packages may come and go, Base R will never go out of style. Here are 
+some Base R options for tasks we've covered in this Lab.
 
 ### A1.1 Histogram of ecdata with a density curve added to the histogram {-}
 
