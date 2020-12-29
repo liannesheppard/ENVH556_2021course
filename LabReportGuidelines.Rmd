@@ -171,7 +171,7 @@ code](https://google.github.io/styleguide/Rguide.xml), [Advanced R Guide (Hadley
 
 ### Appendix 2 (required):  Session information, embedded code, and functions
 
-Include the session information, embedded code, and functions defined in the .Rmd (optional) in a code appendix.  The output is also shown in the compiled html file for these guidelines. Note that there is very little code embedded in these guidelines and no functions, so the second two chunks produce little or no oputput.  Generally your files will have much longer code appendices.
+Include the session information, embedded code, and functions defined in the .Rmd in a code appendix.  The output is also shown in the compiled html file for these guidelines. Note that there is very little code embedded in these guidelines and no functions, so the second two chunks produce little or no oputput.  Generally your files will have much longer code appendices.
 
 #### Session Information
 
@@ -192,8 +192,6 @@ sessionInfo()
 
 ```{r functions.defined.in.this.Rmd, eval = TRUE}
 #-----functions defined in this Rmd ------------
-
-# (optional)
 
 # Show the names of all functions defined in the .Rmd
 # (e.g. loaded in the environment)
