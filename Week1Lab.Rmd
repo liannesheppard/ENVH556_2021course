@@ -724,7 +724,7 @@ kable(round(cbind(AM=xbar, SD=sd, GM=gm, GSD=gsd, N=n), 2))
 # Appendix 1: Base R commands for reference {-}
 
 While new packages may come and go, Base R will never go out of style. Here are 
-some Base R options for tasks we've covered in this Lab.
+some Base R options for tasks we've covered in this Lab.  
 
 ### A1.1 Histogram of ecdata with a density curve added to the histogram {-}
 
@@ -733,7 +733,8 @@ To get a basic histogram, use `hist`.  For a density plot, use `plot()` with
 density function.)
 
 ```{r hist.in.baseR, echo=TRUE}
-#----------------hist.in.baseR-----------------
+#-----hist in baseR-----------------
+
 # plot 1: basic histogram
 # can plot without explicitly excluding the missing data
 hist(DEMS$ecdata) 
@@ -757,7 +758,8 @@ plot(density(DEMS$ecdata[!is.na(DEMS$ecdata)]))
 ### A1.3 Basic scatterplot and overlaid regression line {-}
 
 ```{r scatterplot.in.baseR}
-#----------------scatterplot.in.baseR-------
+#-----scatterplot in baseR-------
+
 # Plot 1 with best fit regression line
 
 # Create a basic scatterplot
