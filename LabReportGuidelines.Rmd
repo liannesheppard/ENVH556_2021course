@@ -222,8 +222,8 @@ lapply(c(lsf.str()), getAnywhere)
     b.	No redundancies – omit columns with no variation in the data  
     c.	Structure tables to facilitate the comparisons of interest. Note that it is easier to compare numbers that are close to each other and to make comparisons of numbers in columns.  
 4.	Figures and tables should be strategically selected to present your key analyses and findings.
-5.  Define variables/acronyms (e.g. NO = nitrogen oxide and NO2 = nitrogen dioxide) and specify units where appropriate.
-
+5.  Define variables/acronyms/abrviations (e.g. NO = nitrogen oxide and NO2 = nitrogen dioxide) once, on first use, and specify units where appropriate.
+6. symbols (e.g. ug versus μg)
 ---
 
 ## General Suggestions
