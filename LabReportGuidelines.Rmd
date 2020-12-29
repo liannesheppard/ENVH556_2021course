@@ -150,10 +150,9 @@ This section can cover:
 ### Guidance on documenting, finalizing, and formatting code to support your code appendix
 
 1. In general you should finalize your code like you finalize your scientific writing:  It should be clear, concise, and nicely formatted.  Please incorporate the following **formatting strategies** into your code in your assignments:
-    a. *Make sure you don't have run-on lines* in your compiled code.  Check for this and fix it before finalizing your assignment.  Mostly you can rely on tools to automatically reformat the lines because these tools will accomplish what you want. (Sometimes they don't.) To automatically reformat, highlight the lines you want to reformat (and no more than those lines) and then:
+    a. *Make sure you don't have run-on lines* in your compiled code.  Check for this and fix it before finalizing your assignment.  Mostly you can rely on tools to automatically reformat the lines because these tools will accomplish what you want (though sometimes they don't). R Markdown has formatting options (e.g. `tidy=TRUE, tidy.opts=list(width.cutoff=80)` ) that help control the width of code rendered in reports. Another strategy to automatically reformat code, is highlight the lines you want to reformat (and no more than those lines) and then:
         i. For lines of code use: Cmd-Shift-A (Cmd is for macs; use Cntrl for Cmd on windows). 
         ii. For comments use: Cmd-Shift-/.
-R Markdown also has formatting options (e.g. `tidy=TRUE, tidy.opts=list(width.cutoff=80)` ) that help control the width of code rendered in reports.        
     b. *Delete extraneous code and comments* unless you have a reason to keep this in your R Markdown file, for instance to remind you of something important.  In the lab R Markdown files I have been intentionally leaving in some commented sections to show you alternative ways to do things, help you understand what I've done, or sometimes for other reasons.  When you copy that code for your own purposes, delete the extra material you don't need.
     c. *Break up your code to  make it more readable*
             i. Use header comment lines at the beginning of code chunks, e.g. #-----this is a header line----.  You can decide your personal style for this.  Also if you put at least 4 dashes at the end of the header line, RStudio incorporates this line into your outline.
