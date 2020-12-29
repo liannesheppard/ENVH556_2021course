@@ -1,0 +1,509 @@
+---
+title: 'Week 2 Lab:  Compliance -- Descriptive Statistics and Exceedence Probabilities'
+author: "Lianne Sheppard for ENVH 556"
+date: "Created Winter 2019; Updated `r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    html_document:
+        toc: true
+        toc_depth: 3
+        number_sections: true
+---
+
+
+```{r knitr.setup, include=FALSE, echo=FALSE}
+#----knitr.setup-------------
+
+knitr::opts_chunk$set(
+    echo = TRUE,
+    cache = TRUE,
+    cache.comments = FALSE,
+    message = FALSE,
+    warning = FALSE
+)
+
+```
+
+```{r clear.workspace, eval=FALSE, echo=FALSE}
+#---------clear.workspace------------
+# code to clear the environment without clearing knitr. Useful for code
+# development because it simulates the knitr environment Run as a code chunk
+# when testing.  When knitr is run, this is effectively run in the knitr
+# environment
+
+# Clear workspace of all objects and unload all extra (non-base) packages
+rm(list = ls(all = TRUE))
+if (!is.null(sessionInfo()$otherPkgs)) {
+res <- suppressWarnings(lapply(
+paste('package:', names(sessionInfo()$otherPkgs), sep = ""),
+detach,
+character.only = TRUE,
+unload = TRUE,
+force = TRUE
+))
+
+}
+
+```
+
+```{r load.libraries.with.pacman, include=FALSE}
+#-----load.libraries.with.pacman--------------
+# Load pacman into memory, installing as needed
+my_repo <- 'http://cran.r-project.org'
+if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
+
+# Load the other packages, installing as needed.  Some reasons for packages:
+# knitr:  kable()
+# tidyverse: multiple data science packages including ggplot, dplyr, readr
+# Hmisc:  describe
+# EnvStats: geoMean, geoSD, probability plotting functions
+# MKmisc:  quantileCI
+# codetools:  code analysis tools used in SessionInfo
+pacman::p_load(tidyverse, knitr, Hmisc, EnvStats, MKmisc, codetools)
+
+```
+
+```{r read.data, echo=FALSE}
+#-----------read.data-----------------
+# getwd
+ProjectPath <- getwd()
+
+# dir.create    
+dir.create(file.path(ProjectPath, "Datasets"),
+           showWarnings = FALSE,
+           recursive = TRUE)
+           datapath <- file.path(ProjectPath, "Datasets")
+           
+# read.dat
+# This assumes you already have the data copied into your data directory
+DEMS <- readRDS(file.path(datapath, "DEMSCombinedPersonal.rds"))
+           
+```
+
+# Purpose  
+
+The purpose of this lab is to work with descriptive statistics, and compliance
+tests while also getting further practice with R, RStudio, and R Markdown.  We
+will use the DEMS REC data, describe the distributions, exceedence
+probabilities, confidence intervals and test compliance.
+
+# Getting Started  
+This section gives formulas and some basic R commands for descriptive statistics
+and exceedance probabilities.  It also provides reminders of formulas from
+lecture you will use in lab.
+
+## Definitions
+
+* AM=arithmetic mean  
+* GM=geometric mean  
+* SD=standard deviation (on the native scale)
+* GSD=geometric standard deviation
+* MOM=method of moments
+* MLE=maximum likelihood estimate
+* OEL=occupational exposure limit
+* CI=confidence interval
+
+## Formulas for method of moments vs MLE estimates for the AM  
+
+* AM method of moments (MOM) estimate for `ecdata`=$x$: 
+$$x_{MOM} = \frac{1}{n} \sum_{i=1}^{n} x_i $$
+
+* AM maximum likelihood estimate (MLE) for `ecdata`=$x$ using
+`lnrec`=`log(ecdata)`=$y$:
+$$ AM_{MLE}=\exp\big(\mu_y+\frac{\sigma_y^2}{2}\big)$$
+$$ \bar{x}_{MLE}=\exp{\big(\bar{y}+\frac{\frac{N-1}{N}s_y^2)}{2}\big)}$$
+
+## Formulas for the exceedence fraction  
+* **Empiric exceedence fraction**:  For a sample of size *N* where *n* is the number
+exceeding the OEL, calculate
+$$f_{OEL}=\frac{n>\mbox{OEL}}{N}$$
+* **Parametric exceedence fraction**:  For a sample, log-transform the data and OEL
+and use the normal distribution to estimate the probability  of exceeding
+ln(OEL):
+$$P\big(y>\ln(OEL)\big) =
+\big(1-\Phi(z=\frac{y-\bar{y}}{s_y}>\frac{\ln(OEL)-\bar{y}}{s_y})\big)$$
+
+## Basic data manipulation and summarization commands   
+(See also Week 1 lab)
+
+(@) **Make a tibble**:  First let's turn our DEMS dataset into a tibble. This faciliates our use of `tidyverse` functions with a data frame.  (Note: We can use the command `as_data_frame()` instead of `as_tibble` since they are aliases; be warned that these aren't the same as the command `as.data.frame()`.  (Yikes!))
+
+```{r create.tibble}
+#-----create.tibble----
+DEMSt <- as_tibble(DEMS)
+
+```
+
+(@) **Keep a subset of observations:**  Keep only a subset of the data based on
+selected jobs (240,110,410,600), underground only ("u"), and ecdata being
+nonmissing:
+
+```{r filter.data}
+#-------filter.data----
+# filter dataset so we only keep 4 jobs with codes 240,110,410,600; underground
+# only ("u"); and ecdata being nonmissing
+DEMSu <-
+    filter(DEMSt, u_s == "u", ecdata > 0, job %in% c(240, 110, 410, 600))
+    
+```
+
+(@) **Create new variables** using the log transformation.  Typically exposure
+data appear to be log-normally distributed.
+
+```{r transform.vars}
+#-------transform.vars------
+# The following two variables will be added to the DEMS dataframe at the end of
+# the tibble:
+DEMSu <- mutate(DEMSu,
+                lnrec = log(ecdata))
+
+# log base 10 transform
+DEMSu <- mutate(DEMSu,
+                log10rec = log10(ecdata))
+
+```
+
+(@) **Summarize variables and display key quantities:** This code uses `dplyr`,
+part of `tidyverse`.  We use `group_by()` to determine the subgroups we are going to summarize over, `summarize()` to create new summaries we want to report, and `arrange()` to decide the final ordering in the table.  Each of these is connected though the pipe (`%>%`) which can be read as "then".  It facilitates the process of connecting multiple steps without creating intermediate datasets.
+
+```{r table.with.dplyr}
+#----table.with.dplyr------
+DEMSsummary <- DEMSu %>%     group_by(job,facilityid) %>%
+    dplyr::summarize(
+    N = n(),
+    AM = round(mean(ecdata), 2),
+    AM_mle = round((exp(mean(lnrec)+((N-1)/N)*(sd(lnrec)^2)/2)), 2),
+    ASD = round(sd(ecdata), 2),
+    GM = round(geoMean(ecdata), 2),
+    GSD = round(geoSD(ecdata), 2)
+    ) %>%
+arrange(job,facilityid,desc(AM))
+    DEMSsummary
+
+# And here is the same result printed using kable
+kable(DEMSsummary)
+
+```
+
+## Visualize the data and understand its distribution graphically
+
+Here are some sampe graphical commands: (Plots in this section are not run;
+histogram code is repeated from Week 1 lab, though now with new data and better labeling.)
+
+### Histograms
+
+```{r hist.in.tidyverse, echo=TRUE,eval=FALSE}
+#------------hist.in.tidyverse-----------
+# first define the basic plot using the density scale
+p <- ggplot(data = DEMSu, aes(lnrec)) +
+    geom_histogram(
+    aes(y = ..density..),
+    colour = "black",
+    fill = "white",
+    binwidth = 0.5
+    )
+
+# create variables to overlay a normal density curve, next 3 commands:
+N <- length(DEMSu$lnrec)
+
+# divides the range 0-1000 into N equal increments
+x <- seq(min(DEMSu$lnrec), max(DEMSu$lnrec), length.out = N)
+df <-
+    with(DEMSu, data.frame(x, y = dnorm(x, mean(lnrec), sd(lnrec))))
+
+# histogram + overlaid normal + density w/ transparency
+p +
+    geom_line(data = df, aes(x = x, y = y), color = "red")  +
+    geom_density(alpha = .2, fill = "red") +
+    labs(title = paste("Density Plot of ln(REC)\n","In 4 Underground Jobs"), 
+         caption = paste("With overlaid normal distribution (red line)","\nwith the same mean and SD"), 
+         x = "ln(REC) (ln(ug/m^3)")
+    
+```
+
+### Q-Q plots (Normal probability plots)
+
+```{r qqplot.in.tidyverse, echo=TRUE,eval=FALSE}
+#--------------qqplot.in.tidyverse-------
+# create the base plot
+p <- ggplot(DEMSu, aes(sample = lnrec))
+
+# now overlay the ppoints and line
+# and add a title
+p + stat_qq() + stat_qq_line() +
+    labs(title = "Normal Q-Q Plot of ln(REC)\nIn 4 Underground Jobs")
+```
+
+
+##  Test the normality of a variable 
+
+The Shaprio-Wilk test evaluates the null hypothesis that the data are normally distributed against the alternative that they aren't.  Unfortunately, it is very easy to reject the null hypothesis using this test, particularly when the sample size is large.  See [this example using simulations](http://emilkirkegaard.dk/en/?p=4452) to get a feeling for the kinds of deviations from normality that give high and statistically significant Shaprio-Wilks tests.  The general advice in using this test is to not overinterpret it.  Look at the data visually and use your judgment about whether they are consistent with a normal distribution.  Ask youself whether it is just a few values at the tails that deviate, or are there other more importnat concerns.
+
+```{r Shapiro-Wilk test}
+#------------Shapiro-Wilk test-----------
+#for normality of a variable
+shapiro.test(DEMSu$lnrec)
+
+```
+
+## Take a random sample of data in memory 
+
+* `small<-sample(DEMSu$lnrec,10)` gives a sample of size 10 of the data
+* `half<- sample(DEMSu$lnrec,size=length(DEMSu$lnrec)/2,replace=TRUE)` gives a
+50% sample of the data with replacement
+
+```{r samples}
+#---samples-------
+# recall you want to set the seed to make your work reproducible
+set.seed(502)
+
+# the sample command takes from the vector of data (the first argument), a
+# sample of size given by the argument.  The default is to sample without
+# replacement, so you need to set replace=TRUE if you want sampling with
+# replacement.
+small <- sample(DEMSu$lnrec, size = 10)
+half <- sample(DEMSu$lnrec,
+               size = length(DEMSu$lnrec) / 2,
+               replace = TRUE)
+
+```
+
+
+## Calculate the exceedence fraction and related statistics
+
+Here we get the empiric eceedence fraction, the parametric exceedence
+probability and show the tools for estimating various confidence limits for
+percentiles
+
+* **Empiric exceedence fraction**: 
+```{r emp.exc.frac}
+#-----emp.exc.frac----
+sum(DEMSu$ecdata > 200) / length(DEMSu$ecdata)
+
+```
+
+* **Parametric eceedence fraction**: 
+
+```{r param.exc.frac}
+#--------param.exc.frac------
+1 - pnorm((log(200) - mean(DEMSu$lnrec)) / sd(DEMSu$lnrec))
+
+```
+
+* **Upper 5th percentile of the distribution and its 70% CI**.  The following
+describes an approach estimated directly on the log-transformed data and
+exponentiates.  You can use the `quantileCI` command in the `MKmisc` package. (See
+https://rdrr.io.)  The `quantile` command in base R can be used to get the upper
+5th percentile (or 95th percentile), but there is no clear way to get its CI from
+the `quantile` command.
+
+```{r quantile95+70thCI}
+#---------quantile95+70thCI-----
+# Using the quantile command:
+# 95th percentile quantile on log scale
+quantile(DEMSu$lnrec, .95)
+
+# 95th percentile quantile on native scale
+exp(quantile(DEMSu$lnrec, .95))
+
+# now using quantileCI:
+quantileCI(DEMSu$lnrec, prob = 0.95, conf.level = 0.7)
+quantileCI(DEMSu$ecdata, prob = 0.95, conf.level = 0.7)
+
+```
+
+## Log probability plots
+
+These plots have the value of the untransformed exposure variable (e.g. concentration) on the x axis displayed on the log base 10 scale, and the corresponding normal probability for the cumulative distribution on the y axis.  See slide 18 in the lecture notes.  The following code generates some lognormal data and then plots them using this framework.  To implement this with the DEMS data, you will need to address specifics in the example, such as locations of the tick lines and range of the data.
+
+Notes on how to create this: 
+
+1. Focus on x, our exposure variable of interest, which is typically assumed to be lognormally distributed  
+
+2. Transform data to the log scale (y=ln(x)) 
+
+3. Generate order statistics (p_i=order/N+1)
+
+4. Convert these order statistics to standard normal quantiles with the same mean and SD as y.
+
+5. Exponentiate the normal quantile variable so it is comparable with x.
+
+6. Plot the theoretical quantiles (exponentiated quantiles) vs the input data x (data on the x axis; theoretical quantiles on the y axis).
+
+7. Plot labels on y axis shows the corresponding normal probabilities rather than the theoretical quantiles.  Both axes scale to the log base 10 scale. 
+
+```{r generate data for log probability plot}
+#----- generate data for log probability plot example ----
+set.seed(2001)
+
+# y is the lognormal; x is exp(y)~LN(mu_y,sd_y)
+# generate a random normal, with specified mean and sd as read off slide 18
+# eventually will use data not generated
+# variable y is the normally distributed data
+# for exposure data this is ordinarily the log-transformed measurement
+y<-rnorm(1000,mean=1,sd=.92)
+
+# x is the "measured" exposure data ~LN
+x<-exp(y)
+
+# Use rank to get the order statistics 
+rx<-rank(x)
+
+# order statistics re-expressed as proportions
+p_i<-rx/(length(x)+1)
+
+# corresponding normal quantiles for a distribution with realized mean and
+# variance of y.  Need to use these later for the y axis probabilities.
+# (Surrounding parentheses print these in the output if echo=TRUE)
+(ybar <- mean(y))
+(sd_y <- sd(y))
+
+# theoretical quantiles of the normal distribution that corresponds to the data
+# on the log scale
+qy <-qnorm(p_i)*sd_y+ybar
+
+#quantiles of the corresponding LN distribution
+qx <- exp(qy)
+
+# create a data frame for plotting
+pplot.dat <- as.data.frame(cbind(y,x,rx,p_i,qy,qx))
+
+# some summary statistics to check while developing this (commented out)
+#summary(y)
+paste("GM:  ", exp(ybar))
+paste("GSD:  ",exp(sd(y)))
+paste("AM:  ", exp(ybar+sd_y^2/2))
+#summary(x)
+#sd(x)
+
+# now generate the data for the y axis -- need to create a vector of probabilities
+# that we wish to display:
+probs <- c(.01, .02, .05, .1, .16, .25, .5, .75, .84, .9, .95, .98, .99)
+
+# get the corresponding quantiles for the normal distribution with the same mean and variance
+quants <- qnorm(probs,mean=ybar,sd=sd_y)
+
+# exponentiate these for plotting
+exp_quants <- exp(quants)
+
+# in the plots we will draw horizontal lines at exp_quants and label these lines with the probs
+
+```
+
+```{r log probabililty plot}
+#---- log probability plot ----
+# Shows percentiles of the cumulative normal on the y axis; 
+# axes on the log base 10 scale;
+# coord_fixed assumes both axes are the same scaling (i.e. the aspect ratio for
+# x,qx is the same);
+# annotation_logticks puts in minor ticks in right scaling
+# minor_breaks addresses the unlabeled grid lines
+p <- ggplot(data=pplot.dat) +
+    geom_point(aes(x,qx) ) +
+    geom_line(aes(qx,qx)) +
+    annotation_logticks(sides="b") +
+    scale_x_log10(breaks=c(0.1,0.5,1,5,10,50),
+                  limits=c(0.1,50),
+                  minor_breaks=c(0.2,1,2,20) ) +
+    scale_y_log10(breaks=exp_quants,
+                  labels=probs,
+                  limits=c(0.1,50),
+                  minor_breaks=NULL) +
+    coord_fixed() +
+    labs(title="Sample log probability plot\nUsing simulated data",
+         x = "Concentration (native scale units)",
+         y= "% of data less than") +
+    theme_bw()
+p
+
+```
+
+
+# Practice Session  
+
+1.	Plan to use an R project for this lab and make sure it is set up.  You
+probably will want to use one project for the entire ENVH556 course.
+2.	Read in the ‘DEMSCombinedPersonal’ R dataset and keep only measurements from
+jobs 110, 240, 410 and 600 among underground workers.  (We have selected these
+particular jobs for simplicity, but feel free to explore additional jobs or
+other categories of the data if you want to.)  In order to avoid potential
+confusion later, for this practice session we suggest you also drop any observations that are missing ecdata.
+3.	Describe REC (varname: `ecdata`)
+4.	Determine whether REC in this subset is lognormally distributed.  Explore
+using histograms, qqplots,  and statistical tests.
+5.	Calculate the GM, GSD, and AM (using both method of moments and maximum
+likelihood estimates for the AM) for each group.
+6.	 For a selected group (i.e.,a single job, or for all four if you want):
+Assume data are lognormal (LN) and an OEL of 200 $\mu$g/m^3^ has been determined
+for REC.
+
+    a)	Calculate the empiric and parametric exceedence probabilities along with
+    the 95% percentile and 70th % CI.
+    
+    b)	Take a random sample of 50%, 25%, n=9 and n=5 samples and recalculate the
+    GM, GSD, 95% percentile $\pm$ 70 percent confidence limit CI.
+
+# Homework Exercises
+
+1) Consider the primary exposure measures of interest to the study, including
+REC, NO_2 and Organic Carbon.  Consider the full dataset, though you may choose to work with a reduced subset, such as the four selected underground jobs.  (Justify your choice as part of your lab write-up.)
+    a) Describe the distribution, out of range and/or missing values.
+    b) Determine the adequacy of the LN distribution for representing these using
+distribution plots and/or statistical tests.  
+2) Explore potential stratification variables (determinants such as facility, job, location).
+    a) Do the stratified data improve the distributional characteristics?  Does it matter whether you restrict your attention to smaller subgroups of the data, e.g., underground only, specific facilities, specific jobs, or a combination of these?
+    
+3) Calculate the GM, Median, AM (method of moments) and AM (maximum likelihood)
+for REC.
+    a) How do these quantities compare to each other?
+    b) Can you determine any characteristics of the data which help explain the
+differences between these alternative measures of central tendency?
+    c) For at least one stratum that has data that aren't too far off from a
+    lognormal distribution, plot the log probability plot.  Read off the GM and
+    GSD from the log probabililty plot and compare these to values you estimate
+    directly from the data.
+4) Assuming an OEL for REC of 200 ug/m^3, calculate the exceedence
+probability for each mine (and/or job) using both empiric and parametric
+approaches.   In addition, calculate the 95 percentile of the distribution, and
+provide 70% confidence limits on these percentiles.
+    a) What are the differences between the empiric and parametric methods of calculation?
+5) Take random samples of the data (e.g., 50%, 10%, n=9, n=5) and recalculate
+the various summary statistics.
+    a) How does the reduced sample size affect the estimates?  Explain.
+
+
+
+# Appendix 1:  Older Base R versions for reference {-}
+
+## A1.1 Q-Q plot {-}
+
+For a q-q plot to determine whether the data are normally distributed, use `qqnorm()` and you can overlay `qqline()`.  There is code in the `.Rmd` file if you wish to use it.
+
+```{r qqplot.in.baseR, echo=FALSE, eval=FALSE}
+#---------qqplot.in.baseR-----------
+# apparently qqnorm works fine in the presence of missing data:
+qqnorm(DEMS$ecdata)
+qqline(DEMS$ecdata, col = "red", lwd = 2)
+
+# now repeat using the DEMSu subset of data since they should be closer to
+# normal
+qqnorm(DEMSu$ecdata)
+qqline(DEMSu$ecdata, col = "red", lwd = 2)
+
+```
+
+
+# Appendix 2:  Code and session information {-}
+
+```{r session.info}
+#------------session.info: beginning of Appendix ------
+# This allows reproducibility by documenting the version of R and every package
+# you used.
+sessionInfo()
+
+```
+
+```{r appendix.code, ref.label = knitr::all_labels(), echo = TRUE, eval = FALSE, , include=TRUE}
+# ---------appendix------------
+    
+```
+
