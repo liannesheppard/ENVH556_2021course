@@ -773,11 +773,11 @@ scatter.smooth(DEMS$ecdata, DEMS$nodata)
 ```
 
 
-# Appendix 2: Code and SessionInfo {-}
+# Appendix 2: Session Information, Code, and Functions {-}
 
-The next two chunks should be included in every R Markdown appendix so that you
-document your code and session information.  This supports the reproducibility
-of your work.
+The next three chunks should be included in the appendix of every R Markdown so 
+that you document your session information, code, and functions defined in the 
+document.  This supports the reproducibility of your work.
 
 ```{r session.info}
 #-----session information: beginning of Appendix -----------
@@ -790,4 +790,16 @@ sessionInfo()
 
 ```{r appendix, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, include=TRUE}
 #-----appendix------------
+```
+
+```{r functions.defined.in.this.Rmd, eval = TRUE}
+#-----functions defined in this Rmd ------------
+
+# Show the names of all functions defined in the .Rmd
+# (e.g. loaded in the environment)
+lsf.str()
+
+# Show the definitions of all functions loaded into the current environment  
+lapply(c(lsf.str()), getAnywhere)
+
 ```
