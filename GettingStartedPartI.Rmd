@@ -41,7 +41,7 @@ pacman::p_load(knitr, readr, dplyr, ggplot2)
 
 ### Credit {-}
 
-This document has benefitted by work done by Emily Voldal, Brian High, Lianne 
+This document has benefited by work done by Emily Voldal, Brian High, Lianne 
 Sheppard, and Chris Zuidema.
 
 # Introduction
@@ -109,7 +109,7 @@ process, R tells you that you need to install other packages, do so.
 
 The rest of this document focuses on using R Markdown in the course. We assume 
 you are already familiar with R and RStudio. If not, there are many resources 
-availabile to learn R and RStudio. Here are a few suggestions:
+available to learn R and RStudio.  Here are a few suggestions:
 
   * The [R for Data Science (R4DS)](https://r4ds.had.co.nz/) book by Hadley 
   Wickham and Garrett Grolemund.
@@ -226,11 +226,11 @@ forget how you calculated something)
 In the remainder of this section, we suggest strategies that support
 reproducibility.
 
-## Use Rstudio projects
+## Use RStudio projects
 
 An important principle is to keep your scripts, data files, and all other inputs
 and outputs within a [project](https://support.rstudio.com/hc/en-us/articles/200526207-Using-Projects) 
-folder.  Using an RStudio "project" makes directory oranization easy, decreasing 
+folder.  Using an RStudio "project" makes directory organization easy, decreasing 
 reliance on `setwd()` commands in your scripts.  You would not refer to files 
 outside of this project folder, but instead would use subfolders (e.g., "data", 
 "images", etc.) to organize your work within your project.  
@@ -478,7 +478,7 @@ lapply(c(lsf.str()), getAnywhere)
 ```
 
 Note that there is very little code embedded in these guidelines and no 
-functions, so the second two chunks produce little or no oputput.  Generally 
+functions, so the second two chunks produce little or no output.  Generally 
 your files will have much longer code appendices.
 
 ## Document your code
