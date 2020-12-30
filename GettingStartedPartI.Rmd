@@ -7,6 +7,7 @@ output:
     toc: true
     toc_depth: 3
     number_sections: true
+    df_print: paged
 urlcolor: blue
 ---
 
@@ -34,11 +35,18 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed
 # Key principle:  Only load the packages you will need
-pacman::p_load(knitr, readr, dplyr, ggplot2, formatR,tinytex)
+pacman::p_load(knitr, readr, dplyr, ggplot2)
 
 ```
 
-# Why R Markdown and reproducible reports?
+### Credit {-}
+
+This document has benefitted by work done by Emily Voldal, Brian High, Lianne 
+Sheppard, and Chris Zuidema.
+
+# Introduction
+
+## Why R Markdown and reproducible reports?
 
 All good data analysis should be reproducible.  Markdown is a popular variant 
 of the syntax often used in Wikis, such as Wikipedia.  R Markdown is an 
@@ -46,15 +54,6 @@ extension of Markdown to support the execution and rendering of R code within
 the document.  It integrates easily with R to allow you to produce reproducible 
 reports.  We will use these tools and reproducible research practices to support 
 your development in this course.  
-
-## Credit
-
-This document has benefitted by work done by Emily Voldal, Brian High, Lianne Sheppard, and Chris Zuidema.
-
-**The output (e.g. `.html` or `.pdf`) and source (`.Rmd`) documents are optimally used 
-side-by-side so that you can see both the code and its result.  Before you 
-knit this yourself, you will need to install the packages `rmarkdown` and 
-`knitr`.  (These are already installed on UW-supported RStudio servers.)**
 
 ## What is Markdown, and why bother?
 
@@ -69,7 +68,14 @@ R Markdown are straightforward compared to the rest of R.  After you become
 familiar with the tricks of R Markdown, you may find it easier and faster to 
 use than an R script.
 
-# Getting started
+## How to use Markdown
+The output (e.g. `.html` or `.pdf`) and source (`.Rmd`) documents are optimally 
+used side-by-side so that you can see both the code and its result.  Before you 
+knit this yourself, you will need to install the packages `rmarkdown` and 
+`knitr`.  (These are already installed on UW-supported RStudio servers.)
+
+
+# Getting started with R and RStudio
 
 ## Log onto RStudio Server
 
@@ -99,7 +105,20 @@ To work locally, make sure you have installed the `rmarkdown` package.  For this
 document, you will also need to install `knitr`.  If, at any point during this 
 process, R tells you that you need to install other packages, do so.
 
-## Become familiar with R Markdown
+## Become familiar with R and RStudio
+
+The rest of this document focuses on using R Markdown in the course. We assume 
+you are already familiar with R and RStudio. If not, there are many resources 
+availabile to learn R and RStudio. Here are a few suggestions:
+
+  * The [R for Data Science (R4DS)](https://r4ds.had.co.nz/) book by Hadley 
+  Wickham and Garrett Grolemund.
+  * An R ["Onramp"](https://github.com/deohs/r_onramp/blob/master/README.md) 
+  made for beginners by the DEOHS [Coders Group](https://github.com/deohs/coders). 
+    + Within the [Resources and getting help](https://github.com/deohs/r_onramp/blob/master/r_resources_and_getting_help.md) 
+    section, there are many courses, tutorials, and books we suggest.
+
+# Getting Started with R Markdown
 
 To open a new R Markdown document (`.Rmd`), select 'File', 'New File', 
 'R Markdown'.  You will see a window asking you for some information about your 
@@ -108,12 +127,11 @@ which you can change at any time.  For now, leave the default HTML setting and
 fill in whatever you want for the title and author.  Save this file, just like 
 you would save an R script.
 
-This is an R Markdown document. The following text is the beginning explanation 
-in the text that is included in every new R Markdown documents you open:
+The following text is included in new R Markdown documents you create:
 
-> Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word 
-> documents. For more details on using R Markdown see 
-> <https://rmarkdown.rstudio.com>. 
+> This is an R Markdown document. Markdown is a simple formatting syntax for 
+authoring HTML, PDF, and MS Word documents. For more details on using R Markdown 
+see <https://rmarkdown.rstudio.com>. 
 
 > When you click the **Knit** button a document will be generated that includes 
 > both content as well as the output of any embedded R code chunks within the 
@@ -139,6 +157,7 @@ Here are several good R Markdown resources from [RStudio](https://rmarkdown.rstu
 The post [Getting Started with R Markdown — Guide and Cheatsheet](https://www.r-bloggers.com/2020/07/getting-started-with-r-markdown-guide-and-cheatsheet/) 
 on R-bloggers is also very helpful.
 
+
 # Anatomy of a `.Rmd` file
 
 ## YAML header
@@ -147,8 +166,8 @@ The header is enclosed by dashes and is always at the top of the `.Rmd` file. By
 default, it will include a title, author, date, and what type of file the `.Rmd`
 will knit to.  You can change the text of the title, author, and date here any
 time.  These will show up at the  top of your knitted document.  You can also
-change the file type at any time.  For example, if I write `word_document`
-instead of `html_document`, I will get a Word file.  However, be aware that some
+change the file type at any time.  For example, replacing `html_document`
+with `word_document`, will render a Word file.  However, be aware that some
 commands are specific to certain document types, or just show up differently. It
 appears that `html_document` is the most flexible and least fussy type of
 output.
@@ -192,8 +211,6 @@ There is more information on chunks in Part II.
 
 # R Markdown strategies to enhance reproducibility
 
-## Benefits of reproducible reports
-
 Reproducible reports with embedded data analyses have many benefits, including:
 
   * Eliminates typos and transcription errors by pulling results directly from R
@@ -206,24 +223,20 @@ numbers)
 scientist could easily reproduce your entire analysis, and you will never 
 forget how you calculated something)
 
-One way to ensure reproducibility is to use in-line code.  This incorporates R
-results directly within text.  To include code output in a sentence, we use the
-format of one backtick followed by "r ", a space, and then some R code, and
-ending with a second backtick. For example, we can write: "The mean of the data
-is `r mean(a)`."  See Part II for details on inline code.
-
 In the remainder of this section, we suggest strategies that support
 reproducibility.
 
-## Use projects and relative file paths within them
+## Use Rstudio projects
 
 An important principle is to keep your scripts, data files, and all other inputs
-and outputs within a project folder.  Using an RStudio "project" makes this
-easy, decreasing reliance on "setwd" commands in your scripts. You would not
-refer to files outside of this project folder, but instead would use subfolders
-(e.g., "data", "images", etc.) to organize your work within your project.  Using
-project folders also works nicely with version control (Git) as the project
-folder becomes your version control "repository" for that project.
+and outputs within a [project](https://support.rstudio.com/hc/en-us/articles/200526207-Using-Projects) 
+folder.  Using an RStudio "project" makes directory oranization easy, decreasing 
+reliance on `setwd()` commands in your scripts.  You would not refer to files 
+outside of this project folder, but instead would use subfolders (e.g., "data", 
+"images", etc.) to organize your work within your project.  
+
+Using project folders also works nicely with version control (Git) as the 
+project folder becomes your version control "repository" for that project.
 
 Let's make a new RStudio project named "new_project". In the GUI click:
 
@@ -236,73 +249,13 @@ New Directory --> New Project
 We can make "new_project" a subdirectory of: "~/Home" and click "Create Project"
 
 From here if your create a new `.Rmd` file it will automatically be placed 
-within the project's working directory. We will also set up a new project in the first lab.
+within the project's working directory. We will also set up a new project in the 
+first lab.
 
-## Automate preparation of the working environment
+The following best practices, used within RStudio projects, promote the 
+reproducibility of your work even more.
 
-When you write code in R Markdown it needs to be completely self-contained -
-that is, it can't rely on anything you loaded, imported, or ran outside of the R
-Markdown document, e.g., in your RStudio session. An excellent principle is to
-automate the preparation of the working environment in your R Markdown document.
-This includes setting options and installing software packages.
-
-### Set options
-
-The following chunk is an example of setting `knitr` options. (Note:  We already
-set `knitr` options at the beginning of this document.)  
-
-```{r set_knitr_options, echo=TRUE, message=FALSE, warning=FALSE}
-#-----set knitr options-----------
-
-suppressMessages(library(knitr))
-opts_chunk$set(tidy=FALSE, cache=FALSE, echo=TRUE, message=FALSE)
-
-```
-
-You can adjust these to suit your needs at the time of rendering, such as 
-disabling echo to make a report for someone who might be distracted by seeing 
-R code. Or enable cache once your script is complete and working to allow you 
-to more quickly render the script, such as when knitting a slide presentation 
-just before you delivering a talk.
-
-For more guidance on `knitr` options, see [knitr
-options](https://yihui.name/knitr/options/) or the [knitr
-Cheat Sheet](https://cran.r-project.org/web/packages/knitr/vignettes/knitr-refcard.pdf).
-
-### Install and load packages
-
-A key principle is to only load the packages you will need for your project.  
-To facilitate this, use the `pacman` package in R instead of 
-`install.packages()` and `library()`.  This will allow your script to 
-automatically install any packages it needs to without forcing the installation 
-of a package which has already been installed. Here is an example:
-
-```{r setup_pacman, echo=TRUE, error=TRUE, eval=FALSE}
-#-----setup pacman-----------
-
-# Not evaluated here since done at the beginning of the file
-# Load pacman into memory, installing as needed
-my_repo <- 'http://cran.r-project.org'
-if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
-
-# Load the other packages, installing as needed
-# Key principle:  Only load the packages you will need
-pacman::p_load(knitr, tidyverse)
-
-```
-
-The first part installs `pacman` if it is missing, then the second part installs
-and loads the other packages as needed. If you do this at the top of your script
-for any packages needed later in your script, it makes it really easy for people
-to see what packages your script depends on. This approach will make it much
-more likely someone, particularly a new R user, will be able to run your script
-and reproduce your results. Many new R users get completely stuck if they run
-code that bombs simply because a package has not been installed. And just
-putting in `install.packages()` calls "just in case" will needlessly slow down
-your script (each and every time it is run) if the packages have already been
-installed.
-
-## Use relative file paths, not absolute file paths
+### Use relative file paths, not full file paths
 
 Best practice is to not include full paths ("C://Project_1/data/raw") to your
 files, but uses relative paths ("data/raw") instead, so they will be more
@@ -325,40 +278,50 @@ full_path <- 'P:/ENVH556'
 # users
 full_path <- '/Users/joanna/ENVH556'
 
-# Will work on Windows, macOS, and Linux, etc., if the file is in the user's
-# "home directory"
-relative_path <- '~/ENVH556'
-
 # If you are curious about what the "~" expands to, you can use path.expand()
 full_path_to_home <- path.expand('~')
 full_path_to_data <- path.expand('~/ENVH556')
 
-# This will work on any system if "ENVH556" is one level below the current folder
-relative_path <- 'ENVH556'
-
-# This will work if "ENVH556" is at the same level as current folder, where ".."
-# means "parent folder", since "ENVH556" will share the same parent as your 
-# current "working directory"
-relative_path <- '../ENVH556'
+# Will work on Windows, macOS, and Linux, etc., if the file is in the user's
+# "home directory"
+relative_path <- '~/ENVH556'
 
 ```
 
-### Using the working directory
+### Use the working directory
 
-Using working directories (folders) means you don't have to use folder names
-when accessing files.  A working directory is the place that R will look for
-files if you don't give a file path.  R is always set to a certain working
-directory; you can check where that is like this:
+The "working directory" is a directory  associated with your default position or 
+location within a file system.  For example, if you tell R to look for a file, it 
+assumes you mean within the working directory.  It is convenient to make your 
+working directory the highest level directory associated with the files and data 
+for an analysis.  Meaning, for example, your `.Rmd` file and the directory 
+containing your data are within your working directory.  With RStudio projects, 
+this all becomes easier, because the project automatically "sets" the working 
+directory.  You can check the working directory at any time with the `getwd()` 
+function. 
 
-```{r getwd, eval=FALSE}
-#-----getwd---------
+You can even assign the working directory to a variable, to use with relative 
+paths. For example, if you wanted to load an `.rds` data file within a 
+hypothetical "Datasets" folder contained within your working directory you could 
+do something like this with the helpful `file.path()` function:
+```{r relative_path_example, eval=FALSE}
+#-----relative path example-----
 
-getwd()
+# assign working directory variable
+work_dir <- getwd()
+
+# build relative path to data file
+relative_data_path <- file.path(work_dir, "Datasets", "data.rds")
+
+# load data, assign to "df" variable
+df <- readRDS(relative_data_path)
 
 ```
 
-You can make your default working directory the location of your `.Rmd` file; 
-it's different when you're running code in your console or in a .R file.  If 
+### Notes on working outside of RStudio projects
+When working outside of an RStudio project, you'll have to specify your working 
+directory. Just like the automatic organization that comes with using a project, 
+you can make your default working directory the location of your `.Rmd` file.  If 
 you want to change that default, you can use `setwd()`.  For example, let's 
 say my RDS file isn't in the same folder as my `.Rmd`:
 
@@ -391,35 +354,145 @@ should be able to use the default working directory without typing file paths.
 One mild word of warning: there are some issues with working directories in R 
 Markdown.  If you are having trouble, you may want to make sure that `setwd()` 
 is in the same chunk as your `readRDS()` command.  There is also a more 
-[elegant solution](http://pbahr.github.io/tips/2016/04/16/fix_rmarkdown_working_directory_issue) to this.
+[elegant solution](http://pbahr.github.io/tips/2016/04/16/fix_rmarkdown_working_directory_issue) 
+to this.
 
-## Reporting code in the Appendix
+## Automate preparation of the working environment
+
+When you write code in R Markdown it needs to be completely self-contained -
+that is, it can't rely on anything you loaded, imported, or ran outside of the R
+Markdown document, e.g., in your RStudio session. An excellent principle is to
+automate the preparation of the working environment in your R Markdown document.
+This includes setting options and installing software packages.
+
+### Set `knitr`options
+
+The following chunk is an example of setting `knitr` options. (Note:  We already
+set `knitr` options at the beginning of this document.)  
+
+```{r set_knitr_options, echo=TRUE, message=FALSE, warning=FALSE}
+#-----set knitr options-----------
+
+suppressMessages(library(knitr))
+opts_chunk$set(tidy=FALSE, cache=FALSE, echo=TRUE, message=FALSE)
+
+```
+
+You can adjust these to suit your needs at the time of rendering, such as 
+disabling echo to make a report for someone who might be distracted by seeing 
+R code. Or enable cache once your script is complete and working to allow you 
+to more quickly render the script, such as when knitting a slide presentation 
+just before you delivering a talk.
+
+For more guidance on `knitr` options, see [knitr
+options](https://yihui.name/knitr/options/) or the [knitr
+Reference Card](https://cran.r-project.org/web/packages/knitr/vignettes/knitr-refcard.pdf).
+
+### Install and load packages
+
+A key principle is to only load the packages you will need for your project.  To 
+facilitate this, use the `pacman` package in R instead of `install.packages()` 
+and `library()`.  This will allow your script to automatically install any 
+packages it needs to without forcing the installation of a package which has 
+already been installed. Here is an example:
+
+```{r setup_pacman, echo=TRUE, error=TRUE, eval=FALSE}
+#-----setup pacman-----------
+
+# Not evaluated here since done at the beginning of the file
+# Load pacman into memory, installing as needed
+my_repo <- 'http://cran.r-project.org'
+if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
+
+# Load the other packages, installing as needed
+pacman::p_load(knitr, tidyverse)
+
+```
+
+The first part installs `pacman` if it is missing, then the second part installs
+and loads the other packages as needed. If you do this at the top of your script
+for any packages needed later in your script, it makes it really easy for people
+to see what packages your script depends on. This approach will make it much
+more likely someone, particularly a new R user, will be able to run your script
+and reproduce your results. Many new R users get completely stuck if they run
+code that bombs simply because a package has not been installed. And just
+putting in `install.packages()` calls "just in case" will needlessly slow down
+your script (each and every time it is run) if the packages have already been
+installed.
+
+## Use inline code
+
+One way to ensure reproducibility is to use in-line code.  This incorporates R
+results directly within text.  To include code output in a sentence, we use the
+format of one backtick followed by "r", a space, and then some R code, and
+ending with a second backtick. For example, we can write: "The mean of the data
+is `r mean(a)`."  See Part II for details on inline code.
+
+
+## Report session information, code, and functions in the Appendix
 
 When you turn in assignments, in addition to your well-written answers (which
-should not have any code or raw output), you will need to turn in the actual
-code you used. The lab template for ENVH 556 provides you with some standard
-appendix code to use in every ENVH 556 document. The chunk options to accomplish
-this are:
+should not have any code or raw output), you will need to include the session 
+information, embedded code, and functions defined in the .Rmd in a code appendix. 
+
+Both the the `LabReportGuidelines.Rmd` template for ENVH 556 and the appendix 
+at the end of this document provides you with example code to 
+accomplish this.
+
+### Session Information
+
+At a minimum, your .Rmd should record version numbers of R and your packages 
+with `sessionInfo()` at the end of your script.
+
+
+```
+sessionInfo()
+
+```
+
+### Code embedded in the R Markdown file
+
+For ENVH 556, we also want to see all of your code consolidated at the end of
+your R Markdown output.  The following code for a chunk header will compile all 
+your code into an appendix code listing.  (This next version is for display in 
+the rendered document and not for execution.  A working version that is included 
+in the appendix of this document.  Note that the chunk header containing these 
+options should be a single line of code with no line-wrap.)
 
 ```
 ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, include=TRUE
 ```
 
-For an example of how to use this, I added a code appendix at the very end of 
-this document (see last chunk at the end). Note that you will still want to ...
+### Functions defined in the R Markdown file
+
+You should also include a list of functions you created for your analysis (i.e. 
+functions used in your analysis that were not part of loaded packages).
+```
+# Show the names of all functions defined in the .Rmd
+# (e.g. loaded in the environment)
+lsf.str()
+
+# Show the definitions of all functions loaded into the current environment  
+lapply(c(lsf.str()), getAnywhere)
+
+```
+
+Note that there is very little code embedded in these guidelines and no 
+functions, so the second two chunks produce little or no oputput.  Generally 
+your files will have much longer code appendices.
 
 ## Document your code
 
-We encourage you to adopt these best practices when comment your code to improve
-readability:
+We encourage you to adopt these best practices when commenting your code to 
+improve readability:
 
-* Comment to keep a running commentary on what your code does.
-* The level of detail should be enough to clarify but not to enough to annoy.
-* Insert comments immediately before the line(s) of code to which they apply.
-* Add spaces and blank lines as needed to separate code and comments.
-* Avoid "side-commenting", putting comments at the end of a line of code.
-* Comments should state what the code does, in the form of an
-  [imperative](https://www.wordnik.com/words/imperative).
+  * Comment to keep a running commentary on what your code does.
+  * The level of detail should be enough to clarify but not to enough to annoy.
+  * Insert comments immediately before the line(s) of code to which they apply.
+  * Add spaces and blank lines as needed to separate code and comments.
+  * Avoid "side-commenting", putting comments at the end of a line of code.
+  * Comments should state what the code does, in the form of an
+    [imperative](https://www.wordnik.com/words/imperative).
 
 Here is an example of these put into practice:
 
@@ -449,14 +522,13 @@ and others. Here are two popular examples:
 
 ## Tutorials for R Markdown:
 
-* [The official tutorial](https://rmarkdown.rstudio.com/lesson-1.html) - This 
+  * [The official tutorial](https://rmarkdown.rstudio.com/lesson-1.html) - This 
 tutorial has lots of pictures and is well-organized, but only covers the  basics.
-* [Getting Started, by 'John'](https://ourcodingclub.github.io/2016/11/24/rmarkdown-1.html) - 
-This is really great for someone who has never used R Markdown before, and 
+  * A book by Yihui Xie, [R Markdown: The Definitive Guide](https://bookdown.org/yihui/rmarkdown/) - This goes into a lot of detail, 
+  and is really well organized and clear.
+  * [Getting Started, by 'John'](https://ourcodingclub.github.io/2016/11/24/rmarkdown-1.html) - This is really great for someone who has never used R Markdown before, and 
 includes tutorials on setting up R Markdown and fixing problems.  It also has a 
 great table.
-* [A book by Yihui Xie](https://bookdown.org/yihui/rmarkdown/) - This goes into 
-a lot of detail, and is really well organized and clear.
 * [Using R Markdown for Class Reports, by Cosma
 Shalizi](http://www.stat.cmu.edu/~cshalizi/rmarkdown/) - This covers many R
 Markdown capabilities in R Markdown. It doesn't provide a lot of detail, but it
@@ -483,33 +555,35 @@ following chapters
 * [Chapter 30](https://r4ds.had.co.nz/r-markdown-workflow.html) covers 
 R Markdown workflow  
 
-# Appendix
 
-At a minimum, record version numbers of R and your packages with `sessionInfo()` 
-at the end of your script and record the output as an appendix.
+# Appendix {-}
 
-```{r print_session_information}
-#-----print session information-----
+## Session information {-}
+
+```{r session info}
+#-----session info------
 
 sessionInfo()
 
 ```
 
-For ENVH 556, we also want to see all of your code consolidated at the end of
-your R Markdown output.  The following code will compile all your code into an
-appendix code listing.  (This next version is for display in the rendered
-document and not for execution.  It is followed by a working version that
-creates the appendix. Note that the chunk header containing these options should
-be a single line of code with no line-wrap.)
+## Embedded code {-}
 
-     ```{r appendix, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, 
-     include=TRUE}
-     ```
+```{r code appendix, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
+#-----code appendix-------
 
-For ENVH 556, if not already in a template, copy and paste the following chunk 
-into the end of every lab assignment: (This is the version that executes.)  
-
-```{r appendix, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, include=TRUE}
-#-----appendix-----
 ```
 
+## Custom functions {-}
+
+```{r functions.defined.in.this.Rmd, eval = TRUE}
+#-----functions defined in this Rmd ------------
+
+# Show the names of all functions defined in the .Rmd
+# (e.g. loaded in the environment)
+lsf.str()
+
+# Show the definitions of all functions loaded into the current environment  
+lapply(c(lsf.str()), getAnywhere)
+
+```
