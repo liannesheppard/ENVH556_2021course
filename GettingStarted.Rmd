@@ -193,8 +193,8 @@ will knit to.  You can change the text of the title, author, and date here any
 time.  These will show up at the  top of your knitted document.  You can also
 change the file type at any time.  For example, replacing `html_document`
 with `word_document`, will render a Word file.  However, be aware that some
-commands are specific to certain document types, or just show up differently. It
-appears that `html_document` is the most flexible and least fussy type of
+commands are specific to certain document types, or just show up differently. 
+Generally `html_document` seems to be the most flexible and least fussy type of
 output.
 
 Whenever you open a new `.Rmd` file and see the example, leave the header and 
@@ -204,9 +204,9 @@ delete the rest of the example below the last `---`.
 
 To put plain text into an R Markdown document, you don't need anything special.
 Text that is black in the `.Rmd` document is plain text in the knitted document.
+
 Blue text in the `.Rmd` indicates that it has been formatted in some way by
-using special characters (for example, the knitted text may be bold).  Part II
-of this document gives details on how to format text.
+using special characters (for example, the knitted text may be bold).  
 
 There are some things that you might be used to in other text processors (like 
 Word) which aren't easy to do in R Markdown.  For example, you'll note that I 
