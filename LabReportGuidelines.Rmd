@@ -1,21 +1,19 @@
 ---
-title: "Lab Report Guidelines"
-author: "ENVH 556"
-date: "Created for Winter 2021; printed `r format(Sys.time(), '%d %B, %Y')`"
+title: "Lab Report Guidelines & Template"
+subtitle: "Created for Winter 2021"
+author: "ENVH 556 Instructors"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: 
     html_document:
         fig_caption: yes
         toc: true
         toc_depth: 3
         number_sections: true
-editor_options: 
-  chunk_output_type: console
+
 ---
 
-<!--Credit:  Parts of this document were taken from guidelines prepared by Keith Baggerly for SIBD -->
-
 ```{r setup, include=FALSE}
-#-----setup ---------
+#-----setup-----
 
 # Some useful knitr options:
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, tidy = FALSE, 
@@ -40,15 +38,86 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 # Key principle:  Only load the packages you will need
 pacman::p_load(knitr)
 
-
 ```
 
-# Overview  
-Each lab report should be written using R Markdown following the outline in this document and adhering to reproducible research principles.  Include a code Appendix that will allow an independent replication of your results.  Note that all material that students want to be considered in grading should be in the main part of the report. 
+# Lab Report Overview, Guidelines & Suggestions {-}
+<!--consider section for "higher standards for peer reviewed journal articles" -->
 
----
+Each lab report should be written using R Markdown following the outline in this document and adhering to reproducible research principles. Though you will include a code Appendix that will allow an independent replication of your results, all material that you want to be considered in grading should be in the main part of your report. 
 
-# Lab Report Outline
+Overall your text should be consise, but long enough to ensure the document stands alone as a comprehensible document to the reader. We have given suggestions below about the length of each section.
+
+Remember to define variables/acronyms/abrviations (e.g. "nitrogen oxide (NO)" or "nitrogen dioxide (NO2)") once, on first use, and specify units everywhere appropriate (i.e. in text and in figures/tables).
+
+You can use this document as a template for your reports. Just delete this "Lab Report Overview & Guidelines" section (and sub-sections) and replace the text throughout the rest of the document.
+
+## Formatting {-}
+There are many challenging aspects of R Markdown formatting. Generally, these report instructions are intended to reduce the burden of making "publication-quality" figures, tables, and text. While we are allowing for aesthetic compromises, we are not suggesting you take any shortcuts on the material or content of your report.The following examples should help illustrate the balance we are trying to acheive: 
+
+  * Tables do not need to look "pretty" and you are not required to follow specific instructions for spacing, borders, indentation, etc. However, your tables still need to be thoughtfully presented, for example the variables you choose to display, whether the table is oriented by row or column, if the layout promotes the comparisons of interest (e.g. column order), and the clarity of the column/row names. 
+  
+  * Figre axis labels do not need to contain special characters. However, it needs to be clear what you are trying to communicate. For example, you are not required to present units such as $PM_{2.5}\space(\mu g/m^3)$ in axis labels, but could instead write "PM2.5 (ug/m3)" or "PM2.5 (ug/m^3)" or "PM2.5 (ug*m^-3)." 
+
+You may compile your R Markdown file into a word, pdf, or html file, but we suggest `.html` files as they are the easiest to format and render. This the [HTML Chapter](https://bookdown.org/yihui/rmarkdown/html-document.html) of ["R Markdown: The Definitive Guide"](https://bookdown.org/yihui/rmarkdown/) is a helpful resource.
+
+## Drafting your report {-}
+Writing drafts of the introduction, data, and methods sections before the data analysis begins can be very helpful and *save time*. A surprisingly large amount of the report can be written before the detailed analysis has begun. You can render an .Rmd with the `eval = FALSE` option to prevent the code from being run before you are ready, while drafting your lab report.
+
+## Some ideas for sanity checks as you work {-}
+
+* How do you know you are analyzing the data you think you are analyzing?  
+     + Have you verified the sample size is correct at each data massaging step?
+     + How do you know data have been merged correctly?
+
+* Clearly describe the data:  
+    + What low-dimensional summaries of the data have you tabulated/plotted?  
+    + Do they make sense given your understanding of what you *should* have?
+
+* What do you expect to see if the data are purely noise?
+
+## Guidance on writing and formatting your code {-}
+
+* Precede each block of code (`chunk`) with a statement of the purpose of this code block <!-- LIANNE, I'm not sure what this means exactly... Is this something carried over from the past? We're recommending chunk headers and descriptive comments - is this something new/different?-->
+
+
+1. In general you should finalize your code like you finalize your scientific writing:  It should be clear, concise, and nicely formatted. Incorporate the following **formatting strategies** into your code in your assignments:
+
+    A. *Be clear about what each chunk does.* You can do this by giving chunks discriptive names/header comments and commenting the body of a chunk.
+    
+    B. *Use descriptive names for dataframes and variables*, including referring to variables by name rather than position when indexing.
+    
+    C. *Write functions* for blocks of code that are reused extensively, using descriptive function names. A good rule of thumb is not to copy/paste bits of code more than 3 times. 
+    
+    D. *Show dataframes, where appropriate.* If a block of code processes data, it may be helpful to print a few lines of data before and after to show how the processing worked. (e.g., Use `head()` and/or `tail()` or `tidyverse` options).
+    
+    E. *Make sure you don't have run-on lines* in your compiled code. Check for this and fix it before finalizing your assignment. Mostly you can rely on tools to automatically reformat the lines because these tools will accomplish what you want (though sometimes they don't). R Markdown has formatting options (e.g. `tidy=TRUE, tidy.opts=list(width.cutoff=80)` ) that help control the width of code rendered in reports. Another strategy to automatically reformat code, is highlight the lines you want to reformat and then:
+      i. For lines of code use: Cmd+Shift+A for macs, or Cntrl+Shift+A for windows.
+      ii. For comments use: Cmd+Shift+/ or Cntrl+Shift+/.
+    
+    F. *Delete extraneous code and comments* unless you have a reason to keep them in your R Markdown file, for instance to remind you of something important. In the lab R Markdown files I have been intentionally leaving in some commented sections to show you alternative ways to do things, help you understand what I've done, or sometimes for other reasons. When you copy that code for your own purposes, delete the extra material you don't need. Your comments should be informative and orienting, but not excessive.
+    
+    G. *Break up your code and don't make code blocks too long.* To  make your code more readable, try not to include blocks of code that are longer than 1/3 of a page.
+      i. Use header comment lines at the beginning of code chunks as signposts, e.g. `#----this is a header line----` You can decide your personal style for this. Also if you put at least 4 dashes at the end of the header line, RStudio incorporates this line into your outline. 
+      ii. Use line spacing and indentation
+      iii. Insert a blank line before each comment line that describes what the next section of code does
+    
+    H. *Adopt a consistent style* and work to continuously improve your style. Here are three popular and suggested style guides: 
+      i. The [Google style guide for R
+code](https://google.github.io/styleguide/Rguide.xml), 
+      ii. The [Advanced R Guide (Hadley Wickam's tweaks of the Google style guide)](http://adv-r.had.co.nz/Style.html)
+      iii. The [tidyverse style guide](https://style.tidyverse.org/). 
+      
+      Your style will improve with practice, so make it a goal to progressively improve with each assignment. There are many details to learn!
+
+2. Some of the demonstrations this course provided in the lab assignments are for your learning, but don't need to be brought forward into your lab write-up. For instance, once you know how to write a function and are convinced that your function works correctly, there is no need to use the non-function version. As an example, Lab 4 demonstrates cross-validation manually in order to convey thoroughly cross-validation ideas. Then the Lab shows how to write functions and turn the CV code into a function. The lab also follows the good practice of checking the function by demonstrating that the function results are identical to doing it manually. Once we are convinced that the function works properly, there is no need to continue to use the manual cross-validation since it is always better to use a function for a repetitive task.
+
+3. Pay attention to the overall organization of your analyses and code. For instance, if you find you need a new package, add your command to load it at the beginning of the R Markdown file in the chunk where you load all the other packages. As another example, be intentional about the choice to repeat some aspect of your code vs. just work with a saved object. 
+
+4. It can be useful to keep in your R Markdown file a record of the exploratory work you did but that doesn't show up in your final report. It is good practice with any new dataset and/or data analysis to make sure you really understand your data before you launch into your full analysis. Often you won't put very much or any of this exploratory work in a final write-up. However, it can be very helpful for you to keep a record of the kinds of descriptive analyses you did by leaving unevaluated code in your R Markdown file. This is one way that you can keep track of what you looked at in the past. Also it is a way that those following your work can check that you are making sure you are understanding key features of your data and analyses. 
+
+
+## Lab Report Outline {-}
+Your report should include the following sections:
 
 1. Introduction
     * Background
@@ -62,16 +131,17 @@ Each lab report should be written using R Markdown following the outline in this
 5. References  
 6. Appendices
     * Extended data analyses (optional)
-    * Session information (required) 
-    * Code (required)
-    * Function definitions (optional)
+    * Session information, code, function definitions (required) 
+
+Instructions for each section are included below.
 
 ---
 
-# Instructions by Section
 
-## Introduction
-Use this section to provide an introductory paragraph (or at most two) summarizing the purpose of the lab and a short scientific description of the data.  A literature review is not necessary.  Topics to cover:
+# Introduction
+**Suggested length: 1-2 paragraphs**
+
+Use this section to provide an introductory paragraph (or two) summarizing the purpose of the lab and a short scientific description of the data. The introduction provides background and context for you analysis. Clearly state the underlying scientific question(s) you hope to address. A literature review is not necessary. Potential opics in this section include:
 
 * Background and rationale:
     + Why are we doing this? (i.e., what is the purpose of the lab?)
@@ -83,97 +153,91 @@ Use this section to provide an introductory paragraph (or at most two) summarizi
 
 ---
 
-## Data & Methods
+# Data & Methods
+**Suggested length: ?? paragraphs** <!-- LIANNE we didn't discuss this -->
 
-This section tells the reader what you did in order to answer the questions posed. Use it to describe your methods, noting how you analyzed your data. It covers all aspects of data description that don't fit naturally into the results section.   Here are some topics you can cover:
+Use this section to provide any additional provide background and context required, for example, related to the dataset you are using. Include a description of the experiments or observational study design with mention of how these are expected to answer the question (_a priori_ expectations about the results). 
 
-### What are our data?  
-Where did our data come from? (Supply URLs as appropriate)  
-How many samples/subjects?  
-How many measurements per subject/sample?  
-What covariates are important?  
+This section tells the reader what you did in order to answer the questions posed. Use it to describe your methods, noting how you analyzed your data. It covers all aspects of data description that don't fit naturally into the results section. Here are some topics you can cover:
 
-### How are we processing the data?  
-If the data will be filtered, stratified/grouped, what cutoffs will be used?
-Were there any zero concentrations or concentration values less than the limit of detection (<LOD) that you dropped, imputed, estimated, etc.?
+## Data description  
 
-### Describe the analysis approach, i.e. the methods used in the analysis  
-What statistical tests are being used?  
-What sensitivity analyses are planned?  
+  * Where did our data come from? (Supply URLs as appropriate)
+  * How many samples/subjects?
+  * How many measurements per subject/sample? 
+  * What covariates are important?
 
----
+## Data processing
 
-## Results
+  * If the data will be filtered, stratified/grouped, what cutoffs will be used?
+  * Were there any zero concentrations or concentration values less than the limit of detection (<LOD) that you dropped, imputed, estimated, etc.?
 
-Use this section to provide an *objective summary* of the findings; interpretation goes in the conclusions section.  Anticipate questions from readers and answer them in your presentation of your findings.
+## Analytical approach & methods
 
-Summarize your results in text, tables and figures. In most lab assignments you should not need more than 2-5 figures or tables. Additional figures and tables can be provided in an appendix. Be thoughtful about how you design your tables and figures to convey the most important information. Address all the questions asked in the lab in the text, citing the tables and figures as appropriate. While signposting the questions is helpful for grading and therefore appreciated, please organize this section as readable text rather than Q&A responses to the questions in the lab.
+  * What statistical tests are being used?
+  * What sensitivity analyses are planned?
 
 ---
 
-## Discussion
+# Results
+**Suggested length: ?? paragraphs** <!-- LIANNE we didn't discuss this -->
 
-The discussion provides the context for the results.  This is the place for interpretation in light of your objectives.  You can also include a discussion of the implications of the findings, bring in additional perspectives, and/or ask questions you have. For instance, this is a place to discuss the limitations of the data and your analysis.  You could compare your results to other studies. You may also wish to address data quality issues, exceptions, outliers, caveats or limitations of the approach, and possible next steps.
+**Maximum Tables & Figures: 5 total**
 
-It is useful to organize the discussion around the objectives.  For each objective, include a statement or two about how that objective has or hasn't been met. Keep reporting of objectives in the same order.
+Summarize the results of the analysis with text, tables and figures. Use the results (and discussion) sections to answer all the questions posed in the assignment. The results section should provide an *objective summary* of the findings; interpretation goes in the conclusions section. Anticipate questions from readers and answer them in your presentation of your findings. While signposting the questions is helpful for grading and therefore appreciated, please organize this section as readable text rather than Q&A responses to the questions in the lab.
+
+In most lab assignments you should not need more than 2-5 figures or tables.Your report is limited to a maximum of 5 figures and/or tables. Generally, these figures and tables would be presented in the results, but certain circumstances may warrant they appear elsewhere - use your judgement. Additional figures and tables can be provided in the appendix if desired, but an important learning objective for this course is thinking about what figures/tables are presented in the main body, the  appendix/supplemental information, or not at all. Be thoughtful about how you design your tables and figures to convey the most important information. Cite tables and figures as appropriate to provide support for your written answers to the questions asked in the lab.
+
+Here are some strategies to maximize the effectiveness of your tables/figures:
+<!--LIANNE, what about significant digits in tables - that is important/reasonable, but a huge pain. -->
+
+  *	Figures and tables should be strategically selected to present your key analyses and findings
+  *	All figures and tables need appropriately descriptive captions/titles. 
+  * Pay attention to table layout, column order, labels, headings for rows/columns, and that all necessary information is included (e.g. in footnotes). Remove redundant columns, those with no relevant information or zero variability. Additional resources for creating HTML tables include: 
+    + kableExtra [vingette](https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html) 
+    + R Markdown Cookbook [Chapter 10: Tables](https://bookdown.org/yihui/rmarkdown-cookbook/kable.html)
+
+  *	Structure tables to facilitate the comparisons of interest. Note that it is easier to compare numbers that are close to each other and to make comparisons of numbers in columns. 
+  * Think about what is inferred from each plot you show:
+    + Describe what allows you to make this inference.
+    + Think about what the plot would look like if there were no structure in the data.
 
 ---
 
-## References
+# Discussion
+**Suggested length: ?? paragraphs** <!-- LIANNE we didn't discuss this -->
 
-Include any references beyond those assigned in the course or lab.  This section may be omitted if you don't use references beyond those in the assignment. 
+Use the discussion section to expand on your answers to all the questions posed in the assignment where appropriate. The discussion provides the context for the results. This is the place for interpretation in light of your objectives. You can also include a discussion of the implications of the findings, bring in additional perspectives, and/or ask questions you have. For instance, this is a place to discuss the limitations of the data and your analysis. You could compare your results to other studies. You may also wish to address data quality issues, exceptions, outliers, caveats or limitations of the approach, and possible next steps.
 
-While not required for class, there are tools to integrate reference manager libraries (e.g. [Zotero](https://www.zotero.org/)) into `.Rmd` files that you may find helpful. Get in touch with us if you are interested in incorporating this into your workflow. 
+It is useful to organize the discussion around the objectives. For each objective, include a statement or two about how that objective has or hasn't been met. Keep reporting of objectives in the same order. Describe the conclusions to be drawn from the results and next steps.
 
 ---
 
-## Appendices
+# References
 
-Include any additional details that don't belong in the primary results but need to be included.
+Include any references beyond those assigned in the course or lab. This section may be omitted if you don't use references beyond those in the assignment.
 
-Also put in some documentation about the report, updated every time the report is run.
+While not required for class, there are tools to integrate reference manager libraries (e.g. [Zotero](https://www.zotero.org/)) into `.Rmd` files. RStudio's instructions for[bibliographies and citations](https://rmarkdown.rstudio.com/authoring_bibliographies_and_citations.html) in R Markdown will get you started.
 
-### Appendix 1 (optional): Extended data analysis 
+---
 
-This section can cover: 
+# Appendices
 
-* Steps for reading and preprocessing the data
+## Appendix 1 (optional): Extended analysis 
 
-* Descriptive data analyses and verification that you are analyzing the dat you intend to analyze
+Include any additional details that don't belong in the primary results but need to be included. This section can cover: 
 
-* Additional descriptive analses
+  * Steps for reading and preprocessing the data
+  * Descriptive data analyses and verification that you are analyzing the data you intend to analyze
+  * Additional descriptive analses
+  * Additional inferential analyses
+  * Additional figures and tables  
 
-* Additional inferential analyses
+## Appendix 2 (required): Session information, embedded code, and functions
 
-* Additional figures and tables  
+Include the session information, embedded code, and functions defined in the .Rmd in a code appendix. The output is also shown in the compiled html file for these guidelines. Note that there is very little code embedded in these guidelines and no functions, so the second two chunks produce little or no oputput. Generally your files will have much longer code appendices.
 
-### Guidance on documenting, finalizing, and formatting code to support your code appendix
-
-1. In general you should finalize your code like you finalize your scientific writing:  It should be clear, concise, and nicely formatted.  Please incorporate the following **formatting strategies** into your code in your assignments:
-    a. *Make sure you don't have run-on lines* in your compiled code.  Check for this and fix it before finalizing your assignment.  Mostly you can rely on tools to automatically reformat the lines because these tools will accomplish what you want (though sometimes they don't). R Markdown has formatting options (e.g. `tidy=TRUE, tidy.opts=list(width.cutoff=80)` ) that help control the width of code rendered in reports. Another strategy to automatically reformat code, is highlight the lines you want to reformat (and no more than those lines) and then:
-        i. For lines of code use: Cmd-Shift-A (Cmd is for macs; use Cntrl for Cmd on windows). 
-        ii. For comments use: Cmd-Shift-/.
-    b. *Delete extraneous code and comments* unless you have a reason to keep this in your R Markdown file, for instance to remind you of something important.  In the lab R Markdown files I have been intentionally leaving in some commented sections to show you alternative ways to do things, help you understand what I've done, or sometimes for other reasons.  When you copy that code for your own purposes, delete the extra material you don't need.
-    c. *Break up your code to  make it more readable*
-            i. Use header comment lines at the beginning of code chunks, e.g. #-----this is a header line----.  You can decide your personal style for this.  Also if you put at least 4 dashes at the end of the header line, RStudio incorporates this line into your outline.
-            ii.  Use line spacing and indentation
-            iii.  Insert a blank line before each comment line that describes what the next section of code does
-    d. *Work on improving your style and adopt a consistent style.*  I suggest you try to follow one of the existing guides such as the [Google style guide for R
-code](https://google.github.io/styleguide/Rguide.xml), [Advanced R Guide (Hadley Wickam's tweaks of the Google style guide)](http://adv-r.had.co.nz/Style.html), or (with much more information) the [tidyverse style guide](https://style.tidyverse.org/).  There are many details to learn, so make it a goal to progressively improve with each assignment.
-
-2. Some of the demonstrations this course provided in the lab assignments are for your learning, but don't need to be brought forward into your lab write-up.  For instance, once you know how to write a function and are convinced that your function works correctly, there is no need to use the non-function version.  As an example, Lab 4 demonstrates cross-validation manually in order to convey thoroughly cross-validation ideas.  Then the Lab shows how to write functions and turn the CV code into a function.  The lab also follows the good practice of checking the function by demonstrating that the function results are identical to doing it manually.  Once we are convinced that the function works properly, there is no need to continue to use the manual cross-validation since it is always better to use a function for a repetitive task.
-
-3. Pay attention to the overall organization of your analyses and code.  For instance, if you find you need a new package, add your command to load it at the beginning of the R Markdown file in the chunk where you load all the other packages.  As another example, be intentional about the choice to repeat some aspect of your code vs. just work with a saved object.  
-
-4. It can be useful to keep in your R Markdown file a record of the exploratory work you did but that doesn't show up in your final report.  It is good practice with any new dataset and/or data analysis to make sure you really understand your data before you launch into your full analysis.  Often you won't put very much or any of this exploratory work in a final write-up.  However, it can be very helpful for you to keep a record of the kinds of descriptive analyses you did by leaving unevaluated code in your R Markdown file.  This is one way that you can keep track of what you looked at in the past.  Also it is a way that those following your work can check that you are making sure you are understanding key features of your data and analyses.  
-
-5. See additional suggestions in the general presentation guidelines section below.
-
-### Appendix 2 (required):  Session information, embedded code, and functions
-
-Include the session information, embedded code, and functions defined in the .Rmd in a code appendix.  The output is also shown in the compiled html file for these guidelines. Note that there is very little code embedded in these guidelines and no functions, so the second two chunks produce little or no oputput.  Generally your files will have much longer code appendices.
-
-#### Session Information
+### Session Information
 
 ```{r session info}
 #-----session info------
@@ -181,14 +245,14 @@ sessionInfo()
 
 ```
 
-#### Code embedded in the R Markdown file
+### Code embedded in the R Markdown file
 
 ```{r code appendix, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
 #-----code appendix-------
 
 ```
 
-#### Functions defined in the R Markdown file
+### Functions defined in the R Markdown file
 
 ```{r functions.defined.in.this.Rmd, eval = TRUE}
 #-----functions defined in this Rmd ------------
@@ -204,94 +268,3 @@ lapply(c(lsf.str()), getAnywhere)
 
 ---
 
-# Lab Report Presentation Guidelines
-<!-- CZ: I think several of these sections can be incorporated into sections above. As-is, it feels a bit like a disconnected collection of reasonable things to do. -->
-
-## ENVH 556 Lab Reports
-
-<!------ REVIEW these instructions before finalizing ------>
-<!------ CZ: these instruction could be moved to the beginning or incorporated into the section instructions? They seem tacked on and hidden at the end --->
-
-1.	Suggested maximum length: 2 pages for text plus a maximum of 5 figures and/or tables. (Text length is based on text with 1.5 spacing, and no less than 11 point font).  To facilitate review and comments, please compile your R Markdown file into a word or pdf file, not a html file.
-2.	Text should be brief. Use the introduction and methods sections to provide background and context. Use the results and discussion sections to answer all the questions posed in the assignment. Make sure the document stands alone as a comprehensible document to the reader.  
-3.	All figures and tables need appropriately descriptive captions/titles. Pay attention to table formatting, including significant digits, labels, headings for rows/columns, and that all necessary information is included (e.g. in footnotes). Additional guidance on creating tables:  
-    a.	No vertical lines. Use horizontal lines to demarcate sections of a table (not every line)
-    b.	No redundancies – omit columns with no variation in the data  
-    c.	Structure tables to facilitate the comparisons of interest. Note that it is easier to compare numbers that are close to each other and to make comparisons of numbers in columns.  
-4.	Figures and tables should be strategically selected to present your key analyses and findings.
-5.  Define variables/acronyms/abrviations (e.g. NO = nitrogen oxide and NO2 = nitrogen dioxide) once, on first use, and specify units where appropriate.
-6. symbols (e.g. ug versus μg)
----
-
-## General Suggestions
-
-### What to include in almost every report
-<!------items here also seem like they could be incorporated into section instructions instead of their own list here ------>
-
-1. Clearly state the underlying scientific question you hope to address
-2. Include a description of the experiments or observational study design with mention of how these are expected to answer the question (_a priori_ expectations about the results)
-      * If this report is a subset of the full project, note what part of the analysis is in this report
-3. Briefly summarize the results of the analysis
-4. Describe the conclusions to be drawn from the results and next steps
-5. Present the full analysis in the main report or in an appendix
-6. Wrap up with an appendix that includes at least a few administrative details
-7. Ideally start with an extended abstract or executive summary that briefly covers the most important aspects of your work
-
----
-
-### What can be written before analyzing data? 
-
-* A surprisingly large amount of the report can be written before the detailed analysis has begun.
-
-* You can render an .Rmd with the `eval = FALSE` option to prevent the code from being run before you are ready, while drafting your lab report.
-
-* Writing drafts of the introduction, data, and methods sections before the data analysis begins can be very helpful and *save time*.
-
----
-
-### Strategies for incorporating R code
-
-* Precede each block of code (`chunk`) with a statement of the purpose of this code block
-
-* Include signposting in code blocks (use `#----NAME OF CODE BLOCK-----` at the beginning of the block) and comments inside the block to facilitate understanding of your work.  Optionally also name the chunks.
-
-* Try not to include blocks of code that are longer than 1/3 of a page.  
-
-* If a block of code processes data, include a few lines of data before and after to show how the processing worked.  (e.g., Use `head()` and/or `tail()` or `tidyverse` options).
-
-* Write functions for blocks of code that are reused extensively, using descriptive function names.  
-
-* Use descriptive names for datasets and variables, including referring to variables by name rather than position when indexing.
-
----
-
-### Tips for fostering clarity in team science
-
-<!------ these aren't bad, but there is no group work in the class, some pieces can be incorporated into section instructions   ------>
-
-* Does everyone on your team have a common understanding of the goals?
-
-* Make sure it is clear what negative and positive mean in a each specific context.
-
-* Think about what is inferred from each plot you show:
-    + Describe what allows you to make this inference.
-    + Think about what the plot would look like if there were no structure in the data.
-
-* Make sure it is clear what each chunk of code is meant to do.
-
----
-
-### Some ideas for sanity checks
-<!------ These are mostly exploratory data analysis and data wrangling checks - incorporate there? ------>
-
-* How do you know you are analyzing the data you think you are analyzing?  
-     + Have you verified the sample size is correct at each data massaging step?
-     + How do you know data have been merged correctly?
-
-* Clearly describe the data:  
-    + What low-dimensional summaries of the data have you tabulated/plotted?  
-    + Do they make sense given your understanding of what you *should* have?
-
-* What do you expect to see if the data are purely noise?
-
----
