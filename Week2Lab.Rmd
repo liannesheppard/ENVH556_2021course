@@ -1,7 +1,7 @@
 ---
 title: 'Week 2 Lab:  Compliance -- Descriptive Statistics and Exceedence Probabilities'
 author: "Lianne Sheppard for ENVH 556"
-date: "Created Winter 2019; Updated `r format(Sys.time(), '%d %B, %Y')`"
+date: "Created Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
 output: 
     html_document:
         toc: true
