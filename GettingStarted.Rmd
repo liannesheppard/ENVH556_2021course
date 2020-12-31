@@ -262,12 +262,12 @@ so it is hidden.)
 ### Using LaTeX
 
 If you want to make your text clearer by using nicely formatted equations, you 
-can use the math language \LaTeX to write Greek letters and equations.  Below 
+can use the math language LaTeX to write Greek letters and equations.  Below 
 are some examples that you can copy and paste, or just Google it.  Be prepared 
-to have a little patience, because \LaTeX is pretty picky.  This is *not* an 
+to have a little patience, because LaTeX is pretty picky.  This is *not* an 
 expectation for ENVH 556, it's just something extra for those of you who are 
 interested.  This is also an excuse to plug a 
-[useful website for finding \LaTeX commands](http://detexify.kirelabs.org/classify.html).
+[useful website for finding LaTeX commands](http://detexify.kirelabs.org/classify.html).
 
 $\alpha$
 
