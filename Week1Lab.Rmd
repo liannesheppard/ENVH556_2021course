@@ -1,7 +1,7 @@
 ---
 title: "ENVH 556 Week 1 Lab:  Becoming familiar with R, RStudio, RMarkdown"
-author: "Lianne Sheppard for ENVH 556"
-date: "Created Winter 2021; updated `r format(Sys.time(), '%d %B, %Y')`"
+author: "ENVH 556 Instructors"
+date: "Created for Winter 2021; updated `r format(Sys.time(), '%d %B, %Y')`"
 output: 
     html_document:
         toc: true
@@ -84,7 +84,7 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 # ggplot2: Don't load:  part of tidyverse
 # readr:   Don't load:  part of tidyverse
 # dplyr:   Don't load:  part of tidyverse
-# Hmisc:  Miscellaneous funcitons helpful for data analysis
+# Hmisc:  Miscellaneous functions helpful for data analysis
 # EnvStats: geoMean, geoSD, probability plotting functions
 pacman::p_load(tidyverse, knitr, Hmisc, EnvStats)
 
@@ -638,7 +638,7 @@ the results in Figure 2 of [Coble et al 2010](https://academic.oup.com/annweh/ar
 
 # Homework exercises
 
-Note:  Refer to the lab write-up guidelines [(*LabReportGuidelines.html*)](https://canvas.uw.edu/courses/1434471/files/70861493?fd_cookie_set=1) posted
+Note:  Refer to the lab write-up guidelines *LabReportGuidelines.html* posted
 on Canvas for the format and content of your lab report.
 
 (1) Make table(s) summarizing four exposure variables in this dataset:  Nitrogen

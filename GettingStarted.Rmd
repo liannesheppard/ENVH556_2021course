@@ -4,10 +4,13 @@ author: "ENVH 556 Instructors"
 date: "Created for Winter 2021; printed `r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
-    toc: true
+    toc: yes
     toc_depth: 3
-    number_sections: true
+    number_sections: yes
     df_print: paged
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
 urlcolor: blue
 ---
 
@@ -262,12 +265,12 @@ so it is hidden.)
 ### Using LaTeX
 
 If you want to make your text clearer by using nicely formatted equations, you 
-can use the math language \LaTeX to write Greek letters and equations.  Below 
+can use the math language LaTeX to write Greek letters and equations.  Below 
 are some examples that you can copy and paste, or just Google it.  Be prepared 
-to have a little patience, because \LaTeX is pretty picky.  This is *not* an 
+to have a little patience, because LaTeX is pretty picky.  This is *not* an 
 expectation for ENVH 556, it's just something extra for those of you who are 
 interested.  This is also an excuse to plug a 
-[useful website for finding \LaTeX commands](http://detexify.kirelabs.org/classify.html).
+[useful website for finding LaTeX commands](http://detexify.kirelabs.org/classify.html).
 
 $\alpha$
 
@@ -341,7 +344,7 @@ mean(a)
 
 The code and output above would not be acceptable in a homework write-up.  You
 can use chunk options to change how code and output appear in the knitted
-document (but chunk options don't affect anything when you are running code in
+document (but chunk options don't affect anything when you are running code chunk by chunk inside
 the `.Rmd` document). Below, I'll give some examples of chunk options; check out
 the knitted document to see what each of them do. Chunk options can be combined
 by separating them with commas.
@@ -409,8 +412,7 @@ add these when you are done coding; for example, using `library()` or `p_load()`
 often creates some messages which you may wish to hide in your final document.
 In general, we *want* to see the messages and warnings from R as we are coding.
 
-The following chunk won't be shown and it creates output that won't be shown.  
-However, the code will still run in R.
+The following chunk won't be shown and it creates output that won't be shown.  However, the code will still run in R.
 
 ```{r example_chunk_hides_everything, include=FALSE}
 #-----example chunk hides everything----------
@@ -509,6 +511,7 @@ table_df <- toy.data %>%
 
 #example kable table with caption
 kable(table_df, caption="Height by hair color")
+
 ```
 
 
@@ -518,7 +521,7 @@ Reproducible reports with embedded data analyses have many benefits, including:
 
   * Eliminates typos and transcription errors by pulling results directly from R
 
-  * Automatically updates your results if you change other code (i.e. if I decided
+  * Automatically updates your results if you change other code (e.g., if I decided
 to remove one observation from my data set, I wouldn't have to re-type all my
 numbers)
 
@@ -565,7 +568,7 @@ files, but uses relative paths ("data/raw") instead, so they will be more
 portable -- able to run on someone else's system.  Even better, use
 `file.path()` to construct these paths to make them platform independent, so a
 person can use, e.g., Windows, macOS, or Linux to reproduce your results.
-Windows users take note: paths like "C:\\data\\raw" or even "data\\raw will" not
+Windows users take note: paths like "C:\\data\\raw" or even "data\\raw" will not
 work on a Mac. Use "data/raw", or better yet, `file.path("data", "raw")` to
 solve this problem.
 
@@ -663,7 +666,7 @@ to this.
 ## Automate preparation of the working environment
 
 When you write code in R Markdown it needs to be completely self-contained -
-that is, it can't rely on anything you loaded, imported, or ran outside of the R
+that is, it can't rely on anything you loaded, imported, or run outside of the R
 Markdown document, e.g., in your RStudio session. An excellent principle is to
 automate the preparation of the working environment in your R Markdown document.
 This includes setting options and installing software packages.
@@ -732,8 +735,8 @@ ending with a second backtick. For example, we can write: "The mean of the data
 is `r mean(a)`."  We've seen above that output from chunks is usually not 
 'pretty' enough for refined reports, so ideally you pay attention to scientific 
 reporting standards, for instance by rounding it to an appropriate number of 
-significant figures. The mean is `r round(mean(a), 2)`. This is much better than 
-typing "The mean is 0.217" because it follows several reproducibility principles:
+significant figures: The mean is `r round(mean(a), 2)`. This is much better than directly
+typing into your text "The mean is 0.217" because it follows several reproducibility principles:
 
   * Eliminates typos
   * Automatically updates if you change other code (i.e. if I decided to remove 
@@ -752,12 +755,12 @@ should not have any code or raw output), you will need to include the session
 information, embedded code, and functions defined in the .Rmd in a code appendix. 
 
 Both the the `LabReportGuidelines.Rmd` template for ENVH 556 and the appendix 
-at the end of this document provides you with example code to 
+at the end of this document provide you with example code to 
 accomplish this.
 
 ### Session Information
 
-At a minimum, your .Rmd should record version numbers of R and your packages 
+At a minimum, your `.Rmd` should record version numbers of R and your packages 
 with `sessionInfo()` at the end of your script.
 
 
@@ -826,7 +829,7 @@ sd(temps)
 
 ## Follow a consistent style
 
-Choose a code style and be consistent within your .Rmd. Following established 
+Choose a code style and be consistent within your `.Rmd`. Following established 
 styles will make your code more readable and easier to follow - for both you 
 and others. Here are two popular examples: 
 
@@ -842,7 +845,7 @@ up to knit to `.pdf`, try selecting the drop-down from the 'Knit' button and
 choosing 'Knit to PDF' (or change your header, as described below).  If that 
 doesn't work, you'll have to install the `tinytex` package. You can do this 
 within R if you use the [tinytex](https://yihui.name/tinytex/) package, which is 
-a minimal \TeX package for R users.
+a minimal TeX package for R users.
 
 ```
 install.packages('tinytex', repos = 'http://cran.r-project.org')
@@ -866,7 +869,7 @@ if (!file.exists(Sys.which('texi2dvi'))) {
 
 ```
 
-If you need a more complete \TeX package for other uses, you will need to 
+If you need a more complete TeX package for other uses, you will need to 
 download and install more software, separately from R. For Windows users, 
 there is an awesome tutorial 
 [here](https://medium.com/@sorenlind/create-pdf-reports-using-r-r-markdown-latex-and-knitr-on-windows-10-952b0c48bfa9), 
