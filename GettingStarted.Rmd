@@ -88,8 +88,10 @@ In ENVH 556 we will ensure that all applications and labs work on either of 2 UW
   * Plasmid, for DEOHS and EPI students: [plasmid.deohs.washington.edu](https://plasmid.deohs.washington.edu/).
   * SPH server, for all students: [rstudio.sph.washington.edu](https://rstudio.sph.washington.edu/)
 
-For either of these UW servers you will need to install and sign into [Husky OnNet VPN](https://itconnect.uw.edu/connect/uw-networks/about-husky-onnet/) using your
-UW NetID.
+For Plasmid you will need to install and sign into [Husky OnNet VPN](https://itconnect.uw.edu/connect/uw-networks/about-husky-onnet/) using your
+UW NetID. Plasmid is connected to you departmental network storage.
+
+In addition to centralized application installation and management, RStudio servers provide users a higher level of performance and security compared to local installations. 
 
 Another (non-UW) RStudio server option is [RStudio Cloud](https://rstudio.cloud/).
 
