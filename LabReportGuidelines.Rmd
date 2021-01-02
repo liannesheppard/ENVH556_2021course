@@ -36,7 +36,7 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed
 # Key principle:  Only load the packages you will need
-pacman::p_load(knitr)
+pacman::p_load(knitr, formatR)
 
 ```
 
