@@ -43,3 +43,11 @@ vignettes/*.pdf
 
 # Data directory
 Datasets/
+
+# html, log and tex files, so no lab output
+*.html
+*.log
+*.tex
+
+# Archive directory
+Archive/
