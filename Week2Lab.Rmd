@@ -361,7 +361,7 @@ set.seed(2001)
 # eventually will use data not generated
 # variable y is the normally distributed data
 # for exposure data this is ordinarily the log-transformed measurement
-y <- rnorm(1000, mean = 1, sd = 0.92)
+y <- rnorm(n = 1000, mean = 1, sd = 0.92)
 
 # x is the "measured" exposure data ~LN
 x <- exp(y)
@@ -386,7 +386,7 @@ qy <-qnorm(p_i)*sd_y+y_bar
 qx <- exp(qy)
 
 # create a data frame for plotting
-pplot_data <- tibble(y,x,rx,p_i,qy,qx)
+pplot_data <- tibble(y, x, rx, p_i, qy, qx)
 
 # some summary statistics to check while developing this (commented out)
 #summary(y)
@@ -401,7 +401,7 @@ paste("AM:  ", exp(y_bar+sd_y^2/2))
 probs <- c(.01, .02, .05, .1, .16, .25, .5, .75, .84, .9, .95, .98, .99)
 
 # get the corresponding quantiles for the normal distribution with the same mean and variance
-quants <- qnorm(probs,mean=y_bar,sd=sd_y)
+quants <- qnorm(probs, mean = y_bar, sd = sd_y)
 
 # exponentiate these for plotting
 exp_quants <- exp(quants)
@@ -416,7 +416,7 @@ exp_quants <- exp(quants)
 # Shows percentiles of the cumulative normal on the y axis; 
 # axes on the log base 10 scale;
 # coord_fixed assumes both axes are the same scaling (i.e. the aspect ratio for
-# x,qx is the same);
+# x, qx is the same);
 # annotation_logticks puts in minor ticks in right scaling
 # minor_breaks addresses the unlabeled grid lines
 p <- ggplot(data = pplot_data) +
