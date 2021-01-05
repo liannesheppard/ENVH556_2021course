@@ -1,5 +1,5 @@
 ---
-title: 'Week 2 Lab:  Compliance -- Descriptive Statistics and Exceedence Probabilities'
+title: "Week 2 Lab:  Compliance -- Descriptive Statistics and Exceedence Probabilities"
 author: "Lianne Sheppard for ENVH 556"
 date: "Created Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
 output: 
@@ -24,7 +24,8 @@ knitr::opts_chunk$set(
 ```
 
 ```{r clear.workspace, eval=FALSE, echo=FALSE}
-#---------clear.workspace------------
+#-----clear workspace----
+
 # code to clear the environment without clearing knitr. Useful for code
 # development because it simulates the knitr environment Run as a code chunk
 # when testing.  When knitr is run, this is effectively run in the knitr
@@ -33,26 +34,26 @@ knitr::opts_chunk$set(
 # Clear workspace of all objects and unload all extra (non-base) packages
 rm(list = ls(all = TRUE))
 if (!is.null(sessionInfo()$otherPkgs)) {
-res <- suppressWarnings(lapply(
-paste('package:', names(sessionInfo()$otherPkgs), sep = ""),
-detach,
-character.only = TRUE,
-unload = TRUE,
-force = TRUE
-))
-
+    res <- suppressWarnings(lapply(
+        paste('package:', names(sessionInfo()$otherPkgs), sep = ""),
+        detach,
+        character.only = TRUE,
+        unload = TRUE,
+        force = TRUE
+    ))
 }
 
 ```
 
 ```{r load.libraries.with.pacman, include=FALSE}
-#-----load.libraries.with.pacman--------------
+#-----load libraries with pacman----
+
 # Load pacman into memory, installing as needed
 my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.  Some reasons for packages:
-# knitr:  kable()
+# knitr:  kable
 # tidyverse: multiple data science packages including ggplot, dplyr, readr
 # Hmisc:  describe
 # EnvStats: geoMean, geoSD, probability plotting functions
@@ -63,18 +64,20 @@ pacman::p_load(tidyverse, knitr, Hmisc, EnvStats, MKmisc, codetools)
 ```
 
 ```{r read.data, echo=FALSE}
-#-----------read.data-----------------
-# getwd
+#-----read data----
+
+# assign project path variable
 ProjectPath <- getwd()
 
-# dir.create    
+# create data directory if it does not exist
 dir.create(file.path(ProjectPath, "Datasets"),
            showWarnings = FALSE,
            recursive = TRUE)
-           datapath <- file.path(ProjectPath, "Datasets")
+
+# assign datapath variable
+datapath <- file.path(ProjectPath, "Datasets")
            
-# read.dat
-# This assumes you already have the data copied into your data directory
+# read data (this assumes you already have the data copied into your data directory)
 DEMS <- readRDS(file.path(datapath, "DEMSCombinedPersonal.rds"))
            
 ```
@@ -83,7 +86,7 @@ DEMS <- readRDS(file.path(datapath, "DEMSCombinedPersonal.rds"))
 
 The purpose of this lab is to work with descriptive statistics, and compliance
 tests while also getting further practice with R, RStudio, and R Markdown.  We
-will use the DEMS REC data, describe the distributions, exceedence
+will use the DEMS REC data, describing the distributions, exceedence
 probabilities, confidence intervals and test compliance.
 
 # Getting Started  
@@ -93,14 +96,14 @@ lecture you will use in lab.
 
 ## Definitions
 
-* AM=arithmetic mean  
-* GM=geometric mean  
-* SD=standard deviation (on the native scale)
-* GSD=geometric standard deviation
-* MOM=method of moments
-* MLE=maximum likelihood estimate
-* OEL=occupational exposure limit
-* CI=confidence interval
+* AM = arithmetic mean  
+* GM = geometric mean  
+* SD = standard deviation (on the native scale)
+* GSD = geometric standard deviation
+* MOM = method of moments
+* MLE = maximum likelihood estimate
+* OEL = occupational exposure limit
+* CI = confidence interval
 
 ## Formulas for method of moments vs MLE estimates for the AM  
 
@@ -128,7 +131,8 @@ $$P\big(y>\ln(OEL)\big) =
 (@) **Make a tibble**:  First let's turn our DEMS dataset into a tibble. This faciliates our use of `tidyverse` functions with a data frame.  (Note: We can use the command `as_data_frame()` instead of `as_tibble` since they are aliases; be warned that these aren't the same as the command `as.data.frame()`.  (Yikes!))
 
 ```{r create.tibble}
-#-----create.tibble----
+#-----create tibble----
+
 DEMSt <- as_tibble(DEMS)
 
 ```
@@ -138,7 +142,8 @@ selected jobs (240,110,410,600), underground only ("u"), and ecdata being
 nonmissing:
 
 ```{r filter.data}
-#-------filter.data----
+#-----filter.data----
+
 # filter dataset so we only keep 4 jobs with codes 240,110,410,600; underground
 # only ("u"); and ecdata being nonmissing
 DEMSu <-
@@ -150,7 +155,8 @@ DEMSu <-
 data appear to be log-normally distributed.
 
 ```{r transform.vars}
-#-------transform.vars------
+#-----transform vars----
+
 # The following two variables will be added to the DEMS dataframe at the end of
 # the tibble:
 DEMSu <- mutate(DEMSu,
@@ -166,7 +172,8 @@ DEMSu <- mutate(DEMSu,
 part of `tidyverse`.  We use `group_by()` to determine the subgroups we are going to summarize over, `summarize()` to create new summaries we want to report, and `arrange()` to decide the final ordering in the table.  Each of these is connected though the pipe (`%>%`) which can be read as "then".  It facilitates the process of connecting multiple steps without creating intermediate datasets.
 
 ```{r table.with.dplyr}
-#----table.with.dplyr------
+#-----table with dplyr----
+
 DEMSsummary <- DEMSu %>%     group_by(job,facilityid) %>%
     dplyr::summarize(
     N = n(),
@@ -192,7 +199,8 @@ histogram code is repeated from Week 1 lab, though now with new data and better 
 ### Histograms
 
 ```{r hist.in.tidyverse, echo=TRUE,eval=FALSE}
-#------------hist.in.tidyverse-----------
+#-----hist in tidyverse----
+
 # first define the basic plot using the density scale
 p <- ggplot(data = DEMSu, aes(lnrec)) +
     geom_histogram(
@@ -223,7 +231,8 @@ p +
 ### Q-Q plots (Normal probability plots)
 
 ```{r qqplot.in.tidyverse, echo=TRUE,eval=FALSE}
-#--------------qqplot.in.tidyverse-------
+#-----qqplot in tidyverse----
+
 # create the base plot
 p <- ggplot(DEMSu, aes(sample = lnrec))
 
@@ -231,6 +240,7 @@ p <- ggplot(DEMSu, aes(sample = lnrec))
 # and add a title
 p + stat_qq() + stat_qq_line() +
     labs(title = "Normal Q-Q Plot of ln(REC)\nIn 4 Underground Jobs")
+
 ```
 
 
@@ -239,7 +249,8 @@ p + stat_qq() + stat_qq_line() +
 The Shaprio-Wilk test evaluates the null hypothesis that the data are normally distributed against the alternative that they aren't.  Unfortunately, it is very easy to reject the null hypothesis using this test, particularly when the sample size is large.  See [this example using simulations](http://emilkirkegaard.dk/en/?p=4452) to get a feeling for the kinds of deviations from normality that give high and statistically significant Shaprio-Wilks tests.  The general advice in using this test is to not overinterpret it.  Look at the data visually and use your judgment about whether they are consistent with a normal distribution.  Ask youself whether it is just a few values at the tails that deviate, or are there other more importnat concerns.
 
 ```{r Shapiro-Wilk test}
-#------------Shapiro-Wilk test-----------
+#-----Shapiro-Wilk test----
+
 #for normality of a variable
 shapiro.test(DEMSu$lnrec)
 
@@ -252,7 +263,8 @@ shapiro.test(DEMSu$lnrec)
 50% sample of the data with replacement
 
 ```{r samples}
-#---samples-------
+#-----samples----
+
 # recall you want to set the seed to make your work reproducible
 set.seed(502)
 
@@ -276,7 +288,8 @@ percentiles
 
 * **Empiric exceedence fraction**: 
 ```{r emp.exc.frac}
-#-----emp.exc.frac----
+#-----emp exc frac----
+
 sum(DEMSu$ecdata > 200) / length(DEMSu$ecdata)
 
 ```
@@ -284,7 +297,8 @@ sum(DEMSu$ecdata > 200) / length(DEMSu$ecdata)
 * **Parametric eceedence fraction**: 
 
 ```{r param.exc.frac}
-#--------param.exc.frac------
+#-----param exc frac----
+
 1 - pnorm((log(200) - mean(DEMSu$lnrec)) / sd(DEMSu$lnrec))
 
 ```
@@ -297,7 +311,8 @@ https://rdrr.io.)  The `quantile` command in base R can be used to get the upper
 the `quantile` command.
 
 ```{r quantile95+70thCI}
-#---------quantile95+70thCI-----
+#-----quantile95+70thCI----
+
 # Using the quantile command:
 # 95th percentile quantile on log scale
 quantile(DEMSu$lnrec, .95)
@@ -332,7 +347,9 @@ Notes on how to create this:
 7. Plot labels on y axis shows the corresponding normal probabilities rather than the theoretical quantiles.  Both axes scale to the log base 10 scale. 
 
 ```{r generate data for log probability plot}
-#----- generate data for log probability plot example ----
+#-----generate data for log probability plot example----
+
+# set seed for reproducibility
 set.seed(2001)
 
 # y is the lognormal; x is exp(y)~LN(mu_y,sd_y)
@@ -389,8 +406,9 @@ exp_quants <- exp(quants)
 
 ```
 
-```{r log probabililty plot}
-#---- log probability plot ----
+```{r log probability plot}
+#-----log probability plot----
+
 # Shows percentiles of the cumulative normal on the y axis; 
 # axes on the log base 10 scale;
 # coord_fixed assumes both axes are the same scaling (i.e. the aspect ratio for
@@ -479,7 +497,8 @@ the various summary statistics.
 For a q-q plot to determine whether the data are normally distributed, use `qqnorm()` and you can overlay `qqline()`.  There is code in the `.Rmd` file if you wish to use it.
 
 ```{r qqplot.in.baseR, echo=FALSE, eval=FALSE}
-#---------qqplot.in.baseR-----------
+#-----qqplot in baseR----
+
 # apparently qqnorm works fine in the presence of missing data:
 qqnorm(DEMS$ecdata)
 qqline(DEMS$ecdata, col = "red", lwd = 2)
@@ -492,18 +511,28 @@ qqline(DEMSu$ecdata, col = "red", lwd = 2)
 ```
 
 
-# Appendix 2:  Code and session information {-}
+# Appendix 2:  Code, session information, and functions {-}
 
 ```{r session.info}
-#------------session.info: beginning of Appendix ------
-# This allows reproducibility by documenting the version of R and every package
-# you used.
+#-----session information----
+
+# print R session information
 sessionInfo()
 
 ```
 
-```{r appendix.code, ref.label = knitr::all_labels(), echo = TRUE, eval = FALSE, , include=TRUE}
-# ---------appendix------------
-    
+```{r code.appendix, ref.label = knitr::all_labels(), echo = TRUE, eval = FALSE, , include=TRUE}
+#-----code appendix----
 ```
 
+```{r functions, eval = TRUE}
+#-----functions----
+
+# Show the names of all functions defined in the .Rmd
+# (e.g. loaded in the environment)
+lsf.str()
+
+# Show the definitions of all functions loaded into the current environment  
+lapply(c(lsf.str()), getAnywhere)
+
+```
