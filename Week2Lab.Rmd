@@ -15,7 +15,7 @@ output:
 
 knitr::opts_chunk$set(
     echo = TRUE,
-    cache = TRUE,
+    cache = FALSE,
     cache.comments = FALSE,
     message = FALSE,
     warning = FALSE
@@ -54,7 +54,9 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.  Some reasons for packages:
 # knitr:  kable
-# tidyverse: multiple data science packages including ggplot, dplyr, readr
+# dplyr: data wrangling functions.
+# tidyr: drop_na
+# ggplot: visualizations
 # Hmisc:  describe
 # EnvStats: geoMean, geoSD, probability plotting functions
 # MKmisc:  quantileCI
@@ -62,9 +64,7 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 pacman::p_load(dplyr, tidyr, knitr, Hmisc, EnvStats, MKmisc, codetools)
 
 ```
-
-
-
+<!-- CZ: I'm unfamiliar with `codetools` and don't know how it is used. remove? -->
 
 ```{r read.data, echo=FALSE}
 #-----read data----
@@ -87,7 +87,7 @@ DEMS <- readRDS(file.path(data_path, "DEMSCombinedPersonal.rds"))
 
 # Purpose  
 
-The purpose of this lab is to work with descriptive statistics, and compliance
+The purpose of this lab is to work with descriptive statistics and compliance
 tests while also getting further practice with R, RStudio, and R Markdown.  We
 will use the DEMS REC data, describing the distributions, exceedance
 probabilities, confidence intervals, and test compliance.
@@ -141,8 +141,8 @@ DEMS <- as_tibble(DEMS)
 ```
 
 (@) **Keep a subset of observations:**  Keep only a subset of the data based on
-selected jobs (240,110,410,600), underground only ("u"), and ecdata being
-nonmissing:
+selected jobs (240,110,410,600), underground only ("u"), and `ecdata` being
+non-missing:
 
 ```{r filter.data}
 #-----filter data----
@@ -169,12 +169,13 @@ DEMSu <- mutate(DEMSu,
 ```
 
 (@) **Summarize variables and display key quantities:** This code uses `dplyr`,
-part of `tidyverse`.  We use `group_by()` to determine the subgroups we are going to summarize over, `summarise()` to create new summaries we want to report, and `arrange()` to decide the final ordering in the table.  Each of these is connected though the pipe operator (`%>%`) which can be read as "then".  It facilitates the process of connecting multiple steps without creating intermediate datasets by using the output of one function as the input of the next function in the "pipeline."
+part of `tidyverse`.  We use `group_by()` to determine the subgroups we are going to summarize over, `summarise()` to create new summaries we want to report, `mutate_if()` to ease rounding all variables of class `double`, and `arrange()` to decide the final ordering in the table.  Each of these is connected though the pipe operator (`%>%`) which can be read as "then".  It facilitates the process of connecting multiple steps without creating intermediate datasets by using the output of one function as the input of the next function in the "pipeline."
 
 ```{r table.with.dplyr}
 #-----table with dplyr----
 
-# create summary (note: "summarize()" is a different function )
+# create summary 
+# note: "summarize()" will call a different function from the Hmisc package
 DEMSsummary <- DEMSu %>% 
     group_by(job,facilityid) %>%
     summarise(N = n(),
@@ -197,7 +198,7 @@ kable(DEMSsummary)
 
 ## Visualize the data and understand its distribution graphically
 
-Here are some sampe graphical commands: (Plots in this section are not run;
+Here are some sample graphical commands: (Plots in this section are not run;
 histogram code is modified from Week 1 lab, though now with new data and better labeling.)
 
 ### Histograms
@@ -237,7 +238,7 @@ p +
 ```{r qqplot.in.tidyverse, echo=TRUE,eval=FALSE}
 #-----qqplot in tidyverse----
 
-# create the base plot, overlay the ppoints and line, and add title
+# create the base plot, overlay the points and line, and add title
 p <- ggplot(DEMSu, aes(sample = lnrec)) +
     stat_qq() + stat_qq_line() +
     labs(title = "Normal Q-Q Plot of ln(REC)\nIn 4 Underground Jobs")
@@ -249,7 +250,7 @@ p
 
 ##  Test the normality of a variable 
 
-The Shapiro-Wilk test evaluates the null hypothesis that the data are normally distributed against the alternative that they aren't.  Unfortunately, it is very easy to reject the null hypothesis using this test, particularly when the sample size is large.  See [this example using simulations](http://emilkirkegaard.dk/en/?p=4452) to get a feeling for the kinds of deviations from normality that give high and statistically significant Shapiro-Wilk tests.  The general advice in using this test is to not over-interpret it.  Look at the data visually and use your judgment about whether they are consistent with a normal distribution.  Ask yourself whether it is just a few values at the tails that deviate, or are there other more importnat concerns.
+The Shapiro-Wilk test evaluates the null hypothesis that the data are normally distributed against the alternative that they aren't.  Unfortunately, it is very easy to reject the null hypothesis using this test, particularly when the sample size is large.  See [this example using simulations](http://emilkirkegaard.dk/en/?p=4452) to get a feeling for the kinds of deviations from normality that give high and statistically significant Shapiro-Wilk tests.  The general advice in using this test is to not over-interpret it.  Look at the data visually and use your judgment about whether they are consistent with a normal distribution.  Ask yourself whether it is just a few values at the tails that deviate, or are there other more important concerns.
 
 ```{r Shapiro-Wilk test}
 #-----Shapiro-Wilk test----
@@ -297,7 +298,7 @@ sum(DEMSu$ecdata > 200) / length(DEMSu$ecdata)
 
 ```
 
-* **Parametric eceedence fraction**: 
+* **Parametric exceedance fraction**: 
 
 ```{r param.exc.frac}
 #-----param exc frac----
@@ -306,7 +307,7 @@ sum(DEMSu$ecdata > 200) / length(DEMSu$ecdata)
 
 ```
 
-* **Upper 5th percentile of the distribution and its 70% CI**.  The following
+* **Upper 5^th^ percentile of the distribution and its 70% CI**.  The following
 describes an approach estimated directly on the log-transformed data and
 exponentiates.  You can use the `quantileCI` command in the `MKmisc` package. (See
 https://rdrr.io.)  The `quantile` command in base R can be used to get the upper
@@ -479,7 +480,7 @@ for REC.
 differences between these alternative measures of central tendency?
     c) For at least one stratum that has data that aren't too far off from a
     lognormal distribution, plot the log probability plot.  Read off the GM and
-    GSD from the log probabililty plot and compare these to values you estimate
+    GSD from the log probability plot and compare these to values you estimate
     directly from the data.
 4) Assuming an OEL for REC of 200 $\mu g/m^3$, calculate the exceedance
 probability for each mine (and/or job) using both empiric and parametric
