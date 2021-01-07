@@ -52,6 +52,12 @@ if (!is.null(sessionInfo()$otherPkgs)) {
 my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
+# to address a dependency issue
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("limma")
+
 # Load the other packages, installing as needed.  Some reasons for packages:
 # knitr:  kable
 # dplyr: data wrangling functions.
