@@ -45,18 +45,19 @@ if (!is.null(sessionInfo()$otherPkgs)) {
 
 ```
 
-```{r load.libraries.with.pacman, include=FALSE}
-#-----load libraries with pacman----
+```{r load.packages, include=FALSE}
+#-----load packages----
 
-# Load pacman into memory, installing as needed
-my_repo <- 'http://cran.r-project.org'
-if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
-
-# to address a dependency issue
+# To address a dependency issue, one package (`limma`) must be installed through
+# another package (`BiocManager`)
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
 BiocManager::install("limma")
+
+# For the remaining packages, load pacman, installing as needed
+my_repo <- 'http://cran.r-project.org'
+if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.  Some reasons for packages:
 # knitr:  kable
@@ -66,10 +67,7 @@ BiocManager::install("limma")
 # Hmisc:  describe
 # EnvStats: geoMean, geoSD, probability plotting functions
 # MKmisc:  quantileCI
-pacman::p_load(dplyr, tidyr, knitr, Hmisc, EnvStats, BiocManager, MKmisc)
-
-# one dependency needed must be installed through another package
-BiocManager::install("limma")
+pacman::p_load(dplyr, tidyr, knitr, ggplot2, Hmisc, EnvStats, MKmisc)
 
 ```
 
