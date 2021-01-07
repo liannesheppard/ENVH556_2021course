@@ -60,11 +60,12 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 # Hmisc:  describe
 # EnvStats: geoMean, geoSD, probability plotting functions
 # MKmisc:  quantileCI
-# codetools:  code analysis tools used in SessionInfo
-pacman::p_load(dplyr, tidyr, knitr, Hmisc, EnvStats, MKmisc, codetools)
+pacman::p_load(dplyr, tidyr, knitr, Hmisc, EnvStats, BiocManager, MKmisc)
+
+# one dependency needed must be installed through another package
+BiocManager::install("limma")
 
 ```
-<!-- CZ: I'm unfamiliar with `codetools` and don't know how it is used. remove? -->
 
 ```{r read.data, echo=FALSE}
 #-----read data----
@@ -332,7 +333,7 @@ quantileCI(DEMSu$ecdata, prob = 0.95, conf.level = 0.7)
 
 ## Log probability plots
 
-These plots have the value of the non-transformed exposure variable (e.g. concentration) on the x axis displayed on the log base 10 scale, and the corresponding normal probability for the cumulative distribution on the y axis.  The following code generates some lognormal data and then plots them using this framework.  To implement this with the DEMS data, you will need to address specifics in the example, such as locations of the tick lines and range of the data.
+These plots have the value of the exposure variable on the native scale (e.g. concentration, not transformed) on the x axis displayed on the log base 10 scale, and the corresponding normal probability for the cumulative distribution on the y axis.  The following code generates some lognormal data and then plots them using this framework.  To implement this with the DEMS data, you will need to address specifics in the example, such as locations of the tick lines and range of the data.
 
 Notes on how to create this: 
 
@@ -356,15 +357,17 @@ Notes on how to create this:
 # set seed for reproducibility
 set.seed(2001)
 
-# y is the lognormal; x is exp(y)~LN(mu_y,sd_y)
-# generate a random normal, with specified mean and sd as from lecture
-# eventually will use data not generated
-# variable y is the normally distributed data
-# for exposure data this is ordinarily the log-transformed measurement
-y <- rnorm(n = 1000, mean = 1, sd = 0.92)
+# the measurement x ~LN(mu_y,sd_y) and y=log(x) ~N(mu_y,sd_y)
+# generate a random lognormal, with specified mean and sd as from lecture
+# eventually we can replace this example with measured data
+
 
 # x is the "measured" exposure data ~LN
-x <- exp(y)
+x <- rlnorm(n = 1000, mean = 1, sd = 0.92)
+
+# variable y is normally distributed 
+# for exposure data this is ordinarily the log-transformed measurement
+y <- log(x)
 
 # Use rank to get the order statistics 
 rx <- rank(x)
@@ -392,7 +395,7 @@ pplot_data <- tibble(y, x, rx, p_i, qy, qx)
 #summary(y)
 paste("GM:  ", exp(y_bar))
 paste("GSD:  ",exp(sd(y)))
-paste("AM:  ", exp(y_bar+sd_y^2/2))
+paste("AM:  ", exp(y_bar+((length(y)-1)/length(y))*sd_y^2/2))
 #summary(x)
 #sd(x)
 
@@ -466,14 +469,14 @@ for REC.
 # Homework Exercises
 
 1) Consider the primary exposure measures of interest to the study, including
-REC, NO_2 and Organic Carbon.  Consider the full dataset, though you may choose to work with a reduced subset, such as the four selected underground jobs.  (Justify your choice as part of your lab write-up.)
-    a) Describe the distribution, out of range and/or missing values.
+REC, NO_2 and organic carbon.  Choose either the full dataset or a reduced subset, such as the four selected underground jobs.  (Justify your choice as part of your lab write-up.)
+    a) Describe the distribution, out of range and/or missing values for these exposure measures.
     b) Determine the adequacy of the LN distribution for representing these using
 distribution plots and/or statistical tests.  
 2) Explore potential stratification variables (determinants such as facility, job, location).
     a) Do the stratified data improve the distributional characteristics?  Does it matter whether you restrict your attention to smaller subgroups of the data, e.g., underground only, specific facilities, specific jobs, or a combination of these?
     
-3) Calculate the GM, Median, AM (method of moments) and AM (maximum likelihood)
+3) Calculate the GM, median, AM (method of moments) and AM (maximum likelihood)
 for REC.
     a) How do these quantities compare to each other?
     b) Can you determine any characteristics of the data which help explain the
