@@ -1,18 +1,20 @@
 ---
 title: "Week3Lecture"
 author: "Lianne"
-date: "Winter 2019; Updated `r format(Sys.time(), '%d %B, %Y')`"
-output: word_document
+date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    df_print: paged
 ---
 
 <!--Basic document set-up goes here  -->
 ```{r setup, include=FALSE}
-#-------------r.setup-------------
+#-----setup----
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
-#----------------load.libraries.pacman------------
+#-----load.libraries.pacman------------
 # Load pacman into memory, installing as needed
 my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
@@ -22,25 +24,51 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 # tidyverse: multiple data science packages including ggplot, dplyr, readr
 # multcomp:  glht
 # car:  linearHypothesis
-pacman::p_load(tidyverse, knitr, multcomp, dplyr, modelr, car)  
+pacman::p_load(dplyr, ggplot2, knitr, multcomp, dplyr, modelr, car)  
 ```
 
-```{r read.data, echo=FALSE}
-#-----------read.data-----------------
-#-getwd
-    Wk3Path <- getwd()
-#-dir.create    
-    dir.create(file.path(Wk3Path,"Datasets"),     showWarnings=FALSE, recursive = TRUE)
-    datapath<-file.path(Wk3Path,"Datasets")
-#-read.data
-snapshot<-readRDS(file.path(datapath,"allseasonsR.rds"))
+```{r read.data, echo=FALSE, warning=FALSE}
+#-----read data--------
+
+# get working directory
+project_path <- getwd()
+
+# create data directory, if needed    
+dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
+data_path <- file.path(project_path,"Datasets")
+
+# specify file name and path
+file_name <- "allseasonsR.rds"
+file_path <- file.path(data_path, file_name)
+
+# Only download the file if it's not already present
+if (!file.exists(file_path)) {
+    url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
+                 file_name, sep = '/')
+    download.file(url = url, destfile = file_path)
+}
+
+# Output a warning message if the file cannot be found
+if (file.exists(file_path)) {
+    snapshot <- readRDS(file = file_path)
+} else warning(paste("Can't find", file_name, "!"))
+
+# make dataframe a tibble
+snapshot <- as_tibble(snapshot)
+
+# remove temporary variables
+rm(url, file_name, file_path)
+
 ```
+
 
 This is a companion document to the Week 3 lecture.  Each slide with R code is represented in this document.  (Eventually the lecture will be converted to slides using R Markdown.)
 
 ## Slide 10:  Simple regression scatterplot ln_nox on ln_no
+
 ```{r slide10}
-#-------slide10---------
+#-----slide10----
+
 (p <- ggplot(data=snapshot,aes(ln_no,ln_nox)) +
      geom_point() +
      labs(
@@ -55,29 +83,38 @@ This is a companion document to the Week 3 lecture.  Each slide with R code is r
 ## Slide 12:  Add regression line
 
 ```{r slide12}
-#-------slide12---------
+#-----slide12----
+
 p  + stat_smooth(method=lm, se=FALSE)
-     
 
 ```
 
 ## Slide 13 + 14:  Linear regression model
 
 ```{r slide13+14}
-#-------slide13+14---------
+#-----slide13+14----
 
-nox.fit<- lm(ln_nox~ln_no,data=snapshot)
+# fit model
+nox.fit <- lm(ln_nox ~ ln_no, data = snapshot)
+
+# print summary, coefficients and CIs
 summary(nox.fit)
-nox.fit
 coef(nox.fit)
-vcov(nox.fit)
 confint(nox.fit)
+
+# variance-covariance matrix
+vcov(nox.fit)
+
+# # "tidy" option for summary, coefficients, and CIs
+# summary_tbl <- tidy(nox.fit, conf.int = TRUE, conf.level = 0.95)
+
 ```
 
 ## Slide 18
 
 ```{r slide18}
-#----------------slide18-------------
+#-----slide18----
+
 # Should be basic description of the factor variable.
 # season is the same variable as seasonfac, not as a factor and coded the same
 # 1,2,3. Verify this by looking at the data:
@@ -92,29 +129,39 @@ table(snapshot$seasonfac,snapshot$season)
 ##Slide 19
 
 ```{r slide19}
-#-----slide 19---------------
-nox.aov<-lm(ln_nox~seasonfac, data=snapshot)
+#-----slide19----
+
+nox.aov<-lm(ln_nox ~ seasonfac, data = snapshot)
 anova(nox.aov)
 summary(nox.aov)  
 
 #model.matrix(nox.aov)
-margin.table(model.matrix(nox.aov),2)
+margin.table(model.matrix(nox.aov), 2)
 
 ```
 
 ## Slide 20:  add means of ln_nox by season
 
 ```{r slide20}
-#-----------slide 20-----------
-# Simple row of means of ln_nox by season
-round(tapply(snapshot$ln_nox,snapshot$seasonfac,mean),2)
+#-----slide20----
 
-# full table of N, means & sd of ln_nox by season.  (It is probably better to
-# use dplyr.)
-cbind( 
-    N=tapply(snapshot$ln_nox,snapshot$seasonfac,length),
-    mean=round(tapply(snapshot$ln_nox,snapshot$seasonfac,mean),2),
-    sd=round(tapply(snapshot$ln_nox,snapshot$seasonfac,sd),2))
+# Simple row of means of ln_nox by season
+round(tapply(snapshot$ln_nox, snapshot$seasonfac, mean), 2)
+
+# # dplyr option (consistent, but maybe not better here?)
+# snapshot %>% 
+#     group_by(seasonfac) %>% 
+#     summarise(mean(ln_nox), .groups = "drop") %>% 
+#     mutate_if(is.numeric, round, 2)
+
+# full table of N, means & sd of ln_nox by season, dplyr option
+snapshot %>%
+    group_by(seasonfac) %>%
+    summarise(N = n(), 
+              mean = mean(ln_nox),
+              sd = sd(ln_nox), 
+              .groups = "drop") %>%
+    mutate_if(is.double, round, 2)
 
 ```
 
@@ -122,8 +169,8 @@ cbind(
 ## Slide 21:  Be aware of coding!
 
 ```{r slide21}
-#----------slide21-----------
-#
+#-----slide21----
+
 nox.aov2<-lm(ln_nox~season, data=snapshot)
 anova(nox.aov2)
 summary(nox.aov2)  
@@ -132,49 +179,69 @@ summary(nox.aov2)
 
 ## Slide 22:  Season-stratified analysis example:  means of ln_nox, ln_no by season
 
+
+```{r define.summary.function}
+#-----define summary function----
+
+summary_stats <- function(df = snapshot, summary_var, grouping_var = seasonfac, 
+                          digits = 2){
+  
+  # specify names & variables for non-standard evaluation
+  grouping_var <- enquo(grouping_var)
+  summary_var <- enquo(summary_var)
+  summary_name <- quo_name(summary_var)
+  
+  # create names for summary stats
+  summary_name_N <- paste0(summary_name, ".N")
+  summary_name_mean <- paste0(summary_name, ".mean")
+  summary_name_sd <- paste0(summary_name, ".sd")
+  
+  # create summary
+  df %>%
+    group_by(!!grouping_var) %>% 
+    summarise(!!summary_name_N := n(), 
+              !!summary_name_mean := mean(!!summary_var), 
+              !!summary_name_sd := sd(!!summary_var), 
+              .groups = "drop") %>% 
+    mutate_if(is.double, round, digits)
+}
+
+```
+
+
 ```{r slide 22}
-#-------slide22-------------------------
+#-----slide22-------------------------
+
 # ln_nox
-cbind( 
-    N.ln_nox=tapply(snapshot$ln_nox,snapshot$seasonfac,length),
-    mean=round(tapply(snapshot$ln_nox,snapshot$seasonfac,mean),2),
-    sd=round(tapply(snapshot$ln_nox,snapshot$seasonfac,sd),2)
-    )
+summary_stats(summary_var = ln_nox)
 
 # ln_no
-cbind( 
-    N.ln_no=tapply(snapshot$ln_no,snapshot$seasonfac,length),
-    mean=round(tapply(snapshot$ln_no,snapshot$seasonfac,mean),2),
-    sd=round(tapply(snapshot$ln_no,snapshot$seasonfac,sd),2)
-    )
+summary_stats(summary_var = ln_no)
 
 # ln_nox and ln_no
-cbind( 
-    N.ln_nox=tapply(snapshot$ln_nox,snapshot$seasonfac,length),
-    mean=round(tapply(snapshot$ln_nox,snapshot$seasonfac,mean),2),
-    sd=round(tapply(snapshot$ln_nox,snapshot$seasonfac,sd),2),
-    N.ln_no=tapply(snapshot$ln_no,snapshot$seasonfac,length),
-    mean=round(tapply(snapshot$ln_no,snapshot$seasonfac,mean),2),
-    sd=round(tapply(snapshot$ln_no,snapshot$seasonfac,sd),2)
-    )
+full_join(summary_stats(summary_var = ln_nox), 
+          summary_stats(summary_var = ln_no), 
+          by = "seasonfac")
 
 ```
 
 
 ## Slide 23:  Scatterplot with 3 season-specific lines
 
-```{r slide23}
-#-------------Slide 23---------------
+```{r slide23, message=FALSE}
+#-----slide23----
+
 #ggplot with separate colors and lines by season
-ggplot(data=snapshot,mapping=aes(ln_no,ln_nox)) +
-    geom_point(aes(color=seasonfac), alpha=.4, size=.7) +
-    stat_smooth(aes(color=seasonfac), method=lm,se=FALSE) +
-   # geom_rug(position="jitter", size=.2) +
-    xlim(range(snapshot$ln_no,snapshot$ln_nox)) +
-    ylim(range(snapshot$ln_no,snapshot$ln_nox)) +
-    geom_abline(slope=1,intercept = 0,alpha=.2,color="black") +
+ggplot(snapshot, mapping = aes(x = ln_no, y = ln_nox, color = seasonfac)) +
+    geom_point(alpha = .4, size=.7) +
+    stat_smooth(method = lm, se=FALSE) +
+    #geom_rug(position="jitter", size=.2) +
+    xlim(range(snapshot$ln_no, snapshot$ln_nox)) +
+    ylim(range(snapshot$ln_no, snapshot$ln_nox)) +
+    geom_abline(slope = 1, intercept = 0, alpha = .2, color = "black") +
     coord_fixed() +
-    labs(x="ln(NO) (ln(ppb))", y="ln(NOx) (ln(ppb)", color="Season")
+    labs(x="ln(NO) (ln(ppb))", y="ln(NOx) (ln(ppb)", color="Season") + 
+    theme_bw()
 
 ```
 
@@ -183,23 +250,49 @@ ggplot(data=snapshot,mapping=aes(ln_no,ln_nox)) +
 
 Summarize each season-specific model
 
-```{r}
-#-------------slide25------------------
-# season-specific regression
-summary(lm(ln_nox~ln_no,data=snapshot,subset=seasonfac=="1Summer"))
-summary(lm(ln_nox~ln_no,data=snapshot,subset=seasonfac=="2Fall"))
-summary(lm(ln_nox~ln_no,data=snapshot,subset=seasonfac=="3Winter"))
+```{r slide25}
+#-----slide25----
 
+# season-specific regression
+summary(lm(ln_nox ~ ln_no, data = snapshot, subset = seasonfac == "1Summer"))
+summary(lm(ln_nox ~ ln_no, data = snapshot, subset = seasonfac == "2Fall"))
+summary(lm(ln_nox ~ ln_no, data = snapshot, subset = seasonfac == "3Winter"))
+
+
+# # dplyr option 
+# # (Lianne - this is a lot more code, but I didn't see how you were using the 
+# # output in the slides -  e.g. getting coefficients, etc. feel free to remove. 
+# # If keeping, add `broom` to package loading)
+# season_mdls <- snapshot %>% 
+#   
+#   # group by season
+#   group_by(seasonfac) %>%
+#   
+#   # nest the tibble
+#   nest() %>% 
+#   
+#   # run regression model for each group, clean up with `tidy()`
+#   mutate(model = map(data, ~lm(ln_nox ~ ln_no, data = .x)),
+#          summary = map(model, summary),
+#          tidied = map(model, tidy) 
+#          ) %>% 
+#   
+#   # unnest
+#   unnest(tidied)
+# 
+# # show seasonal model summaries
+# season_mdls$summary
 ```
 
 
 ## Slide 25:  Season-adjusted regression
 
-```{r slide25}
-#--------------slide 25----------------
+```{r slide25.season.adjusted}
+#-----slide25 season adjusted----
+
 # season-adjusted regression
-nox.fit.seasadj<-
-    lm(ln_nox~ln_no+seasonfac,data=snapshot)
+nox.fit.seasadj <-lm(ln_nox ~ ln_no + seasonfac, data = snapshot)
+
 summary(nox.fit.seasadj)
 confint(nox.fit.seasadj)
 
@@ -209,12 +302,13 @@ confint(nox.fit.seasadj)
 ## Slide 27:  Be aware of coding -- season as cts variable
 
 
-```{r slide 27}
-#------------Slide 27----------------------
+```{r slide27}
+#-----slide27----
+
 # Season as a continuous variable
 
 # Fit the linear regression with continuous season variable
-summary(lm(ln_nox~ln_no+season,data=snapshot))
+summary(lm(ln_nox ~ ln_no + season, data = snapshot))
 
 # Compare to the regression on the previous slide
  
@@ -225,14 +319,14 @@ summary(lm(ln_nox~ln_no+season,data=snapshot))
 
 Need to load the `car` package for the `linearHypothesis` command.  It masks at least one object from several other packages, so don't load if you don't need it.
 
-```{r Slide 29}
-# Slide 29 --------
+```{r slide29}
+#-----slide29----
+
 # interaction model
-snap_int <- lm(ln_nox~ln_no*seasonfac,data=snapshot)
+snap_int <- lm(ln_nox ~ ln_no * seasonfac, data = snapshot)
 summary(snap_int)
 
-# F test for significant interaction
-# Available in the car package (now loaded up front)
+# F test for significant interaction from the car package
 linearHypothesis(snap_int, c("ln_no:seasonfac2Fall=0", "ln_no:seasonfac3Winter=0"), 
                  test="F")
 
@@ -257,35 +351,40 @@ confint(mod.lh)
 
 ```
 
-```{r find means}
-# find means -----
+```{r find.means}
+#-----find means----
+
 # Note:  this does not require snapshot to be a tibble
 snapshot %>%
     group_by(seasonfac) %>%
-    dplyr::summarize(
-    N = length(ln_nox),
-    ln_no_mean = mean(ln_no),
-    ln_nox_mean = mean(ln_nox),
-    ln_nox_sd = sd(ln_nox),
-    ln_nox_LCI = ln_nox_mean - 1.96*ln_nox_sd / sqrt(N),
-    ln_nox_UCI = ln_nox_mean + 1.96*ln_nox_sd / sqrt(N)
-    )
+    summarise(N = length(ln_nox), 
+              ln_no_mean = mean(ln_no),
+              ln_nox_mean = mean(ln_nox),
+              ln_nox_sd = sd(ln_nox),
+              ln_nox_LCI = ln_nox_mean - 1.96*ln_nox_sd / sqrt(N),
+              ln_nox_UCI = ln_nox_mean + 1.96*ln_nox_sd / sqrt(N) 
+              )
 
 ```
 
 
-```{r slide 30: lincom example}
-# Slide 30: lincom type of example-----
+```{r slide30.lincom.example}
+#-----slide30 lincom example----
+
 # Estimate the mean ln(NOx) when ln(NO) is 4
+
 # Get the names to work with (haven't figured out how to do it this way, but the names allow the matrix definition)
-names(coef(snap_int))
+##[CZ: Lianne, I added season rownames and coefficient names to the matrix, K, but wasn't able to figure out the matrix definition from the names either.]
 
 # K is the matrix of contrasts of interest to create the linear combination of
 # the coefficients times the values in K.  First row is summer when ln_no is 4,
 # then same question for fall, then winter
-K <- rbind(c(1,4,0,0,0,0),
-           c(1,4,1,0,4,0),
-           c(1,4,0,1,0,4))
+K <- rbind(summer = c(1,4,0,0,0,0),
+           fall = c(1,4,1,0,4,0),
+           winter = c(1,4,0,1,0,4))
+
+colnames(K) <- names(coef(snap_int))
+
 K
 
 # estimate the summer, fall, winter effects simultaneously
@@ -299,24 +398,25 @@ confint(season_effects)
 
 ## Slide 32:  example residual analysis plots
 
-```{r Slide 32 default residuals}
-# Slide 32 default residuals-------
+```{r slide32.default.residuals}
+#-----Slide32 default residuals----
+
 # IDRE example from https://stats.idre.ucla.edu/r/dae/robust-regression/
 opar <- par(mfrow = c(2,2), oma = c(0, 0, 1.1, 0))
 plot(snap_int, las = 1)
 
 ```
 
-```{r a basic residual plot}
-# a basic residual plot ------
-# first add data to the snapshot data frame
-# requires the modelr package in tidyverse
+```{r a.basic.residual.plot, message=FALSE}
+#-----a basic residual plot----
+
+# first add data to the snapshot data frame with `modlr` functions
 snapshot2 <- snapshot %>%
     add_residuals(snap_int,"resids") %>%
     add_predictions(snap_int,"preds")
 
-# then do a scatterplot
-ggplot(snapshot2,aes(preds,resids)) +
+# then make scatterplot
+ggplot(snapshot2, aes(x = preds, y = resids)) +
     geom_point() +
     geom_abline(slope = 0, intercept = 0) +
     geom_smooth(method = "loess")
@@ -326,28 +426,62 @@ ggplot(snapshot2,aes(preds,resids)) +
 
 ## Slide 35:  Regression for prediction -- starting to replicate Table 4 of Mercer et al Summer
 
-```{r slide 35}
-# slide 35:  replicate the summer model in Table 4----
+```{r slide35}
+#-----slide35----  
+
+# replicate the summer model in Table 4
+
+#[CZ: Lianne, are "cluster", "lat_m" and "long_m" supposed to be omitted from the regression model? If so, should they be omitted from the selected variables? The comment says "only variables of interest" so just trying to limit any confusion. In the chunk below,  I broke these steps up a little bit to be more readable/flexible, but feel free to keep either, in this case it probably isn't so important.]
+
 # First create a summer only dataset with only the variables of interest
 summer <- snapshot %>%
-    dplyr::filter(season==1) %>%
-    dplyr::select(ln_nox,D2A1,A1_50,A23_400,Pop_5000,D2C,Int_3000,D2Comm,cluster,lat_m,long_m)
+    dplyr::filter(season == 1) %>%
+    dplyr::select(ln_nox, D2A1, A1_50, A23_400, Pop_5000, D2C, Int_3000, D2Comm, 
+                  cluster, lat_m, long_m)
 
 # Then run the regression
-summer_mod <- lm(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm, data = summer)
+summer_mod <- lm(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm, 
+                 data = summer)
 
 # Show the results
 summary(summer_mod)
 
 ```
 
+```{r eval=FALSE}
+
+# First create a summer only dataset with only the variables of interest
+
+# specify covariates of interest (omitting outcome variable)
+vars <- c("D2A1", "A1_50", "A23_400", "Pop_5000", "D2C", "Int_3000", "D2Comm")
+
+# create dataframe
+summer <- snapshot %>%
+    dplyr::filter(season == 1) %>%
+    dplyr::select(ln_nox, all_of(vars))
+
+# specify regression formula
+frml <- as.formula(paste("ln_nox ~ ", paste(vars, collapse = "+") ) )
+
+# fit regression model
+summer_mod <- lm(frml, data = summer)
+
+# show the results
+summary(summer_mod)
+
+```
+
+
 
 ## Slide 36:  Regression for prediction:  getting fitted values and SE of mean vs new value PLUS show R2=square of correlation
 
 Resulting correlation should be about .85 to get the estimated R2 of .7252.  
 
-```{r Slide 36: fitted vals + resids}
-# Slide 36: Fitted values + resids----
+```{r slide36}
+#-----slide36 fitted values and residuals----
+
+#[CZ: is there a reason to create a second dataframe "2" when adding predictions & residuals? It is done above too with the snapshot & snapshot2 dataframes]
+
 # Then add the predictions (and the residuals to the dataset)
 summer2 <- summer %>%  
     add_residuals(summer_mod,"resids") %>%
@@ -364,8 +498,9 @@ paste("correlation:  ", r)
 
 ## Slide 37:  Plot of regression with prediction interval, and add alongside the one with the CI
 
-```{r Slide 37: Plots w/ prediction intervals}
-# Slide 37: plots w/ prediction intervals----
+```{r slide37, message=FALSE}
+#-----slide 37: plots w/ prediction intervals----
+
 # in ggplot it is easy to get CIs of fitted lines but more work to get prediction intervals.  We show both here.
 # Note:  add_predictions doesn't also add uncertainty of predictions
 # first get the prediction intervals
@@ -374,15 +509,15 @@ paste("correlation:  ", r)
 # vs. interval="prediction" you will get different values in the created
 # variables "lwr" and "upr" corresponding to the type of interval.  Note: you
 # can't use a dataframe with multiple variables with the same name.
-# 
+ 
 # predict creates the variables fit, lwr, upr
-summer2 <- cbind(summer2,predict(summer_mod,interval="prediction"))
+summer2 <- cbind(summer2, predict(summer_mod, interval = "prediction"))
 
 # get the plotting range
 summer_mod_range <- with(summer2, range(ln_nox, lwr, upr))
 
 # plot with 95% CI on the fitted line, uses default ggplot option
-ggplot(summer2,aes(fit,ln_nox)) +
+ggplot(summer2, aes(x = fit, y = ln_nox)) +
     geom_point() +
     stat_smooth(method = lm, se = TRUE) +
     coord_fixed() +
@@ -390,20 +525,23 @@ ggplot(summer2,aes(fit,ln_nox)) +
     ylim(summer_mod_range) +
     labs(title = "Mercer et al (2011) Table 4 Summer model fit:\npredictions vs. observations (ln(ppb)) and 95% CI", 
          x = "predicted ln(NOx) (ln(ppb))",
-         y = "observed ln(NOx) (ln(ppb))")
+         y = "observed ln(NOx) (ln(ppb))"
+         ) + 
+    theme_bw()
 
 # plot with 95% PI on the fitted line, need extra code to handle this 
 ggplot(summer2, aes(fit)) +
     geom_point(aes(y = ln_nox)) +
-    geom_ribbon(aes(ymin = lwr, ymax = upr),
-                fill = "blue", alpha = 0.2) +
-    geom_line(aes(y = fit), color = "blue", 
-              size = 1) +
+    geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.2) +
+    geom_line(aes(y = fit), color = "blue", size = 1) +
     coord_fixed() +
     xlim(summer_mod_range) + 
-    ylim(summer_mod_range) +labs(title = "Mercer et al (2011) Table 4 Summer model fit:\npredictions vs. observations (ln(ppb)) and 95% PI",
+    ylim(summer_mod_range) + 
+    labs(title = "Mercer et al (2011) Table 4 Summer model fit:\npredictions vs. observations (ln(ppb)) and 95% PI",
          x = "predicted ln(NOx) (ln(ppb))",
-         y = "observed ln(NOx) (ln(ppb))")
+         y = "observed ln(NOx) (ln(ppb))"
+         ) + 
+    theme_bw()
 
 ```
 
