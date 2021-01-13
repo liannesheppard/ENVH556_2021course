@@ -21,7 +21,7 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.  Some reasons for packages:
 # knitr:  kable()
-# tidyverse: multiple data science packages including ggplot, dplyr, readr, broom, tidyr, purr -- only loading those we expect to use
+# tidyverse: multiple data science packages including ggplot, dplyr, readr, broom, tidyr, purrr -- only loading those we expect to use
 # multcomp:  glht
 # car:  linearHypothesis
 pacman::p_load(dplyr, ggplot2, broom, tidyr, purrr, knitr, multcomp, dplyr, modelr, car)  
@@ -266,10 +266,11 @@ summary(lm(ln_nox ~ ln_no, data = snapshot, subset = seasonfac == "3Winter"))
 
 ```
 
+Here's an alternative way to code the season-specific modeling approach using tidyverse.  This allows you to run the regressions for each group in one command.  More code, but these are coding ideas that will generalize to future settings where the number of subsets would make this a much more sensible approach.
 ```{r slide25.dplyr}
 #----slide25.dplyr----
 
-# # dplyr option -- CHRIS: currently not working
+# # dplyr option 
 # Need to load the broom, purrr, & tidyr packages for this approach
 season_mdls <- snapshot %>% 
   
