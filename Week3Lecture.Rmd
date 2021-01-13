@@ -1,7 +1,7 @@
 ---
 title: "Week3Lecture"
-author: "Lianne"
-date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
+author: "Lianne Sheppard"
+date: "Revised for Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
     df_print: paged
@@ -21,10 +21,10 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.  Some reasons for packages:
 # knitr:  kable()
-# tidyverse: multiple data science packages including ggplot, dplyr, readr
+# tidyverse: multiple data science packages including ggplot, dplyr, readr, broom, tidyr, purr -- only loading those we expect to use
 # multcomp:  glht
 # car:  linearHypothesis
-pacman::p_load(dplyr, ggplot2, knitr, multcomp, dplyr, modelr, car)  
+pacman::p_load(dplyr, ggplot2, broom, tidyr, purr, knitr, multcomp, dplyr, modelr, car)  
 ```
 
 ```{r read.data, echo=FALSE, warning=FALSE}
@@ -34,7 +34,9 @@ pacman::p_load(dplyr, ggplot2, knitr, multcomp, dplyr, modelr, car)
 project_path <- getwd()
 
 # create data directory, if needed    
-dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
+dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE) 
+
+# create the path for the Datasets directory
 data_path <- file.path(project_path,"Datasets")
 
 # specify file name and path
@@ -62,7 +64,7 @@ rm(url, file_name, file_path)
 ```
 
 
-This is a companion document to the Week 3 lecture.  Each slide with R code is represented in this document.  (Eventually the lecture will be converted to slides using R Markdown.)
+This is a companion document to the Week 3 lecture.  Each slide with R code is represented in this document.  This document also has a few additional alternative coding options.
 
 ## Slide 10:  Simple regression scatterplot ln_nox on ln_no
 
@@ -106,7 +108,9 @@ confint(nox.fit)
 vcov(nox.fit)
 
 # # "tidy" option for summary, coefficients, and CIs
-# summary_tbl <- tidy(nox.fit, conf.int = TRUE, conf.level = 0.95)
+# from the broom package
+summary_tbl <- tidy(nox.fit, conf.int = TRUE, conf.level = 0.95)
+summary_tbl
 
 ```
 
@@ -126,7 +130,7 @@ table(snapshot$seasonfac,snapshot$season)
 
 ```
 
-##Slide 19
+## Slide 19
 
 ```{r slide19}
 #-----slide19----
@@ -140,7 +144,9 @@ margin.table(model.matrix(nox.aov), 2)
 
 ```
 
-## Slide 20:  add means of ln_nox by season
+## Slide 20:  add means of ln_nox by season 
+
+For example of interpreting dummy variables
 
 ```{r slide20}
 #-----slide20----
@@ -148,11 +154,11 @@ margin.table(model.matrix(nox.aov), 2)
 # Simple row of means of ln_nox by season
 round(tapply(snapshot$ln_nox, snapshot$seasonfac, mean), 2)
 
-# # dplyr option (consistent, but maybe not better here?)
-# snapshot %>% 
-#     group_by(seasonfac) %>% 
-#     summarise(mean(ln_nox), .groups = "drop") %>% 
-#     mutate_if(is.numeric, round, 2)
+# # dplyr option (same results, output is formatted differently)
+snapshot %>% 
+    group_by(seasonfac) %>% 
+    summarise(mean(ln_nox), .groups = "drop") %>% 
+    mutate_if(is.numeric, round, 2)
 
 # full table of N, means & sd of ln_nox by season, dplyr option
 snapshot %>%
@@ -231,7 +237,7 @@ full_join(summary_stats(summary_var = ln_nox),
 ```{r slide23, message=FALSE}
 #-----slide23----
 
-#ggplot with separate colors and lines by season
+# ggplot with separate colors and lines by season
 ggplot(snapshot, mapping = aes(x = ln_no, y = ln_nox, color = seasonfac)) +
     geom_point(alpha = .4, size=.7) +
     stat_smooth(method = lm, se=FALSE) +
@@ -253,42 +259,45 @@ Summarize each season-specific model
 ```{r slide25}
 #-----slide25----
 
-# season-specific regression
+# season-specific regressions, as shown on slide (only subset of output)
 summary(lm(ln_nox ~ ln_no, data = snapshot, subset = seasonfac == "1Summer"))
 summary(lm(ln_nox ~ ln_no, data = snapshot, subset = seasonfac == "2Fall"))
 summary(lm(ln_nox ~ ln_no, data = snapshot, subset = seasonfac == "3Winter"))
 
+```
 
-# # dplyr option 
-# # (Lianne - this is a lot more code, but I didn't see how you were using the 
-# # output in the slides -  e.g. getting coefficients, etc. feel free to remove. 
-# # If keeping, add `broom` to package loading)
-# season_mdls <- snapshot %>% 
-#   
-#   # group by season
-#   group_by(seasonfac) %>%
-#   
-#   # nest the tibble
-#   nest() %>% 
-#   
-#   # run regression model for each group, clean up with `tidy()`
-#   mutate(model = map(data, ~lm(ln_nox ~ ln_no, data = .x)),
-#          summary = map(model, summary),
-#          tidied = map(model, tidy) 
-#          ) %>% 
-#   
-#   # unnest
-#   unnest(tidied)
-# 
-# # show seasonal model summaries
-# season_mdls$summary
+```{r slide25.dplyr, eval = FALSE}
+#----slide25.dplyr----
+
+# # dplyr option -- CHRIS: currently not working
+# Need to load the broom, purr, & tidyr packages for this approach
+season_mdls <- snapshot %>% 
+  
+  # group by season
+  group_by(seasonfac) %>%
+  
+  # nest the tibble
+  nest() %>% 
+  
+  # run regression model for each group, clean up with `tidy()`
+  mutate(model = map(data, ~lm(ln_nox ~ ln_no, data = .x)),
+         summary = map(model, summary),
+         tidied = map(model, tidy) 
+         ) %>% 
+  
+  # unnest
+  unnest(tidied)
+ 
+# show seasonal model summaries
+season_mdls$summary
+
 ```
 
 
-## Slide 25:  Season-adjusted regression
+## Slide 26:  Season-adjusted regression
 
-```{r slide25.season.adjusted}
-#-----slide25 season adjusted----
+```{r slide26.season.adjusted}
+#-----slide26 season adjusted----
 
 # season-adjusted regression
 nox.fit.seasadj <-lm(ln_nox ~ ln_no + seasonfac, data = snapshot)
@@ -299,7 +308,9 @@ confint(nox.fit.seasadj)
 ```
 
 
-## Slide 27:  Be aware of coding -- season as cts variable
+## Slide 27:  Be aware of coding! 
+
+Season as a continuous variable
 
 
 ```{r slide27}
@@ -317,7 +328,7 @@ summary(lm(ln_nox ~ ln_no + season, data = snapshot))
 
 ## Slide 29:  Interaction model
 
-Need to load the `car` package for the `linearHypothesis` command.  It masks at least one object from several other packages, so don't load if you don't need it.
+Need to load the `car` package for the `linearHypothesis` command.  It masks at least one object from several other packages, so don't load if you don't need it.  You can explicitly tell R which package to use with the "packagename::" prefix to a function or object.
 
 ```{r slide29}
 #-----slide29----
@@ -373,14 +384,16 @@ snapshot %>%
 
 # Estimate the mean ln(NOx) when ln(NO) is 4
 
-# Get the names to work with (haven't figured out how to do it this way, but the names allow the matrix definition)
-##[CZ: Lianne, I added season rownames and coefficient names to the matrix, K, but wasn't able to figure out the matrix definition from the names either.]
+# Show the coefficient names.  Their order is needed for the K matrix definition
+# so we know which values go in which column
+names(coef(snap_int))
 
 # K is the matrix of contrasts of interest to create the linear combination of
-# the coefficients times the values in K.  First row is summer when ln_no is 4,
-# then same question for fall, then winter
+# the coefficients times the values in K.  Each row is for a contrast of
+# interest.  The values in the rows are ordered by the coefficients. First row
+# is summer when ln_no is 4, then same question for fall, then winter
 K <- rbind(summer = c(1,4,0,0,0,0),
-           fall = c(1,4,1,0,4,0),
+           fall   = c(1,4,1,0,4,0),
            winter = c(1,4,0,1,0,4))
 
 colnames(K) <- names(coef(snap_int))
@@ -430,26 +443,6 @@ ggplot(snapshot2, aes(x = preds, y = resids)) +
 #-----slide35----  
 
 # replicate the summer model in Table 4
-
-#[CZ: Lianne, are "cluster", "lat_m" and "long_m" supposed to be omitted from the regression model? If so, should they be omitted from the selected variables? The comment says "only variables of interest" so just trying to limit any confusion. In the chunk below,  I broke these steps up a little bit to be more readable/flexible, but feel free to keep either, in this case it probably isn't so important.]
-
-# First create a summer only dataset with only the variables of interest
-summer <- snapshot %>%
-    dplyr::filter(season == 1) %>%
-    dplyr::select(ln_nox, D2A1, A1_50, A23_400, Pop_5000, D2C, Int_3000, D2Comm, 
-                  cluster, lat_m, long_m)
-
-# Then run the regression
-summer_mod <- lm(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm, 
-                 data = summer)
-
-# Show the results
-summary(summer_mod)
-
-```
-
-```{r eval=FALSE}
-
 # First create a summer only dataset with only the variables of interest
 
 # specify covariates of interest (omitting outcome variable)
@@ -480,15 +473,15 @@ Resulting correlation should be about .85 to get the estimated R2 of .7252.
 ```{r slide36}
 #-----slide36 fitted values and residuals----
 
-#[CZ: is there a reason to create a second dataframe "2" when adding predictions & residuals? It is done above too with the snapshot & snapshot2 dataframes]
+#Note:  Dropping the use of a new "summer2" dataframe as not needed.  Slides introduce a new data frame
 
 # Then add the predictions (and the residuals to the dataset)
-summer2 <- summer %>%  
+summer <- summer %>%  
     add_residuals(summer_mod,"resids") %>%
     add_predictions(summer_mod,"preds")
 
 # and estimate the correlation
-r <- cor(summer2$preds, summer2$ln_nox)
+r <- cor(summer$preds, summer$ln_nox)
 insamp_R2 <- r^2
 paste("In-sample R2:  ", insamp_R2)
 paste("correlation:  ", r)
@@ -511,7 +504,7 @@ paste("correlation:  ", r)
 # can't use a dataframe with multiple variables with the same name.
  
 # predict creates the variables fit, lwr, upr
-summer2 <- cbind(summer2, predict(summer_mod, interval = "prediction"))
+summer2 <- cbind(summer, predict(summer_mod, interval = "prediction"))
 
 # get the plotting range
 summer_mod_range <- with(summer2, range(ln_nox, lwr, upr))
