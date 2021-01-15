@@ -1,0 +1,263 @@
+---
+title: "Week 2 Lecture Code"
+author: "Chris Zuidema"
+date: "Revised for Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+#-----setup----
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# Load pacman into memory, installing as needed
+my_repo <- 'http://cran.r-project.org'
+if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
+
+# Load the other packages, installing as needed.  Some reasons for packages:
+pacman::p_load(dplyr, tidyr, ggplot2, egg, EnvStats, NADA)  
+
+# set working directory
+work_dir <- getwd()
+
+# make a figure list
+figs <- list()
+```
+
+
+```{r read.DEMS}
+#-----read DEMS-----
+
+DEMS <- readRDS(file.path(work_dir, "Datasets", "DEMSCombinedPersonal.rds")) %>% 
+  as_tibble() %>% 
+  mutate(constant = " ", 
+         ln_nodata = log(nodata))
+
+```
+
+
+```{r NO.histogram}
+#-----NO histogram-----
+
+figs[["no_hist"]] <- ggplot(DEMS, aes(x = nodata)) + 
+  geom_histogram(aes(y =..density..), bins = 40) + 
+  scale_y_continuous(expand = expansion(mult = c(0, .1))) + 
+  labs(x = "NO (ppm)", y = "Density") +
+  theme_classic()
+
+```
+
+
+```{r NO.boxplot}
+#-----boxplot-----
+
+figs[["no_box"]] <- ggplot(DEMS, aes(x = constant, y = nodata)) + 
+  geom_boxplot(outlier.shape = "o", outlier.alpha = 0.4) + 
+  labs(x = " ", y = "NO (ppm)") + 
+  theme_classic() + 
+  theme(axis.ticks.x = element_blank())
+
+```
+
+
+```{r hist.box.plots, include=FALSE}
+#-----hist.box plots-----
+
+# this was a Week 1 Lecture figure
+
+# combine histogram and boxplot
+figs[["no_hist_box"]] <- ggarrange(figs[["no_hist"]], 
+                                   figs[["no_box"]], 
+                                   widths = c(3,1) )
+
+```
+
+
+```{r ln.no.histogram}
+#-----ln(no) histogram-----
+
+# create dataframe for normal density plot
+df_norm <- with(DEMS %>% filter(is.finite(ln_nodata)), 
+                tibble(x = seq(min(ln_nodata), max(ln_nodata), 
+                               length.out = length(ln_nodata) ), 
+                       y = dnorm(x, mean(ln_nodata), sd(ln_nodata)) ) 
+                )
+
+# create plot
+figs[["ln_no_hist"]] <- ggplot(DEMS, aes(x = ln_nodata)) + 
+  geom_histogram(aes(y =..density..), bins = 40) + 
+  #geom_density() +
+  geom_line(data = df_norm, aes(x = x, y = y), color = "red") +
+  scale_y_continuous(expand = expansion(mult = c(0, .1))) + 
+  labs(x = "ln(NO) ln(ppm)", y = "Density") +
+  theme_classic()
+
+```
+
+
+## Slide 5
+
+```{r combine.histos}
+#-----combine histos-----
+
+figs[["no_histos"]] <- ggarrange(figs[["no_hist"]], figs[["ln_no_hist"]], ncol = 2) 
+
+```
+
+
+## Slide 11
+
+```{r lognormal.histogram}
+#-----lognormal histogram
+
+# create data
+set.seed(802)
+df_lognormal <- tibble(value = rlnorm(1000, meanlog = 6, sdlog = 0.5))
+
+
+figs[["example_lognorm"]] <- ggplot(df_lognormal, aes(x = value)) + 
+  geom_histogram() + 
+  scale_y_continuous(expand = expansion(mult = c(0, .1))) + 
+  labs(x = "Value", "Count") +
+  theme_classic()
+
+figs[["example_lognorm"]]
+```
+
+
+## Slide 12
+
+```{r lognormal.stats}
+#-----lognormal stats-----
+
+# calculate stats
+EnvStats::elnormAlt(df_lognormal$value, method = "mvue", ci = TRUE, 
+                    ci.type = "two-sided", ci.method = "cox", conf.level = 0.95)
+
+```
+
+
+```{r q.q.plot.no}
+#-----q-q plot no-----
+
+figs[["no_qq"]] <- ggplot(DEMS, aes(sample = nodata)) + 
+  stat_qq(shape = "o", alpha = 0.4) + 
+  stat_qq_line() + 
+  labs(title = "NO (ppm)") + 
+  theme_classic()
+
+```
+
+
+```{r q.q.plot.ln.no}
+#-----q-q plot ln(no)-----
+
+figs[["ln_no_qq"]] <- ggplot(DEMS, aes(sample = ln_nodata)) + 
+  stat_qq(shape = "o", alpha = 0.4) + 
+  stat_qq_line() + 
+  labs(title = "ln(NO) ln(ppm)") + 
+  theme_classic()
+
+```
+
+
+## Slide 15
+
+```{r combine.qq.plots}
+#-----combine qq plots-----
+
+figs[["no_qqs"]] <- ggarrange(figs[["no_qq"]], figs[["ln_no_qq"]], ncol = 2)
+
+```
+
+
+## Slide 18
+
+```{r q.q.plot.with.substituted.data}
+#-----q-q plot with substituted data-----
+
+# create normal distribution
+set.seed(802)
+temp <- tibble(normal = rnorm(n = 100, mean = 10, sd = 5) ) %>% 
+  mutate(substituted = if_else(normal < 2, 2, normal)) %>% 
+  pivot_longer(everything()) %>% 
+  mutate(name = factor(name, levels = c("normal", "substituted")))
+
+# make plot
+figs[["qq_substituted"]] <- ggplot(temp, aes(sample = value)) + 
+  facet_wrap(~name) + 
+  stat_qq(shape = "o", alpha = 0.6) + 
+  stat_qq_line() + 
+  labs(title = "Random Normal Data (N = 100, mean = 10, sd = 5)\n
+       substituted: values < 2 set equal to 2") + 
+  theme_bw()
+
+figs[["qq_substituted"]]
+```
+
+
+## Slide 20
+
+```{r show qq.ln.no}
+#-----show qq ln no-----
+
+figs[["ln_no_qq"]]
+```
+
+
+## Slide 22
+
+```{r distribution.with.LOD.missingness}
+#-----distribution with < LOD missingness-----
+
+# specify LOD
+lod <- 400
+
+# create dataframe
+set.seed(802)
+df_lod <- tibble(full = rlnorm(1000, meanlog = 6, sdlog = 0.5)) %>% 
+  mutate(censored = ifelse(full < lod, NA, full), 
+         censor_flag = ifelse(is.na(censored), TRUE, FALSE))
+
+# estimate distribution parameters with `NADA` package
+with(df_lod, NADA::cenmle(full, censor_flag))
+
+# estimate distribution parameters with `EnvStats` package
+with(df_lod, EnvStats::elnormCensored(full, censor_flag))
+
+```
+
+
+```{r plot.LOD.distribution}
+#-----plot LOD distribution
+
+# plot lod data
+temp <- df_lod %>% 
+  pivot_longer(cols = c("full", "censored")) %>% 
+  mutate(name = factor(name, levels = c("full", "censored") ))
+
+# make plot
+figs[["example_LOD"]] <- ggplot(temp, aes(x = value, fill = name)) + 
+  geom_histogram(boundary = lod, bins = 50, position="identity") + 
+  #geom_density() + 
+  scale_y_continuous(expand = expansion(mult = c(0, .1))) + 
+  #labs(x = "Value") +
+  theme_classic()
+
+figs[["example_LOD"]]
+```
+
+## Slide 25
+
+```{r no.boxplot.by.facility}
+#-----no boxplot by facility-----
+
+figs[["no_box_facility"]] <- ggplot(DEMS, aes(x = facilityid, y = nodata)) + 
+  geom_boxplot(outlier.shape = "o", alpha = 0.6) + 
+  labs(x = "Facility", y = "NO (ppm)") +
+  theme_classic()
+
+figs[["no_box_facility"]]
+```
