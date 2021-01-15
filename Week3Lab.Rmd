@@ -1,51 +1,80 @@
 ---
 title: 'Week 3 Lab:  Regression for Association'
 author: "Lianne Sheppard for ENVH 556"
-date: "Winter 2019; Updated `r format(Sys.time(), '%d %B, %Y')`"
+date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
 output: 
     html_document:
+        df_print: "paged"
         toc: true
         toc_depth: 3
         number_sections: true
 ---
 
-<!--Basic document set-up goes here  -->
 ```{r setup, include=FALSE}
-#-------------r.setup-------------
+#-----setup-----
+
+# set knitr options
 knitr::opts_chunk$set(echo = TRUE)
+
+# clear work space of all objects and unload all extra (non-base) packages
+rm(list = ls(all = TRUE))
+if (!is.null(sessionInfo()$otherPkgs)) {
+    res <- suppressWarnings(
+        lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
+               detach, character.only=TRUE, unload=TRUE, force=TRUE))
+   
+}
+
 ```
 
 ```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
-#----------------load.libraries.pacman
+#-----load libraries pacman-----
+
 # Load pacman into memory, installing as needed
 my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.  Some reasons for packages:
-# knitr:  kable()
-# ggplot2: part of tidyverse
-# readr: part of tidyverse
-# dplyr: part of tidyverse
-# multcomp:  glht
-# modelr:  part of tidyverse and need for add_predictions and add_residuals
-pacman::p_load(tidyverse, knitr, mutlcomp, dplyr, modelr)  
+pacman::p_load(knitr, dplyr, ggplot2, egg, multcomp, modelr)
+
 ```
 
-```{r read.data, echo=FALSE}
-#-----------read.data-----------------
-#-getwd
-    ProjectPath <- getwd()
-#-dir.create    
-    dir.create(file.path(ProjectPath,"Datasets"),     showWarnings=FALSE, recursive = TRUE)
-    datapath<-file.path(ProjectPath,"Datasets")
-#-read.data
-snapshot<-readRDS(file.path(datapath,"allseasonsR.rds"))
+```{r directory.organization.read.data, echo=FALSE, warning=FALSE}
+#-----directory organization and read data-----
+
+# specify working directory
+project_path <- getwd()
+
+# create "Datasets" directory if one does not already exist    
+dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
+
+# specify data path
+data_path <- file.path(project_path,"Datasets")
+
+# specify the file name and path
+file_name <- "allseasonsR.rds"
+file_path <- file.path(data_path, file_name)
+
+# Download the file if it is not already present
+if (!file.exists(file_path)) {
+    url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
+                 file_name, sep = '/')
+    download.file(url = url, destfile = file_path)
+}
+
+# Output a warning message if the file cannot be found
+if (file.exists(file_path)) {
+    snapshot<-readRDS(file_path)
+} else warning(paste("Can't find", file_name, "!"))
+
+# remove temporary variables
+rm(url, file_name, file_path, data_path)
 
 ```
 
 # Purpose
 
-The purpose of this lab is to get practice using and reporting regression models with a focus on regression for association and some beginning work on regression for prediction.   We will use the snapshot data for this lab.
+The purpose of this lab is to get practice using and reporting regression models with a focus on regression for association and some beginning work on regression for prediction.   We will use the ACT snapshot data for this lab.
 
 # Getting Started
 
@@ -54,81 +83,93 @@ This section gives some basic R commands for regression for association and the 
 * Summarizing *ln_nox* by season  
 
 ```{r summarize.ln_nox}
-#-------------summarize.ln_nox
+#-----summarize ln_nox-----
+
 # frequencies only
 summary(snapshot$seasonfac)
 
-# then means and SDs by season
-#cbind( 
-#    N=tapply(snapshot$ln_nox,snapshot$seasonfac,length),
-#    mean=round(tapply(snapshot$ln_nox,snapshot$seasonfac,mean),2),
- #   sd=round(tapply(snapshot$ln_nox,snapshot$seasonfac,sd),2))
-
-# tidyverse alternative presenting GM and GSD of NOx instead
+# descriptive statistics
 snapshot_summary <- snapshot %>%     
     group_by(seasonfac) %>%
-    dplyr::summarize(
-    N = n(),
-    GM = exp(mean(ln_nox)),
-    GSD = exp(sd(ln_nox))
-    ) 
+    summarise(N = n(),
+              Mean = mean(ln_nox), 
+              SD = sd(ln_nox),
+              GM = exp(mean(ln_nox)), 
+              GSD = exp(sd(ln_nox)), 
+              .groups = "drop")
+
+# kable table
 kable(snapshot_summary, digits=2)
 
 ```
 
 * Commands for season-specific boxplots:
 ```{r season-specific boxplots}
-# season-specific boxplots -------
-ggplot(snapshot, aes(x=seasonfac, y=ln_nox, fill=seasonfac)) +
-           geom_boxplot() +
-           labs(x="Season", y="ln(NOx) (ln(ppb)", color="Season", fill="Season")
+#-----season-specific boxplots-----
+
+ggplot(snapshot, aes(x = seasonfac, y = ln_nox, fill = seasonfac)) +
+    geom_boxplot() +
+    labs(x = "Season", 
+         y = "ln(NOx) (ln(ppb)", 
+         color = "Season", 
+         fill = "Season") + 
+    theme_article()
        
 ```
 
 * Commands for regression: 
 
 ```{r regression for association}
-# regression for association ------
+#-----regression for association-----
+
 # Common model (Table 4), season-specific LUR
 
-summary( lm_summer <-
-    lm(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
-       data = snapshot,
-       subset = seasonfac=="1Summer"))
-summary( lm_fall <-
-    lm(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
-       data = snapshot,
-       subset = seasonfac=="2Fall"))
-summary( lm_winter <- 
-    lm(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
-       data = snapshot,
-       subset = seasonfac=="3Winter"))
+# specify regression model
+frml <- as.formula(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm)
+
+# summarize the fit of each model
+summary(lm_summer <- lm(frml, data = snapshot, subset = seasonfac == "1Summer"))
+summary(lm_fall <- lm(frml, data = snapshot, subset = seasonfac == "2Fall"))
+summary(lm_winter <- lm(frml, data = snapshot, subset = seasonfac == "3Winter"))
 
 ```
 
 * Making predictions:
 
-This gives seson-specific predictions in the dataset with all seasons.
+This gives season-specific predictions in the dataset with all seasons.
 
-```{r predictions with dplyr}
-# predictions dplyr -----------
-# dplyr approach
-# this adds model-specifc predictions, both in-sample and out-of-sample
+```{r predictions.with.dplyr}
+#-----predictions with dplyr-----
+
+# this adds model-specific predictions, both in-sample and out-of-sample
 # however, we don't get the prediction intervals or SEs this way
-snap2 <- snapshot %>%  
+snap2 <- snapshot %>% 
+  
+    # summer
     add_residuals(lm_summer,"resids_sum") %>%
     add_predictions(lm_summer,"preds_sum") %>%
+    
+    # fall
     add_residuals(lm_fall,"resids_fall") %>%
     add_predictions(lm_fall,"preds_fall") %>%
+    
+    # winter
     add_residuals(lm_winter,"resids_win") %>%
     add_predictions(lm_winter,"preds_win")
+
+# inspect predictions and residuals
+snap2 %>% 
+  dplyr::select(ln_nox, preds_sum, resids_sum, preds_fall, resids_fall, 
+                preds_win, resids_win) %>% 
+  mutate_if(is.double, round, 3)
 
 ```
 
 Now we add prediction intervals:
 
 ```{r in-sample prediction intervals}
-# in-sample prediction intervals--------
+#-----in-sample prediction intervals-----
+
 # first get the prediction interval for each season and bind it to the
 # season-specific subset of the full dataset
 # NOTE:  We are assuming the two datasets are in the same order when we cbind!
@@ -141,18 +182,18 @@ summer <- cbind(snapshot[snapshot$season==1,],predict(lm_summer,interval="predic
 fall <- cbind(snapshot[snapshot$season==2,],predict(lm_fall,interval="prediction"))
 winter <- cbind(snapshot[snapshot$season==3,],predict(lm_winter,interval="prediction"))
 
-# then combine the dataset into one big one
-allseas_in <- rbind(summer, fall, winter)
+# then combine the dataset into one big tibble
+allseas_in <- rbind(summer, fall, winter) %>% as_tibble()
 
 # now use dplyr to rename the predictions (the predict function gives default
 # variable names)
-allseas_in <- dplyr::rename(as_tibble(allseas_in), pred_in = fit, lwr_in = lwr, upr_in = upr)
-
+allseas_in <- rename(allseas_in, pred_in = fit, lwr_in = lwr, upr_in = upr)
 
 ```
 
 ```{r out-of-sample predictions}
-# out-of-sample predictions--------
+#-----out-of-sample predictions-----
+
 # This example produces out-of-sample season-specific prediction intervals using
 # the previous season to predict the next one.  (Note you should think carefully
 # from a scientific perspective about how to approach out-of-sample predictions
@@ -160,31 +201,22 @@ allseas_in <- dplyr::rename(as_tibble(allseas_in), pred_in = fit, lwr_in = lwr, 
 
 # get the prediction interval for each season 
 fall_preds_from_summer <- 
-    predict(lm_summer,
-            snapshot[snapshot$season==2,], 
-            interval="prediction")
-winter_preds_from_fall <- predict(lm_fall, 
-                snapshot[snapshot$season==3,], 
-                interval="prediction")
+  predict(lm_summer, snapshot[snapshot$season == 2,], interval = "prediction")
+
+winter_preds_from_fall <- 
+  predict(lm_fall, snapshot[snapshot$season == 3,], interval = "prediction")
+
 summer_preds_from_winter <- 
-    predict(lm_winter, 
-            snapshot[snapshot$season==1,],
-            interval="prediction")
+  predict(lm_winter, snapshot[snapshot$season == 1,], interval = "prediction")
 
-# then combine the dataset into one big one
-allseas_out <- rbind(summer_preds_from_winter,
+# then combine the dataset into one big tibble and rename variables
+allseas_out <- rbind(summer_preds_from_winter, 
                      fall_preds_from_summer,
-                     winter_preds_from_fall)
+                     winter_preds_from_fall) %>% 
+  as_tibble() %>% 
+  rename(pred_out = fit, lwr_out = lwr, upr_out = upr)
 
-# now use dplyr to rename the predictions
-allseas_out <-
-    dplyr::rename(as_tibble(allseas_out),
-        pred_out = fit,
-        lwr_out = lwr,
-        upr_out = upr
-        )
-    
-# and bind it to the previous dataset
+# Bind "out" predictions to the previous dataset with "in" sample predictions
 # NOTE:  We assume the datasets are in the same order!
 allseas_both <- cbind(allseas_in, allseas_out)
 
@@ -193,48 +225,65 @@ allseas_both <- cbind(allseas_in, allseas_out)
 Now evaluate the quality of the predictions.  This is based on correlation between the prediction and the outcome.  It is the R^2^ for the best fit line of the relationship between the predictions and the data (*ln_nox* here).  It does not account for the systematic bias in the predictions.  Next week we will learn how to compute R^2^ about the 1:1 line which also addresses the systematic bias of the predictions.
 
 ```{r prediction assessment}
-# prediction assessment -----
+#-----prediction assessment-----
+
 # summer in-sample
 paste("summer in-sample R2:  ", 
-      with( subset(allseas_both, season==1), 
-      cor(ln_nox, pred_in))^2) 
+      with(subset(allseas_both, season == 1), round(cor(ln_nox, pred_in)^2, 3))) 
 
 # summer out-of-sample (from winter model)
 paste("summer out-of-sample R2 (from winter model):  ", 
-      with( subset(allseas_both, season==1), 
-      cor(ln_nox, pred_out))^2)
+      with(subset(allseas_both, season == 1), round(cor(ln_nox, pred_out)^2,3)))
 
 ```
 
 Let's look at what we mean by R^2^ about the best fit line by plotting the data we correlated above and incorporating the best fit lines.
 
-```{r}
+```{r summer.in.and.out.sample, message=FALSE}
+#-----summer in and out of sample-----
+
 # plot the predictions vs. data for summer, both in-sample and out of sample
+
+# get range of plots
+r <- allseas_both %>% 
+  filter(season == 1) %>% 
+  dplyr::select(pred_in, pred_out, ln_nox) %>% 
+  range()
+
 # in-sample plot
-allseas_both %>%
-    filter(season==1) %>%
-    ggplot(aes(x=pred_in, y=ln_nox)) +
+p_in <- allseas_both %>%
+    filter(season == 1) %>%
+    ggplot(aes(x = pred_in, y = ln_nox)) +
     geom_point() +
+    lims(x = c(r[1], r[2]), y = c(r[1], r[2]) ) +
     coord_fixed() +
     geom_abline(intercept = 0, slope = 1, color = "blue") +
     geom_smooth(method = "lm", se = FALSE, color = "red") +
-    labs(title = "Summer model in-sample predictions vs. ln(NOx)", 
+    labs(title = "In-sample", 
          x = "In-sample predicted ln(NOx) (ln(ppb))",
-         y = "Observed ln(NOx) (ln(ppb))",
-         caption = "Best fit line is red; 1:1 line is blue")
+         y = "Observed ln(NOx) (ln(ppb))"
+         ) + 
+    theme_bw()
  
 # out-of-sample plot (predictions from the winter model)
-allseas_both %>%
-    filter(season==1) %>%
+p_out <- allseas_both %>%
+    filter(season == 1) %>%
     ggplot(aes(x=pred_out, y=ln_nox)) +
     geom_point() +
+    lims(x = c(r[1], r[2]), y = c(r[1], r[2]) ) +
     coord_fixed() +
     geom_abline(intercept = 0, slope = 1, color = "blue") +
     geom_smooth(method = "lm", se = FALSE, color = "red") +
-    labs(title = "Summer model out-of-sample predictions \n(from winter model) vs. ln(NOx)", 
+    labs(title = "Out-of-sample (from winter model)", 
          x = "Out-of-sample predicted ln(NOx) (ln(ppb))",
-         y = "Observed ln(NOx) (ln(ppb))",
-         caption = "Best fit line is red; 1:1 line is blue")
+         y = "Observed ln(NOx) (ln(ppb))"
+         ) + 
+    theme_bw()
+
+# combine plots
+ggarrange(p_in, p_out, ncol = 2, 
+          top = "Summer Model ln(NOx) Predictions", 
+          bottom = "Best fit line is red; 1:1 line is blue")
 
 ```
 
@@ -244,11 +293,11 @@ This section covers basic practice to be completed during the lab.
 Perform the following tasks: 
 
 1.	Set up/decide your project for this lab.  
-2.	Read in the snapshot data and get some basic understanding of its structure.  See the lecture `.Rmd` file for some options 
+2.	Read in the snapshot data and get some basic understanding of its structure.  See the lecture `.Rmd` file for some options. 
 3.	Summarize *ln_nox*, the outcome variable of interest     
     a.	Summarize by season    
     b.	Can you produce a nice summary figure of the data?  Should they be on the log or the native scale?  Is it useful to put multiple pollutants (NO, NOx, NO2) in the same figure?  
-4.	Replicate the season-specific models in Table 4 of Mercer et al, 2011.  (Only focus on the LUR model results.  We’ll talk about cross-validation in an upcoming week so recognize your R^2^ should be a bit bigger and your RMSE should be a bit smaller than the values in the paper.)  
+4.	Replicate the season-specific models in Table 4 of [Mercer et al, 2011](https://doi.org/10.1016/j.atmosenv.2011.05.043).  (Only focus on the LUR model results.  We’ll talk about cross-validation in an upcoming week so recognize your R^2^ should be a bit bigger and your RMSE should be a bit smaller than the values in the paper.)  
     a.	Compare your coefficient estimates and standard errors, as well as LUR R^2^ and sample size.  (Note:  You may need to consider rounding in your comparison.)  
     b.	Are all your terms parameterized the same as they are in the paper?  
 5.	Use the fall model to predict ln_nox in summer and vice versa.    
@@ -260,19 +309,33 @@ Perform the following tasks:
 
 1.	Describe the NOx variable.  Develop one figure and one table to best capture your data and then write a paragraph describing what these show.  (Doing both is for practice.  In a peer-reviewed paper you will ordinarily only show one of these.)  In the table, you may find it helpful to also include information on the covariates you use in your model(s) in this lab.    
 2.	Using the terminology given in lecture, briefly discuss the fall season common LUR model results.  Include in your discussion an interpretation for at least two terms in the fall season model.   
-3.	Focusing on the common models in Table 4 of Mercer et al, think about how to use the data from all seasons at once to get season-specific parameter estimates.   What terms do you need to incorporate the interactions?   
+3.	Focusing on the common models in Table 4 of [Mercer et al, 2011](https://doi.org/10.1016/j.atmosenv.2011.05.043), think about how to use the data from all seasons at once to get season-specific parameter estimates.   What terms do you need to incorporate the interactions?   
     a.  How is your interaction model different from fitting three separate season-specific models?
 4.	Make table(s) and/or figure(s) summarizing your results for practice exercise 5.  Discuss.  
 
 #Appendix
 
 ```{r session.info}
-#-----------------session.info: beginning of Appendix -----------------
-#This allows reproducibility by documenting the version of R and every package you used.
+#-----session information----
+
+# print R session information
 sessionInfo()
+
 ```
 
-```{r appendix.code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
+```{r code.appendix, ref.label = knitr::all_labels(), echo = TRUE, eval = FALSE, , include=TRUE}
+#-----code appendix----
+```
+
+```{r functions, eval = TRUE}
+#-----functions----
+
+# Show the names of all functions defined in the .Rmd
+# (e.g. loaded in the environment)
+lsf.str()
+
+# Show the definitions of all functions loaded into the current environment  
+lapply(c(lsf.str()), getAnywhere)
 
 ```
 
