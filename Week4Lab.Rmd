@@ -1,7 +1,7 @@
 ---
-title: 'Week 4 Lab:  Regression for Prediction'
+title: 'Week 4 Lab: Regression for Prediction'
 author: "Lianne Sheppard for ENVH 556"
-date: "Winter 2019; Updated `r format(Sys.time(), '%d %B, %Y')`"
+date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
 output: 
     html_document:
         fig_caption: yes
@@ -12,53 +12,65 @@ editor_options:
   chunk_output_type: console
 ---
 
-<!--Basic document set-up goes here  -->
-
 ```{r setup, include=FALSE}
-#-------------r.setup-------------
+#-----setup-----
+
+# set knitr options
 knitr::opts_chunk$set(echo = TRUE)
+
+# clear work space of all objects and unload all extra (non-base) packages
+rm(list = ls(all = TRUE))
+if (!is.null(sessionInfo()$otherPkgs)) {
+    res <- suppressWarnings(
+        lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
+               detach, character.only=TRUE, unload=TRUE, force=TRUE))
+   
+}
+
 ```
 
 ```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
-#----------------load.libraries.pacman----
+#-----load libraries pacman-----
+
 # Load pacman into memory, installing as needed
 my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
-# Load the other packages, installing as needed.  Some reasons for packages:
-# knitr:  kable()
-# ggplot2: part of tidyverse
-# readr: part of tidyverse
-# dplyr: part of tidyverse
-# multcomp:  glht
-# modelr:  part of tidyverse and need for add_predictions and add_residuals
-# boot:  cv tools are available
-# Hmisc:  describe
-pacman::p_load(tidyverse, knitr, multcomp, dplyr, modelr, Hmisc)  
+# Load the other packages, installing as needed.
+pacman::p_load(knitr, dplyr, ggplot2, egg, multcomp, modelr)
+
 ```
 
-```{r read.data.from.a.web.site, eval=TRUE, echo=FALSE}
-#-----read.data.from.a.web.site--------
-# Download the data file from a web site if it is not already downloaded, then
-# read in the file
+```{r directory.organization.read.data, echo=FALSE, warning=FALSE}
+#-----directory organization and read data-----
 
-datapath <- "Datasets"
-dir.create(datapath, showWarnings=FALSE, recursive = TRUE)
+# specify working directory
+project_path <- getwd()
 
-snapshot.file <- "allseasonsR.rds"
-snapshot.path <- file.path(datapath, snapshot.file)
+# create "Datasets" directory if one does not already exist    
+dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
 
-# Only download the file if it's not already present
-if (!file.exists(snapshot.path)) {
+# specify data path
+data_path <- file.path(project_path,"Datasets")
+
+# specify the file name and path
+file_name <- "allseasonsR.rds"
+file_path <- file.path(data_path, file_name)
+
+# Download the file if it is not already present
+if (!file.exists(file_path)) {
     url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
-                 snapshot.file, sep = '/')
-    download.file(url = url, destfile = snapshot.path)
+                 file_name, sep = '/')
+    download.file(url = url, destfile = file_path)
 }
 
 # Output a warning message if the file cannot be found
-if (file.exists(snapshot.path)) {
-    snapshot <- readRDS(file = snapshot.path)
-} else warning(paste("Can't find", snapshot.file, "!"))
+if (file.exists(file_path)) {
+    snapshot<-readRDS(file_path)
+} else warning(paste("Can't find", file_name, "!"))
+
+# remove temporary variables
+rm(url, file_name, file_path, data_path)
 
 ```
 
