@@ -116,7 +116,7 @@ lecture you will use in lab.
 ## Formulas for method of moments vs MLE estimates for the AM  
 
 * AM method of moments (MOM) estimate for `ecdata` = $x$: 
-$$x_{MOM} = \frac{1}{n} \sum_{i=1}^{n} x_i $$
+$$\bar{x}_{MOM} = \frac{1}{n} \sum_{i=1}^{n} x_i $$
 
 * AM maximum likelihood estimate (MLE) for `ecdata` = $x$ using
 `lnrec` = `log(ecdata)` = $y$:
