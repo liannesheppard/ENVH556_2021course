@@ -313,7 +313,7 @@ Perform the following tasks:
     a.  How is your interaction model different from fitting three separate season-specific models?
 4.	Make table(s) and/or figure(s) summarizing your results for practice exercise 5.  Discuss.  
 
-#Appendix
+# Appendix
 
 ```{r session.info}
 #-----session information----
