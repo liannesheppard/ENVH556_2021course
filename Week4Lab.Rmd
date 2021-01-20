@@ -4,12 +4,10 @@ author: "Lianne Sheppard for ENVH 556"
 date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
 output: 
     html_document:
-        fig_caption: yes
+        df_print: "paged"
         toc: true
         toc_depth: 3
         number_sections: true
-editor_options: 
-  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -37,7 +35,7 @@ my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.
-pacman::p_load(knitr, dplyr, ggplot2, egg, multcomp, modelr)
+pacman::p_load(knitr, dplyr, tidyr, ggplot2, modelr)
 
 ```
 
@@ -66,7 +64,7 @@ if (!file.exists(file_path)) {
 
 # Output a warning message if the file cannot be found
 if (file.exists(file_path)) {
-    snapshot<-readRDS(file_path)
+    snapshot <- readRDS(file_path)
 } else warning(paste("Can't find", file_name, "!"))
 
 # remove temporary variables
@@ -95,21 +93,22 @@ validation.  We will also learn how to write loops and programs.
 * Restrict data to one season:  (fall here) 
 
 ```{r fall subset}
-# fall subset ----
+#-----fall subset-----
+
 # Traditional base R approach
 #fall <- subset(snapshot, season==2)
 
 # Tidyverse approach
-fall <- filter(snapshot, season == 2)
+fall <- filter(snapshot, season == 2) %>% as_tibble()
 
 ```
 
-* Common model names, for later use
+* Common model names, for later use:
 
-```{r common model names}
-# common model names -------
-covars_common <- c("D2A1", "A1_50", "A23_400",  "Pop_5000", "D2C", "Int_3000", 
-                   "D2Comm")
+```{r common model covariates}
+#-----common model covariates-----
+
+covars_common <- c("D2A1", "A1_50", "A23_400",  "Pop_5000", "D2C", "Int_3000", "D2Comm")
 
 ```
 
@@ -120,11 +119,13 @@ See also Week 3 lab for these tools and variations of applying them.
 * Regression:  
 
 ```{r fall regression}
-# fall regression, common model-----
+#-----fall regression, common model-----
 
-summary( lm_fall <-
-    lm(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
-       data = fall))
+# build regression formula
+frml <- as.formula(paste("ln_nox ~", paste(covars_common, collapse = "+")) )
+  
+# print fit summary
+summary(lm_fall <- lm(frml, data = fall))
 
 ```
 
@@ -132,10 +133,12 @@ summary( lm_fall <-
 
 Note, you can provide these functions multiple model objects to facilitate comparisons of AIC or BIC across models fit on the same data.  I only show one model object here.  This has limited utility since there isn't inherent meaning in the AIC or BIC estimates.  Their value is in their comparison across fitted models.
 
-```{r AIC and BIC}
-# AIC and BIC -------
+```{r AIC.and.BIC}
+#-----AIC and BIC-----
+
 # AIC uses a default penalty of 2
 AIC(lm_fall)
+
 # BIC uses a penalty of log(n) where n is the number of observations in the
 # dataset
 BIC(lm_fall)
@@ -147,22 +150,28 @@ BIC(lm_fall)
 (Note: the `fig.width` and `fig.height`
 options to a chunk give local definitions for the figure height and width.)
 
-```{r predictions with modelr, fig.width=6, fig.height=5}
-# predictions with model -----------
-snap2 <- snapshot %>%  
-    modelr::add_predictions(lm_fall,"preds_fall")  
+```{r predictions.with.modelr, fig.height=5, fig.width=6, warning=FALSE}
+#-----predictions with modelr-----
+
+snap2 <- snapshot %>% 
+    add_predictions(lm_fall,"preds_fall")  
+
+# specify range
+r <- snap2 %>% select(ln_nox, preds_fall) %>% range
 
 # Compare the observations vs. predictions for all seasons, by season 
 ggplot(data = snap2, aes(preds_fall, ln_nox)) +
-    geom_point() +
-    coord_fixed() +
+    geom_point(shape = "o", alpha = 0.6) +
     facet_wrap( ~ seasonfac) +
+    lims(x = r, y = r) +
+    coord_fixed() +
     geom_abline(intercept = 0, slope = 1, color = "blue") +
     geom_smooth(method = "lm", se = FALSE, color = "red") +
-    labs(title = "Fall model predictions vs. ln(NOx) \nby season", 
+    labs(title = "Fall model predictions vs. ln(NOx) by season", 
          x = "Predicted ln(NOx) (ln(ppb))",
          y = "Observed ln(NOx) (ln(ppb))",
-         caption = "Best fit line is red; 1:1 line is blue")
+         caption = "Best fit line is red; 1:1 line is blue") + 
+    theme_bw()
 
 ```
 
@@ -170,18 +179,15 @@ ggplot(data = snap2, aes(preds_fall, ln_nox)) +
 
 (Note:  these are regression-based R^2^ estimates.)
 
-```{r season-specific correlations, eval = TRUE}
-# season-specific-correlations ------
-pred_summary <-
-    dplyr::select(snap2,  
-                  c("ln_nox", "preds_fall", "ID", "season", "seasonfac")) %>%
+```{r season.specific.correlations}
+#-----season-specific correlations-----
+
+pred_summary <- snap2 %>%
     group_by(seasonfac) %>%
-    dplyr::summarize(r = cor(ln_nox, preds_fall),
-    R2 = r ^ 2)
-    
-# summarize in a table
-kable(pred_summary, digits = 2)
-    
+    summarise(r = cor(ln_nox, preds_fall), 
+              R2 = r^2, 
+              .groups = "drop")
+
 ```
 
 ## Commands for stepwise regression (forward selection)
@@ -205,24 +211,32 @@ models fit (the default number of models fit, or `steps`, is 1000).  `step()`
 minimizes the AIC and the option `k` controls the degree of penalty.  Since for
 our purposes here we don't want to stop early, we use `k = 0` which seems to not
 impose a stopping criterion in our dataset.  More investigation is needed to
-understand exactly how the `k` option operates w.r.t. stopping the alorithm.
+understand exactly how the `k` option operates w.r.t. stopping the algorithm.
 
 
-```{r forward selection set-up for fall snapshot}
-# forward selection set-up for fall snapshot ------
-# define the smallest model of interest, an intercept only model here
-null <- lm(ln_nox ~ 1, data=fall)
-#null
+```{r forward.selection.set.up.for.fall.snapshot}
+#-----forward selection set-up for fall snapshot-----
+
+# define the smallest model of interest ("null"), an intercept only model here
+null <- lm(ln_nox ~ 1, data = fall)
+
     
 # create the largest possible model, a full model that includes all of the
 # predictor variables in the dataset.
 # Steps:
 # 1: get the list of all the potential covariates of interest from the dataset:
+
+#[CZ: Lianne, there are 79 columns in the snapshot data frame, it's not clear
+# here if the last five columns are left out intentionally. Ideally, we would 
+# figure a way to do this without indexing by position...]
 covars_all <- names(fall[12:74])
 
 # 2: now turn this into a formula for the full model in stepwise regression:
 full <- as.formula(paste("ln_nox ~ ", paste(covars_all, collapse= "+")))
-#full
+
+# # [CZ: Lianne, is there a reason the "full" model was not fit like the null 
+# # model (commented out currently)?]
+# full <- lm(full, data = fall)
 
 ```   
 
@@ -230,22 +244,24 @@ full <- as.formula(paste("ln_nox ~ ", paste(covars_all, collapse= "+")))
 
 The first model listed in the command (the "object"), is the initial model used to start the search.  In forward regression we want to start with the smallest model of interest to us, here the intercept only model.  The scope gives the entire range of models by also incorporating the largest possible model.  
 
-```{r fitting forward selection}
-# forward selection model------
+```{r fitting.forward.selection}
+#-----fitting forward selection model-----
+
 # Note:  k=0 appears to put no restriction on the forward selection and doesn't
 # stop until the full model is incorporated. 
 # Using k=2 is comparable to standard AIC.
 # Using log(n), where n is the number of observations, is comparable to BIC.
-forwardreg_fall <- step(null, scope=list(lower=null, upper=full), trace = 0,
-                        direction="forward", k=0)
+forwardreg_fall <- step(null, scope = list(lower = null, upper = full), 
+                        trace = 0, direction = "forward", k = 0)
 
 # save the ordered list of names for later use, dropping the intercept
-covars_forward <-       names(forwardreg_fall$coefficients)[-1]
+covars_forward <- names(forwardreg_fall$coefficients)[-1]
 
 ```
 
-```{r explore stepwise results, eval=FALSE}
-# explore results from forward stepwise-----
+```{r explore.forward.stepwise.results, eval=FALSE}
+#-----explore forward stepwise results-----
+
 # structure of the object
 str(forwardreg_fall)
 
@@ -254,10 +270,16 @@ class(forwardreg_fall)
 
 # gives the names of the coefficients for use in other work.  Should assign a
 # name to it for later use.
+# [CZ: we assign the names of this regression in the previous chunk - remove here?]
 names(forwardreg_fall$coefficients)
 
 # print a few other things, preceded by what they are in the output (by using
 # the cat() command to print text in the output.)
+
+# [CZ: Lianne, not sure exactly what is going on below. At a minimum, the code 
+# go should inside the cat() calls? It's unclear where the anova part comes in, 
+# perhaps worth some explanation above when the regression is performed?]
+
 cat("AIC:  ", "\n")
 forwardreg_fall$anova$AIC
 cat("Deviance:  ", "\n")
@@ -270,46 +292,37 @@ forwardreg_fall$anova$Step
 
 ## Manual cross-validation and summarization
 
-Note:  We are summarizing the cross-validation results overall.  This overall summary is one
-valid way to do the summary.  Other approaches summarize the results in each
-cluster (or cross-validation group) separately and average these.  (See e.g. the *Introduction to Statistical Learning* textbook: 
+Note:  We are summarizing the cross-validation results overall.  This overall
+summary is one valid way to do the summary.  Other approaches summarize the
+results in each cluster (or cross-validation group) separately and average
+these.  (See e.g. the *Introduction to Statistical Learning* textbook:
 [ISL](http://www-bcf.usc.edu/~gareth/ISL/) for guidance using this approach.)
 
 
-```{r a manual CV}
-# manual CV NEW (with better practices) ------
+```{r manual.CV}
+#-----manual CV-----
 
-# create a variable to store CV predictions 
-# Note: it is better practice to not grow objects as we have in the commented
-# out statement thta follows.
-#cv_pred <- NULL
-cv_pred <- data.frame(fall, preds = numeric(dim(fall)[1]))
+# create a numeric variable for CV predictions (using -999 as a placeholder)
+cv_pred <- fall %>% mutate(preds = -999)
 
 # loop over the 10 clusters
 for (i in 1:10){
+  
     # define the current cluster variable as a logical vector
     is_cluster <- cv_pred$cluster == i
     
-    # fit the linear model to the training set by omitting cluster i 
-    # Note the better practice to negate logical vectors with "!" and not "-".
-    CV_lm <-
-        lm(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
-           data = cv_pred, subset =!is_cluster)
+    # fit the "common" model to the training set by omitting cluster i 
+    CV_lm <- lm(frml, data = cv_pred, subset = !is_cluster)
   
-    # save the predictions and observations in cv_pred for the current cluster
-    # (test set)
-    cv_results <- fall %>%
-        modelr::add_predictions(CV_lm, "preds") 
-    #%>%
-        #filter(cluster == i) %>%
-        #dplyr::select(ID, cluster, ln_nox, preds)
+    # generate predictions using CV_lm 
+    preds <- predict(CV_lm, fall)
     
-    # bind the results together to get back the full dataset    
-    cv_pred$preds[is_cluster] <- cv_results$preds[is_cluster]
+    # add results to cv_pred dataframe    
+    cv_pred$preds[is_cluster] <- preds[is_cluster]
 }
 
-# now get the MSE, RMSE, MSE-based R2
-# 
+# now calculate the MSE, RMSE, MSE-based R2
+
 # mean of observations
 ln_nox_avg <- mean(cv_pred$ln_nox)
 
@@ -319,7 +332,7 @@ MSE_pred <- mean((cv_pred$ln_nox - cv_pred$preds)^2)
 # MSE of observations (for R2 denominator)
 MSE_obs <- mean((cv_pred$ln_nox - ln_nox_avg)^2)
 
-# print the results, rounded
+# print the results (rounded)
 #paste("RMSE:  ", round( sqrt(MSE_pred), 2))
 #paste("MSE-based R2:  ", round( max(1 - MSE_pred/MSE_obs, 0), 2))
 # print the results not rounded
@@ -352,21 +365,22 @@ Here is a list of twelve best practices for writing functions graciously provide
    refer to variables within the function which are defined outside of it, but
    were not included in the parameter list. I.e., "make no assumptions".
 4. Define default values in the argument list if it makes sense to do so. 
-5. The order of arguments should be from most to least essential. If the 
-   function operates on a data frame, for example, it should be the first 
-   argument. Put arguments with defined defaults at the end, so the function 
-   user can safely omit providing values for those arguments if they prefer to 
-   use the defaults you have defined for them.
-6. Use argument names as consistently as possible. Refer to functions you 
-   commonly use for examples of consistently named arguments.
+5. The order of arguments should be from most to least essential. If the
+    function operates on a data frame, for example, it should be the first 
+    argument (this also allows you to use your new function with the pipe 
+    operator, `%>%`). Put arguments with defined defaults at the end, so the 
+    function user can safely omit providing values for those arguments if they 
+    prefer to use the defaults you have defined for them. 6. Use argument names 
+    as consistently as possible. Refer to functions you commonly use for 
+    examples of consistently named arguments.
 7. The function should return a single value or object (e.g., a vector, 
    dataframe, list, etc.).
 8. Use the return() function at the end of your function to return this object 
    explicitly. Otherwise, the value of the last expression of the function will 
-   be returned implicitly. You will see both methods in practice, but the use 
-   of return() is preferred as it makes it very clear what is being returned.
+   be returned implicitly. You will see both methods in practice, and the use 
+   of return() varies somewhat by style.
 9. Comment your function to make it clear what it expects for input and what
-   it returns as output
+   it returns as output.
 10. Write the function to be as resuable (i.e., flexible, generic) as practical.
 11. When practical, validate the inputs (argument list) for expected data type 
    and appropriate range if values to avoid strange results if the function is 
@@ -377,21 +391,22 @@ Here is a list of twelve best practices for writing functions graciously provide
     easier to debug.
 
 
-### Our first function:  getMSE
+### Our first function:  `get_MSE()`
 
 To start our learning process, first we write a function to estimate the MSE and
-MSE-based R^2^.  We call it `getMSE`.  Note that in addition to its name and
+MSE-based R^2^.  We call it `get_MSE()`.  Note that in addition to its name and
 arguments, there are key formatting details that are required in defining
 functions in R.  In particular, pay attention to the arguments inside the
 parentheses in the function command, and the use of curly brackets.
 
-```{r define getMSE}
-# define getMSE function -----
+```{r define get_MSE}
+#-----define get_MSE function-----
+
 # This is a function to get the MSE, RMSE, MSE-based R2
-getMSE <- function(obs,pred) {
+get_MSE <- function(obs,pred) {
     # obs is the outcome variable
     # pred is the prediction from a model
-    # 
+     
     # mean of obs
     obs_avg <- mean(obs)
     
@@ -400,12 +415,13 @@ getMSE <- function(obs,pred) {
     
     # MSE of predictions
     MSE_pred <- mean((obs - pred)^2)
-    result <- c(sqrt(MSE_pred),
-                max(1 - MSE_pred / MSE_obs, 0))
-    names(result) <-  c("RMSE", "R2(MSE-based)")
-    # it is better practice to use an explicit return statement
-    # the alternative is to just output the object:
-    #result
+    
+    # compile output
+    result <- c(RMSE = sqrt(MSE_pred),
+                MSE_based_R2 = max(1 - MSE_pred / MSE_obs, 0) 
+                )
+    
+    # explicit return (optional)
     return(result)
 }
 
@@ -413,9 +429,10 @@ getMSE <- function(obs,pred) {
 
 Now test our function, using the manual CV results we obtained:
 
-```{r test getMSE}
-# test getMSE -----
-getMSE(cv_pred$ln_nox,cv_pred$preds)
+```{r test get_MSE}
+#-----test get_MSE-----
+
+get_MSE(cv_pred$ln_nox,cv_pred$preds)
 
 ```
 
@@ -423,28 +440,26 @@ getMSE(cv_pred$ln_nox,cv_pred$preds)
 
 Now convert our cross-validation to a function:
 
-```{r CV function}
-# CV function -------
+```{r define.CV.function}
+#-----define CV function-----
+
 do_CV <- function(data, group = "group", formula) {
     # In writing functions, it is good practice to:
-    # 1. put the dataset first in the function definition
-    # 2. put most important arguments first, followed by the specific ones
-    # 3. can include defaults in the function definitions
-    # 
+      # 1. put the dataset first in the function definition
+      # 2. put most important arguments first, followed by the specific ones
+      # 3. include defaults in the function definitions, where appropriate
+    
     # Arguments:
-        # data is the data frame
-        # group is the grouping variable (in the data frame)
-        # formula is the formula to pass to lm
-        # the function returns the dataset with a new variable called cvpreds
-        # appended to the end; these are the , out-of-sample predictions
+      # data is the data frame
+      # group is the grouping variable (in the data frame)
+      # formula is the formula to pass to lm
+      # the function returns the dataset with a new variable called cvpreds
+      # appended to the end; these are the out-of-sample predictions
 
     # create a variable to store CV predictions 
-    #CV_pred <- NULL
-    # This better practice version appends the new variable to the input data
-    # frame
-    CV_pred <- data.frame(data, cvpreds = numeric(dim(data)[1]))
-                          
-    # get the number of distict groups or clusters
+    CV_pred <- data %>% mutate(cvpreds = -999)
+    
+    # get the number of distinct groups or clusters
     # Note the use of "[[ ]]" rather than "$" because group is input in the
     # function call as a quoted variable
     k <- length(unique(data[[group]]))
@@ -462,14 +477,14 @@ do_CV <- function(data, group = "group", formula) {
         # fit the linear model to the training set
         CV_lm <- lm(formula = formula, data = training)
   
-        # save the predictions in a temporary dataset with all observations
-        # (training + test sets), tempCV, then restrict updating into CV_pred to
-        # the current group (test set)
-        tempCV <- data %>% 
-            modelr::add_predictions(CV_lm, "cvpreds") 
-        # only update CV_pred dataset, cvpreds variable, for the test data rows:
-        CV_pred$cvpreds[is_group] <- tempCV$cvpreds[is_group]
+        # generate predictions using CV_lm 
+        cvpreds <- predict(CV_lm, data)
+        
+        # add results to the CV_pred dataframe, for rows of interest
+        CV_pred$cvpreds[is_group] <- cvpreds[is_group]
+        
     }
+    
     # return the dataset
     return(CV_pred)
 }
@@ -478,90 +493,90 @@ do_CV <- function(data, group = "group", formula) {
 
 Now test the `do_CV` function:
 
-```{r test do_CV}
-# test do_CV------
+```{r test.do_CV}
+#-----test do_CV-----
 
-# first create the formula from a vector of names
-common_model_formula <-
-    as.formula(paste("ln_nox ~ ", paste(covars_common, collapse = "+")))
-
-# Note: the do_CV function assumes the group variable is part of the input dataset. 
-
-temp <- do_CV(data = fall, group = "cluster", formula = 
-                  common_model_formula)
-
+# run `do_CV()` function
+  # Recall we have already specified a common model formula, `frml`
+  # Note: the function assumes the group variable is part of the input dataset. 
+temp <- do_CV(data = fall, group = "cluster", formula = frml)
 
 # Check to see if result is identical with manual method (done earlier)
 identical(cv_pred$preds, temp$cvpreds)
-
 
 ```
 
 And review the CV results:
 
-```{r review CV results}
-# review CV results -------
+```{r review.CV.results}
+#-----review CV results-----
+
 # now check the results from the CV function
-# Summarize with getMSE
-getMSE(temp$ln_nox, temp$cvpreds)
+# Summarize with get_MSE
+get_MSE(temp$ln_nox, temp$cvpreds)
+
+
+# get range for plot
+r <- temp %>% select(ln_nox, cvpreds) %>% range()
 
 # now look at the scatterplot, observations on the x axis as we typically do for
 # considering out-of-sample predictions
 ggplot(data = temp, aes(ln_nox, cvpreds)) +
-    geom_point() +
+    geom_point(shape = "o", alpha = 0.8) +
+    lims(x= r, y = r) +
     coord_fixed() +
     geom_abline(intercept = 0, slope = 1, color = "blue") +
     labs(title = "Fall model predictions vs. ln(NOx) \nCross-validated", 
          x = "Observed ln(NOx) (ln(ppb))",
          y = "Predicted ln(NOx) (ln(ppb))",
-         caption = "1:1 line is blue")
+         caption = "1:1 line is blue") + 
+    theme_bw()
 
 ```
 
 ## Create 10 CV groups in random order
 
-```{r generate groups}
-# generate groups --------
+```{r generate.groups}
+#-----generate groups-----
+
 # set the seed to make reproducible
 set.seed(283)
 
-# first generate a vector with values 1:10 with as many observations as the dataset
-CVgrp <- rep(1:10, length.out = dim(fall)[1])
-
-# now give it a random order
-# replace = FALSE in sample just reorders the variable
-CVgrp <- sample(CVgrp, replace = FALSE)
+# create vector of CV groups
+  # first generate a vector with values 1:10 equal to the number of dataset rows
+  # then randomize (with argument replace = FALSE)
+CV_grp <- rep(1:10, length.out = nrow(fall)) %>% 
+  sample(replace = FALSE)
 
 # now append it to the fall data frame
-# Base R version
-#fall <- cbind(fall, CVgrp)
-
-# Tidyverse version
-fall <- mutate(fall, CVgrp = CVgrp)
+fall <- mutate(fall, CV_grp = CV_grp)
 
 ```
 
 Now test the CV on random groups.  Note that these out-of-sample results should look better.  Why is that the case? (This is a homework challenge question.)
 
-```{r CV results on random group}
-# CV results random group -------
+```{r CV.results.on.random.groups}
+#-----CV results on random groups-----
+
 # fit the CV with the random groups
-temp2 <- do_CV(data = fall, group = 'CVgrp', formula = common_model_formula)
+temp2 <- do_CV(data = fall, group = 'CV_grp', formula = frml)
 
 # now check the results from the CV function
-# Summarize with getMSE
-getMSE(temp2$ln_nox, temp2$cvpreds)
+# Summarize with get_MSE
+get_MSE(temp2$ln_nox, temp2$cvpreds)
 
 # now look at the scatterplot, observations on the x axis as we typically do for
 # considering out-of-sample predictions
 ggplot(data = temp2, aes(ln_nox, cvpreds)) +
-    geom_point() +
+    geom_point(shape = "o", alpha = 0.8) +
+    lims(x= r, y = r) +
     coord_fixed() +
     geom_abline(intercept = 0, slope = 1, color = "blue") +
     labs(title = "Fall model predictions vs. ln(NOx) \nCross-validated with random groups", 
          x = "Observed ln(NOx) (ln(ppb))",
          y = "Predicted ln(NOx) (ln(ppb))",
-         caption = "1:1 line is blue")
+         caption = "1:1 line is blue") + 
+    theme_bw()
 
 ```
 
@@ -575,40 +590,34 @@ number of selected variables:
 2. Estimate predicted values using cross-validation.  
 3.  Compute out-of-sample RMSE and MSE-based R2 estimates.  
  
-Steps to coding this:  
-
+Steps to coding this:
 * compute/retrieve the vector of names output from the forward selection model
-
 * loop over the maximum number of covariates from forward selection
-
-* create a formula that is the linear combination of the first i terms of the forward selection model
-
+* create a formula that is the linear combination of the first `i` terms of the
+forward selection model
 * summarize the in-sample prediction MSE and R2
-
 * cross-validate this and summarize the out-of-sample MSE and R2
-
-* store the key set of results, plus the number of covariates in the model and possibly the variable added to use in plotting
-
+* store the key set of results, plus the number of covariates in the model and
+possibly the variable added to use in plotting
 * use ggplot to make the bias-variance trade-off plot
 
 
-```{r Model order and CV, echo = TRUE, warning = FALSE}
-# Model order and CV ----
+```{r model.order.and.CV, echo = TRUE, warning = FALSE}
+#-----model order and CV-----
 
 #get the length of the vector of names from forward selection
 n_covars <- length(covars_forward)
 
 # set up an object to store the results in 
 # this is better practice
-res <-
-    tibble(
-        n_pred           = numeric(n_covars),
-        covar            = character(n_covars),
-        in_RMSE           = numeric(n_covars),
-        in_R2            = numeric(n_covars),
-        out_RMSE          = numeric(n_covars),
-        out_R2           = numeric(n_covars)
-    )
+res <- tibble(n_pred = numeric(n_covars),
+              covar = character(n_covars),
+              in_RMSE = numeric(n_covars),
+              in_R2 = numeric(n_covars),
+              out_RMSE = numeric(n_covars),
+              out_R2 = numeric(n_covars) 
+              )
+
 # here is the base R approach.  Note need to use stringsAsFactors = FALSE
 #res <-
 #    data.frame(
@@ -623,6 +632,7 @@ res <-
 
 # loop over n_covars
 for (i in 1:n_covars) {
+    
     # assign first few variables
     res$n_pred[i] <- i
     res$covar[i] <- covars_forward[i]
@@ -638,7 +648,7 @@ for (i in 1:n_covars) {
     
     # out-of sample model and estimates
     out_ests <- do_CV(fall, group = 'cluster', fmla)
-    out_results <- getMSE(out_ests$ln_nox, out_ests$cvpreds)
+    out_results <- get_MSE(out_ests$ln_nox, out_ests$cvpreds)
     res$out_RMSE[i] <- out_results[1]
     res$out_R2[i] <- out_results[2]
     
@@ -647,6 +657,31 @@ for (i in 1:n_covars) {
 # the data frame res should have all pieces for ggplot
 
 
+# lapply approach (do not need to pre-assign res)
+res <- lapply(1:n_covars, function(i){
+    
+    # define the formula, updated to add a term each time
+    fmla <- as.formula(
+        paste("ln_nox ~ 1 + ", paste(covars_forward[1:i], collapse = "+"))) 
+    
+    # in-sample model and estimates
+    in_model <- lm(fmla, data = fall) 
+    
+    # out-of sample model and estimates
+    out_ests <- do_CV(fall, group = 'cluster', fmla)
+    out_results <- get_MSE(out_ests$ln_nox, out_ests$cvpreds)
+    
+    # compile results
+    tibble(n_pred = i,
+           covar = covars_forward[i],
+           in_RMSE = sqrt(mean(in_model$residuals^2)),
+           in_R2 = summary(in_model)$r.squared,
+           out_RMSE = out_results[["RMSE"]],
+           out_R2 = out_results[["MSE_based_R2"]] 
+           )
+    
+    }) %>% bind_rows()
+
 ```
 
 ### Now plot the bias-variance trade-off
@@ -654,17 +689,16 @@ for (i in 1:n_covars) {
 Note: the precipitous drop in R2 in the out of sample assessment is best explained by major overfitting of this model after ~ 30 covariates.
 
 ```{r bias-var separate plots}
-# bias-var separate plots ------
+#-----bias-var separate plots-----
 
-# first reshape the data to take advantage of ggplot features
-res.reshaped <- res %>% 
-    gather(key = variable, value = value, -n_pred, -covar) %>% 
-    separate(col = variable, into = c('Source', 'Estimate'), sep="_") %>% 
-    spread(key = Estimate, value = value)
+# create temporary dataframe for ggplot
+temp <- res %>% 
+  pivot_longer(cols = c(-n_pred, -covar), 
+               names_to = c("Source", ".value"), 
+               names_pattern = "(.*)_(.*)" ) 
 
-# R2 plot
-# plots with both model based (in sample) R2 and CV generated R2
-plot.R2 <- ggplot(res.reshaped) +
+# R2 plot: with both model based (in sample) R2 and CV generated R2
+r2_plot <- ggplot(temp) +
     geom_point(aes(x = n_pred, y = R2, color = Source)) + 
     geom_line(aes(x = n_pred, y = R2, color = Source)) +
     xlab("Model Complexity (# of terms)") +
@@ -676,12 +710,12 @@ plot.R2 <- ggplot(res.reshaped) +
           scale_color_discrete(name = "Prediction\nSource",  
                 labels = c("In-sample", "Out-of-sample"))
 
-print(plot.R2)
+# show plot
+r2_plot
 
 
 # plot with both model based (in sample) RMSE and CV generated RMSE
-
-plot.RMSE <- ggplot(res.reshaped) +
+rmse_plot <- ggplot(temp) +
     geom_point(aes(x = n_pred, y = RMSE, color = Source)) + 
     geom_line(aes(x = n_pred, y = RMSE, color = Source)) +
     xlab("Model Complexity (# of terms)") +
@@ -693,33 +727,34 @@ plot.RMSE <- ggplot(res.reshaped) +
           scale_color_discrete(name = "Prediction\nSource",  
                 labels = c("In-sample", "Out-of-sample"))
 
-print(plot.RMSE)
+# show plot
+rmse_plot
 
 ```
 
 ```{r bias-var combined plots}
-# bias-var combined plots ------
-# TODO:  Some clean-up details should be addressed to help the presentation.
+#-----bias-var combined plots-----
 
-# plots with both model-based (in sample) and CV generated MSE and R2
-
-# first reshape the data to take advantage of ggplot features
-# No longer want the spread used above
-res.reshaped <- res %>% 
-    gather(key = variable, value = value, -n_pred, -covar) %>% 
-    separate(col = variable, into = c('Source', 'Estimate'), sep="_") 
+# create temporary dataframe for plot
+temp <- res %>% 
+  pivot_longer(cols = c(ends_with("_RMSE"), ends_with("_R2")), 
+               names_to = "in_out_value", 
+               values_to = "value" ) %>% 
+  separate(col = in_out_value, into = c("Source", "Estimate") )
 
 
-plot.both <- ggplot(res.reshaped) +
-    geom_point(aes(x = n_pred, y = value, color = Source)) + 
-    geom_line(aes(x = n_pred, y = value, color = Source)) +
-    xlab("Model Complexity (# of terms)") +
-    ylab("") +
-    scale_x_continuous(breaks = c(seq(0, 63, 5))) +
-    facet_grid(Estimate ~ ., scales = "free_y") +
-    theme_bw() 
+# plot both model-based (in sample) and CV generated MSE and R2
+combined_plot <- ggplot(temp) +
+  geom_point(aes(x = n_pred, y = value, color = Source)) + 
+  geom_line(aes(x = n_pred, y = value, color = Source)) +
+  xlab("Model Complexity (# of terms)") +
+  ylab("") +
+  scale_x_continuous(breaks = c(seq(0, 63, 5))) +
+  facet_wrap(~ Estimate, scales = "free_y", ncol = 1, strip.position = "right") +
+  theme_bw() 
 
-print(plot.both)
+#show plot
+combined_plot
 
 ```
 
@@ -791,15 +826,28 @@ also include a column for the variable name of the variable added.
 
 
 
-# Appendix 
+# Appendix
 
 ```{r session.info}
-#-----------------session.info: beginning of Appendix -----------------
-#This allows reproducibility by documenting the version of R and every package you used.
+#-----session information----
+
+# print R session information
 sessionInfo()
-```
-
-```{r appendix.code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
 
 ```
 
+```{r code.appendix, ref.label = knitr::all_labels(), echo = TRUE, eval = FALSE, , include=TRUE}
+#-----code appendix----
+```
+
+```{r functions, eval = TRUE}
+#-----functions----
+
+# Show the names of all functions defined in the .Rmd
+# (e.g. loaded in the environment)
+lsf.str()
+
+# Show the definitions of all functions loaded into the current environment  
+lapply(c(lsf.str()), getAnywhere)
+
+```
