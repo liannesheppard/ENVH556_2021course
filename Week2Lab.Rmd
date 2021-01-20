@@ -367,7 +367,7 @@ set.seed(2001)
 
 
 # x is the "measured" exposure data ~LN
-x <- rlnorm(n = 1000, mean = 1, sd = 0.92)
+x <- rlnorm(n = 1000, meanlog = 1, sdlog = 0.92)
 
 # variable y is normally distributed 
 # for exposure data this is ordinarily the log-transformed measurement
