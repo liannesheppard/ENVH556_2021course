@@ -150,7 +150,7 @@ BIC(lm_fall)
 (Note: the `fig.width` and `fig.height`
 options to a chunk give local definitions for the figure height and width.)
 
-```{r predictions.with.modelr, fig.height=5, fig.width=6, warning=FALSE}
+```{r predictions.with.modelr, warning=FALSE, message=FALSE}
 #-----predictions with modelr-----
 
 snap2 <- snapshot %>% 
@@ -188,6 +188,8 @@ pred_summary <- snap2 %>%
               R2 = r^2, 
               .groups = "drop")
 
+# show summary
+pred_summary
 ```
 
 ## Commands for stepwise regression (forward selection)
@@ -235,7 +237,7 @@ covars_all <- names(fall[12:74])
 full <- as.formula(paste("ln_nox ~ ", paste(covars_all, collapse= "+")))
 
 # # [CZ: Lianne, is there a reason the "full" model was not fit like the null 
-# # model (commented out currently)?]
+# # model (added but commented out below)?]
 # full <- lm(full, data = fall)
 
 ```   
@@ -276,16 +278,14 @@ names(forwardreg_fall$coefficients)
 # print a few other things, preceded by what they are in the output (by using
 # the cat() command to print text in the output.)
 
-# [CZ: Lianne, not sure exactly what is going on below. At a minimum, the code 
-# go should inside the cat() calls? It's unclear where the anova part comes in, 
-# perhaps worth some explanation above when the regression is performed?]
-
 cat("AIC:  ", "\n")
 forwardreg_fall$anova$AIC
+
 cat("Deviance:  ", "\n")
 forwardreg_fall$anova$Deviance
+
+cat("Forward Regression Variables:  ", "\n")
 forwardreg_fall$anova$Step
-#forwardreg_fall$anova$Df
 
 ```
 
@@ -657,7 +657,8 @@ for (i in 1:n_covars) {
 # the data frame res should have all pieces for ggplot
 
 
-# lapply approach (do not need to pre-assign res)
+# [Lianne, here is an lapply approach, for which the `res` object does not 
+# need to be pre-assigned (so can be deleted if this version is kept)]
 res <- lapply(1:n_covars, function(i){
     
     # define the formula, updated to add a term each time
@@ -738,9 +739,9 @@ rmse_plot
 # create temporary dataframe for plot
 temp <- res %>% 
   pivot_longer(cols = c(ends_with("_RMSE"), ends_with("_R2")), 
-               names_to = "in_out_value", 
+               names_to = "Source_Estimate", 
                values_to = "value" ) %>% 
-  separate(col = in_out_value, into = c("Source", "Estimate") )
+  separate(col = Source_Estimate, into = c("Source", "Estimate") )
 
 
 # plot both model-based (in sample) and CV generated MSE and R2
@@ -761,19 +762,21 @@ combined_plot
 # Practice Session
 
 This section covers basic practice to be completed during the lab.   We are
-going to use the snapshot data described in Mercer et al 2011, discussed in
-class, and used last week.  It can be found on the class website.  Note that in
-this lab we are treating the errors are independent and identically distributed
-even though this assumption is not correct in these data.  (This is the same
+going to use the snapshot data described in [Mercer et al,
+2011](https://doi.org/10.1016/j.atmosenv.2011.05.043), discussed in class, and
+used last week.  It can also be found on the class website.  Note that in this
+lab we are treating the errors are independent and identically distributed even
+though this assumption is not correct in these data.  (This is the same
 assumption typically made in LUR modeling.)
 
 Perform the following tasks:
 
 1. Determine the R project you will use.
 2. Explore the dataset a bit, focusing on one particular season.  Make sure you
-have some basic understanding of the outcome variable (*ln_nox*), the CV grouping
-variable (*cluster*), and the large number of covariates you can use in your prediction modeling.   In
-this lab you should restrict your analysis to one season (e.g. fall for the practice session; winter for homework).
+have some basic understanding of the outcome variable (*ln_nox*), the CV
+grouping variable (*cluster*), and the large number of covariates you can use in
+your prediction modeling.   In this lab you should restrict your analysis to one
+season (e.g. fall for the practice session; winter for homework).
 3. Fit the model for one of the seasons given in Table 4 of Mercer et al. Make
 note of these in-sample estimates of R^2^ and RMSE.
 4. Try to manually cross-validate this model using the code given above.
