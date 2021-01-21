@@ -1,0 +1,459 @@
+---
+title: "Week 3 Lab:  Regression for Association"
+subtitle: "Companion document with more advanced coding methods"
+author: "Lianne Sheppard & Chris Zuidema for ENVH 556"
+date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    html_document:
+        df_print: "paged"
+---
+
+```{r setup, include=FALSE}
+#-----setup-----
+
+# set knitr options
+knitr::opts_chunk$set(echo = TRUE)
+
+# clear work space of all objects and unload all extra (non-base) packages
+rm(list = ls(all = TRUE))
+if (!is.null(sessionInfo()$otherPkgs)) {
+    res <- suppressWarnings(
+        lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
+               detach, character.only=TRUE, unload=TRUE, force=TRUE))
+   
+}
+
+```
+
+```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
+#-----load libraries pacman-----
+
+# Load pacman into memory, installing as needed
+my_repo <- 'http://cran.r-project.org'
+if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
+
+# Load the other packages, installing as needed.  Some reasons for packages:
+pacman::p_load(knitr, dplyr, ggplot2, egg, tidyr, broom, purrr, stringr)
+
+```
+
+```{r directory.organization.read.data, echo=FALSE, warning=FALSE}
+#-----directory organization and read data-----
+
+# specify working directory
+project_path <- getwd()
+
+# create "Datasets" directory if one does not already exist    
+dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
+
+# specify data path
+data_path <- file.path(project_path,"Datasets")
+
+# specify the file name and path
+file_name <- "allseasonsR.rds"
+file_path <- file.path(data_path, file_name)
+
+# Download the file if it is not already present
+if (!file.exists(file_path)) {
+    url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
+                 file_name, sep = '/')
+    download.file(url = url, destfile = file_path)
+}
+
+# Output a warning message if the file cannot be found
+if (file.exists(file_path)) {
+    snapshot <- readRDS(file_path)
+} else warning(paste("Can't find", file_name, "!"))
+
+# remove temporary variables
+rm(url, file_name, file_path, data_path)
+
+```
+
+
+# Purpose
+
+This document is a companion to the `Week3Lab.Rmd`. The purpose is to provide
+additional and somewhat more sophisticated coding methods to supplement the
+approaches in Lab 3 that you may find useful for your own work. Our coding goals
+for `Week3Lab.Rmd` were clarity and transparency to support learning about
+regression. Here we explore techniques that may scale well (for example to many
+regression models), reduces code repetition, and reduces the amount of "hard
+coding" in the analysis, but is less explicit and may obscure what is going on
+"behind the scenes" a bit. As with `Week3Lab.Rmd`, this document will use the
+ACT snapshot data.
+
+
+# Preliminaries
+
+These preliminary steps are the same as `Week3Lab.Rmd` and are included for
+completeness.
+
+## Prepare snapshot dataframe
+
+```{r prep.snapshot}
+#-----prep snapshot-----
+
+# transform snapshot dataframe to tibble and modify season factor
+snapshot <- snapshot %>% 
+  as_tibble() %>% 
+  mutate(seasonfac = factor(str_remove(seasonfac, "[:digit:]"),   
+         levels = c("Summer", "Fall", "Winter")) )
+
+# create season variable (to be used throughout analysis)
+seasons <- unique(snapshot$seasonfac)
+
+```
+
+## Summarize *ln_nox* by season
+
+```{r summarize.ln_nox}
+#-----summarize ln_nox-----
+
+# frequencies only
+summary(snapshot$seasonfac)
+
+# descriptive statistics
+snapshot_summary <- snapshot %>%
+    group_by(seasonfac) %>%
+    summarise(N = n(),
+              Mean = mean(ln_nox), 
+              SD = sd(ln_nox),
+              GM = exp(mean(ln_nox)), 
+              GSD = exp(sd(ln_nox)), 
+              .groups = "drop") %>% 
+    mutate_if(is.double, round, digits = 2)
+
+# show summary
+snapshot_summary
+
+```
+
+## Season-specific boxplots
+
+```{r season-specific boxplots}
+#-----season-specific boxplots-----
+
+ggplot(snapshot, aes(x = seasonfac, y = ln_nox, fill = seasonfac)) +
+    geom_boxplot() +
+    labs(x = "Season", 
+         y = "ln(NOx) (ln(ppb)", 
+         color = "Season", 
+         fill = "Season") + 
+    theme_article()
+
+```
+
+# Regression analysis
+
+`Week3Lab.Rmd` takes a bit more of a manual approach to regression modeling,
+specifying each of the seasonal models separately and assigning each model fit
+to its own object. This is clear and easy to follow, but you can see how this
+would quickly become a burdensome exercise in copy/paste and repeated code -
+imagine if we had 20 seasons instead of 3. In this section, we explore the
+general nesting workflow, where data is grouped and modeling steps occur
+"within" a dataframe. Aside from managing analysis steps with groups
+programmatically, these functions package regression output in dataframes that
+are `ggplot` friendly - minimizing the data wrangling required before plotting.
+
+You can find more information about the nested workflow here:
+
+  * Tidyverse ["Nested Data"](https://tidyr.tidyverse.org/articles/nest.html) 
+  * Bookdown ["Many Models"](https://r4ds.had.co.nz/many-models.html)
+
+```{r regression for association}
+#-----regression for association-----
+
+# Common model (Table 4), season-specific LUR from Mercer et al, 2011
+
+# specify the "common model"
+frml <- as.formula(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm)
+
+# create tibble with nested seasonal models
+season_mods <- snapshot %>%
+  
+  # group by season, then "nest"
+  group_by(seasonfac) %>% 
+  nest() %>% 
+  
+  # fit regression model for each season and generate summary, glance, augment,
+  # and in-sample prediction outputs.
+  mutate(model = map(data, ~lm(frml, data = .x)),
+         summary = map(model, summary), 
+         glanced = map(model, glance),
+         augmented = map(model, augment),
+         preds = map2(model, data, 
+                      ~as.data.frame(predict(.x, .y, interval = "prediction")) )
+         
+         )
+
+# show tibble
+season_mods
+```
+
+You can see `season_mods` is a grouped tibble with list-columns for each of the
+non-grouping variables ("seasonfac"). Next we'll demonstrate how to access these
+outputs separately to show what outputs the `glance()` (model summaries) and
+`augment()` (information about each observation like predictions and residuals)
+functions produce. But, you can also incorporate the `unnest()` step into the
+pipeline in the previous chunk. We showed the `summary()`, `glance()`,
+`augment()`, and `predict()` functions above, but you can include or remove
+functions to suit your needs.
+
+```{r unnest}
+#-----unnest-----
+
+# unnest glanced object - `glance()` provides model summaries
+unnest(season_mods, glanced)
+
+# unnest augmented dataframe for ".fitted" and ".resid" values. Unfortunately, 
+# the prediction intervals are not provided with `augment()`. We'll now assign 
+# this output to the `season_mods` object, but this could have been accomplished 
+# by continuing the pipeline in the previous chunk. We split up this pipeline 
+# just to demonstrate how to access the different objects produced in the nest 
+# workflow.
+season_mods <- unnest(season_mods, augmented)
+
+# show augmented season_mods object
+season_mods
+```
+
+# Regression predictions
+
+## Output from `nest()` workflow
+
+In the previous chunks we calculated in-sample predictions with `augment()`. The
+nesting workflow makes plotting those predictions easy:
+
+```{r plot.obs.pred.in.sample, message=FALSE}
+#-----plot obs pred in sample-----
+
+# calculate range of data
+r <- range(season_mods[, c("ln_nox", ".fitted")])
+
+# plot observations vs predictions for each season
+ggplot(season_mods, aes(x = .fitted, y = ln_nox)) + 
+  geom_point(shape = "o") + 
+  facet_wrap(~seasonfac, nrow = 1) + 
+  lims(x = r, y = r) +
+  coord_fixed() +
+  geom_abline(intercept = 0, slope = 1, color = "blue") +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "In-sample Predictions", 
+       x = "In-sample predicted ln(NOx) (ln(ppb))",
+       y = "Observed ln(NOx) (ln(ppb))"
+       ) + 
+  theme_bw()
+  
+```
+
+## Calculating predictions programmatically
+
+In `Week3Lab.Rmd` we specified each of the out-of-sample predictions we were
+interested in, for example:
+
+```
+
+fall_preds_from_summer <- 
+  predict(lm_summer, snapshot[snapshot$season == 2,], interval = "prediction")
+
+```
+
+This is quite clear what's happening, but again, it requires us to specify the
+model, the data subset, and the object name for each out of sample predictions
+of interest.
+
+Next we'll demonstrate how to calculate the season-specific predictions in the
+dataset for all seasons programmatically. While `augment()` conveniently gave us
+"in-sample" predictions, the following approach will give us both "in-sample"
+predictions (e.g. using the summer model to make predictions in winter) and
+"out-of-sample" predictions (e.g. using the summer model to make predictions in
+winter). The extra step involved with this approach is selecting the output of
+interest, for example, the "Fall_" columns from the Summer "seasonfac" rows.
+
+```{r predictions.with.dplyr, message=FALSE}
+#-----predictions with dplyr-----
+
+# first, extract models from earlier regression procedures for convenience, 
+# setting the names of the models to match with their season
+models <- season_mods[["model"]] %>% 
+  unique() %>% 
+  setNames(unique(season_mods[["seasonfac"]]))
+
+# use lapply and an anonymous function to loop through the models
+allseas_both <- lapply(names(models), function(i){
+  
+  # add the predictions, intervals, and residuals for each season
+  predict(models[[i]], snapshot, interval = "prediction") %>% 
+    as_tibble() %>% 
+    mutate(resid = snapshot[["ln_nox"]]-fit) %>%
+    
+    # rename columns to correspond to the season model
+    rename_all(function(x){paste0(i, "_", x)})
+  
+  }) %>% 
+  
+  # bind list of dataframes together
+  reduce(cbind) %>% 
+  
+  # add to snapshot dataframe
+  bind_cols(snapshot, .)
+
+# inspect predictions and residuals
+allseas_both %>% 
+  select(seasonfac, ln_nox, matches("_fit|_lwr|_upr|_resid")) %>% 
+  mutate_if(is.double, round, 3)
+
+```
+
+Assessing the the quality of the predictions, as we did in `Week3Lab.Rmd`
+requires us to specify the data of interest since we've produced all 
+predictions together:
+
+```{r prediction.assessment}
+#-----prediction assessment
+
+# summer in-sample
+paste("summer in-sample R2:  ",
+with(allseas_both %>% filter(seasonfac == "Summer"), 
+     round(cor(ln_nox, Summer_fit)^2, 3)) )
+
+# summer out-of-sample (from winter model)
+paste("summer out-of-sample R2 (from winter model):  ", 
+with(allseas_both %>% filter(seasonfac == "Summer"), 
+     round(cor(ln_nox, Winter_fit)^2, 3)) )
+
+```
+## Plot predictions
+
+We can define a flexible plot function to prevent repeating our plotting code:
+
+```{r define.plot.function}
+#-----define plot function-----
+
+# make plot function
+plot_func <- function(df = allseas_both, x_var, y_var, seas, 
+                      x_lab, y_lab, plot_title){
+
+  # create function variable names with `enquo`
+  x <- enquo(x_var)
+  y <- enquo(y_var)
+  
+  # get range of plots
+  r <- df %>% 
+    filter(seasonfac == seas) %>% 
+    select(Summer_fit, Fall_fit, Winter_fit, ln_nox) %>% 
+    range()
+  
+  # make plots
+  df %>%
+    filter(seasonfac == seas) %>%
+    ggplot(aes(x = !!x, y = !!y)) +
+    geom_point(shape = "o", alpha = 0.8) +
+    lims(x = r, y = r) +
+    coord_fixed() +
+    geom_abline(intercept = 0, slope = 1, color = "blue") +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+    labs(title = plot_title, 
+         x = x_lab,
+         y = y_lab
+         ) + 
+    theme_bw()
+
+}
+
+```
+
+
+With the `allseas_both` dataframe (specified by default) we can plot in- and
+out-of-sample predictions like we did in `Week3Lab.Rmd` with our function:
+
+```{r summer.in.and.out.sample, message=FALSE}
+#-----summer in and out of sample-----
+
+# plot the predictions vs. data for summer, both in-sample and out of sample
+
+# in-sample plot
+p_in <- plot_func(x_var = Summer_fit, y_var = ln_nox, seas = "Summer", 
+                  x_lab = "In-sample predicted ln(NOx) (ln(ppb))", 
+                  y_lab = "Observed ln(NOx) (ln(ppb))", 
+                  plot_title = "In-sample")
+ 
+# out-of-sample plot (predictions from the winter model)
+p_out <- plot_func(x_var = Winter_fit, y_var = ln_nox, seas = "Summer", 
+                   x_lab = "Out-of-sample predicted ln(NOx) (ln(ppb))", 
+                   y_lab = "Observed ln(NOx) (ln(ppb))", 
+                   plot_title = "Out-of-sample (from winter model)" )
+
+# combine plots
+ggarrange(p_in, p_out, ncol = 2, 
+          top = "Summer Model ln(NOx) Predictions", 
+          bottom = "Best fit line is red; 1:1 line is blue")
+
+```
+
+Here is an alternate approach for plotting all predictions for a season
+simultaneously using `facet wrap()`:
+
+```{r plot.all.preds, message=FALSE}
+#-----plot all predictions-----
+
+# create temporary dataframe for ggplot
+temp <- allseas_both %>% 
+  select(seasonfac, ln_nox, contains("_fit")) %>% 
+  filter(seasonfac == "Summer") %>%
+  pivot_longer(cols = contains("_fit"), names_to = "season_fit", 
+               values_to = "fit") %>% 
+  mutate(season_fit = factor(str_remove(season_fit, "_fit"), 
+                             levels = c("Summer", "Fall", "Winter")) )
+
+# get range for plots
+  r <- temp %>% 
+    select(fit, ln_nox) %>% 
+    range()
+  
+# make plot
+pred_plot <- ggplot(data = temp, aes(x = fit, y = ln_nox) ) +
+    geom_point(shape = "o", alpha = 0.8) + 
+    facet_wrap(~season_fit, nrow = 1) +
+    lims(x = r, y = r) +
+    coord_fixed() +
+    geom_abline(intercept = 0, slope = 1, color = "blue") +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+    labs(title = "Predictions with Summer Model", 
+         x = "Predicted ln(NOx) (ln(ppb))",
+         y = "Observed ln(NOx) (ln(ppb))"
+         ) + 
+    theme_bw()
+
+# show plot
+pred_plot
+```
+
+
+# Appendix
+
+```{r session.info}
+#-----session information----
+
+# print R session information
+sessionInfo()
+
+```
+
+```{r code.appendix, ref.label = knitr::all_labels(), echo = TRUE, eval = FALSE, , include=TRUE}
+#-----code appendix----
+```
+
+```{r functions, eval = TRUE}
+#-----functions----
+
+# Show the names of all functions defined in the .Rmd
+# (e.g. loaded in the environment)
+lsf.str()
+
+# Show the definitions of all functions loaded into the current environment  
+lapply(c(lsf.str()), getAnywhere)
+
+```
+
