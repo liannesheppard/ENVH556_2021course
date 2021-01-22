@@ -159,9 +159,9 @@ snap2 <- snapshot %>%
 
 # inspect predictions and residuals
 snap2 %>% 
-  dplyr::select(ln_nox, preds_sum, resids_sum, preds_fall, resids_fall, 
-                preds_win, resids_win) %>% 
-  mutate_if(is.double, round, 3)
+  dplyr::select(SeasonID = seasonfac, ln_nox, preds_sum, resids_sum, preds_fall,
+                resids_fall, preds_win, resids_win) %>% 
+  mutate_if(is.double, round, 2)
 
 ```
 
@@ -244,7 +244,7 @@ Let's look at what we mean by R^2^ about the best fit line by plotting the data 
 
 # plot the predictions vs. data for summer, both in-sample and out of sample
 
-# get range of plots
+# get the range of the data to use as limits in the plots
 r <- allseas_both %>% 
   filter(season == 1) %>% 
   dplyr::select(pred_in, pred_out, ln_nox) %>% 
@@ -280,7 +280,7 @@ p_out <- allseas_both %>%
          ) + 
     theme_bw()
 
-# combine plots
+# combine plots into one display
 ggarrange(p_in, p_out, ncol = 2, 
           top = "Summer Model ln(NOx) Predictions", 
           bottom = "Best fit line is red; 1:1 line is blue")
@@ -297,7 +297,7 @@ Perform the following tasks:
 3.	Summarize *ln_nox*, the outcome variable of interest     
     a.	Summarize by season    
     b.	Can you produce a nice summary figure of the data?  Should they be on the log or the native scale?  Is it useful to put multiple pollutants (NO, NOx, NO2) in the same figure?  
-4.	Replicate the season-specific models in Table 4 of [Mercer et al, 2011](https://doi.org/10.1016/j.atmosenv.2011.05.043).  (Only focus on the LUR model results.  We’ll talk about cross-validation in an upcoming week so recognize your R^2^ should be a bit bigger and your RMSE should be a bit smaller than the values in the paper.)  
+4.	Replicate the season-specific models in Table 4 of [Mercer et al, 2011](https://doi.org/10.1016/j.atmosenv.2011.05.043).  (Only focus on the LUR model results.  Also we’ll talk about cross-validation in an upcoming week so recognize your in-sample R^2^ should be a bit bigger and your RMSE should be a bit smaller than the values in the paper.)  
     a.	Compare your coefficient estimates and standard errors, as well as LUR R^2^ and sample size.  (Note:  You may need to consider rounding in your comparison.)  
     b.	Are all your terms parameterized the same as they are in the paper?  
 5.	Use the fall model to predict ln_nox in summer and vice versa.    
