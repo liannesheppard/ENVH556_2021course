@@ -1,7 +1,7 @@
 ---
-title: "Week 3 Lab:  Regression for Association"
+title: "Week 3 Lab Companion:  Regression for Association"
 subtitle: "Companion document with more advanced coding methods"
-author: "Lianne Sheppard & Chris Zuidema for ENVH 556"
+author: "Chris Zuidema for ENVH 556"
 date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
 output: 
     html_document:
@@ -75,13 +75,14 @@ rm(url, file_name, file_path, data_path)
 
 This document is a companion to the `Week3Lab.Rmd`. The purpose is to provide
 additional and somewhat more sophisticated coding methods to supplement the
-approaches in Lab 3 that you may find useful for your own work. Our coding goals
-for `Week3Lab.Rmd` were clarity and transparency to support learning about
-regression. Here we explore techniques that may scale well (for example to many
-regression models), reduces code repetition, and reduces the amount of "hard
-coding" in the analysis, but is less explicit and may obscure what is going on
-"behind the scenes" a bit. As with `Week3Lab.Rmd`, this document will use the
-ACT snapshot data.
+approaches demonstrated in Lab 3; you may find these more advanced coding
+methods useful for your own work. Our coding goals for `Week3Lab.Rmd` were
+clarity and transparency to support learning about regression. Here we
+demonstrate some techniques that will scale well (for example to many regression
+models), reduce code repetition, and reduce the amount of "hard coding" in the
+analysis, but that are less explicit and may obscure what is going on "behind
+the scenes" a bit. As with `Week3Lab.Rmd`, this document will use the ACT
+snapshot data.
 
 
 # Preliminaries
@@ -146,15 +147,16 @@ ggplot(snapshot, aes(x = seasonfac, y = ln_nox, fill = seasonfac)) +
 
 # Regression analysis
 
-`Week3Lab.Rmd` takes a bit more of a manual approach to regression modeling,
-specifying each of the seasonal models separately and assigning each model fit
-to its own object. This is clear and easy to follow, but you can see how this
-would quickly become a burdensome exercise in copy/paste and repeated code -
-imagine if we had 20 seasons instead of 3. In this section, we explore the
-general nesting workflow, where data is grouped and modeling steps occur
-"within" a dataframe. Aside from managing analysis steps with groups
-programmatically, these functions package regression output in dataframes that
-are `ggplot` friendly - minimizing the data wrangling required before plotting.
+`Week3Lab.Rmd` takes a more manual approach to regression modeling by specifying
+each of the seasonal models separately and assigning each model fit to its own
+object. This approach is clear and easy to follow, but you can see how this
+would quickly become a burdensome exercise potentially fraught with errors due
+to its reliance on copy/paste and repeated code.  Imagine if we had 20 seasons
+instead of 3. In this section, we explore the general nesting workflow, where
+data is grouped and modeling steps occur "within" a dataframe. Aside from
+managing analysis steps with groups programmatically, these functions package
+regression output in dataframes that are `ggplot` friendly, thus minimizing the
+data wrangling required before plotting.
 
 You can find more information about the nested workflow here:
 
@@ -167,7 +169,8 @@ You can find more information about the nested workflow here:
 # Common model (Table 4), season-specific LUR from Mercer et al, 2011
 
 # specify the "common model"
-frml <- as.formula(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm)
+frml <-
+  as.formula(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm)
 
 # create tibble with nested seasonal models
 season_mods <- snapshot %>%
@@ -177,7 +180,7 @@ season_mods <- snapshot %>%
   nest() %>% 
   
   # fit regression model for each season and generate summary, glance, augment,
-  # and in-sample prediction outputs.
+  # and in-sample prediction outputs with prediction intervals.
   mutate(model = map(data, ~lm(frml, data = .x)),
          summary = map(model, summary), 
          glanced = map(model, glance),
@@ -192,13 +195,13 @@ season_mods
 ```
 
 You can see `season_mods` is a grouped tibble with list-columns for each of the
-non-grouping variables ("seasonfac"). Next we'll demonstrate how to access these
-outputs separately to show what outputs the `glance()` (model summaries) and
-`augment()` (information about each observation like predictions and residuals)
-functions produce. But, you can also incorporate the `unnest()` step into the
-pipeline in the previous chunk. We showed the `summary()`, `glance()`,
-`augment()`, and `predict()` functions above, but you can include or remove
-functions to suit your needs.
+non-grouping variables. (Recall that "seasonfac" is the grouping variable.) Next we'll
+demonstrate how to access these outputs separately to show what outputs the
+`glance()` (model summaries) and `augment()` (information about each observation
+like predictions and residuals) functions produce. Note that as an alternative
+you can incorporate the `unnest()` step into the pipeline in the previous chunk.
+We showed the `summary()`, `glance()`, `augment()`, and `predict()` functions
+above, but you can include or remove functions to suit your needs.
 
 ```{r unnest}
 #-----unnest-----
@@ -250,7 +253,7 @@ ggplot(season_mods, aes(x = .fitted, y = ln_nox)) +
 ## Calculating predictions programmatically
 
 In `Week3Lab.Rmd` we specified each of the out-of-sample predictions we were
-interested in, for example:
+interested in separately, for example:
 
 ```
 
@@ -260,16 +263,17 @@ fall_preds_from_summer <-
 ```
 
 This is quite clear what's happening, but again, it requires us to specify the
-model, the data subset, and the object name for each out of sample predictions
-of interest.
+model, the data subset, and the object name for each set of out-of-sample
+predictions of interest.
 
 Next we'll demonstrate how to calculate the season-specific predictions in the
 dataset for all seasons programmatically. While `augment()` conveniently gave us
 "in-sample" predictions, the following approach will give us both "in-sample"
-predictions (e.g. using the summer model to make predictions in winter) and
+predictions (e.g. using the summer model to make predictions in summer) and
 "out-of-sample" predictions (e.g. using the summer model to make predictions in
-winter). The extra step involved with this approach is selecting the output of
-interest, for example, the "Fall_" columns from the Summer "seasonfac" rows.
+winter). The extra step involved with this approach comes after this chunk.  It
+is selecting the output of interest, for example, the "Winter_" columns from the
+Summer "seasonfac" rows.
 
 ```{r predictions.with.dplyr, message=FALSE}
 #-----predictions with dplyr-----
@@ -306,9 +310,9 @@ allseas_both %>%
 
 ```
 
-Assessing the the quality of the predictions, as we did in `Week3Lab.Rmd`
-requires us to specify the data of interest since we've produced all 
-predictions together:
+As we noted above, assessing the the quality of the predictions, as we did in
+`Week3Lab.Rmd` requires us to specify the data of interest since we've produced
+all predictions together:
 
 ```{r prediction.assessment}
 #-----prediction assessment
@@ -327,6 +331,7 @@ with(allseas_both %>% filter(seasonfac == "Summer"),
 ## Plot predictions
 
 We can define a flexible plot function to prevent repeating our plotting code:
+(Note that we will describe how to write functions in the Week 4 lab.)
 
 ```{r define.plot.function}
 #-----define plot function-----
@@ -339,7 +344,7 @@ plot_func <- function(df = allseas_both, x_var, y_var, seas,
   x <- enquo(x_var)
   y <- enquo(y_var)
   
-  # get range of plots
+  # get range of data to define the plotting range in the axes
   r <- df %>% 
     filter(seasonfac == seas) %>% 
     select(Summer_fit, Fall_fit, Winter_fit, ln_nox) %>% 
@@ -392,7 +397,7 @@ ggarrange(p_in, p_out, ncol = 2,
 
 ```
 
-Here is an alternate approach for plotting all predictions for a season
+Here is an alternate approach for plotting all predictions from a single season
 simultaneously using `facet wrap()`:
 
 ```{r plot.all.preds, message=FALSE}
