@@ -281,7 +281,7 @@ Summer "seasonfac" rows.
 # first, extract models from earlier regression procedures for convenience, 
 # setting the names of the models to match with their season
 models <- season_mods0$model %>%
-  setNames(levels(season_mods0$seasonfac))
+  setNames(as.character(season_mods0$seasonfac))
 
 # use lapply and an anonymous function to loop through the models
 allseas_both <- lapply(names(models), function(i){
