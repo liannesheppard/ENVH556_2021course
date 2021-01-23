@@ -173,7 +173,7 @@ frml <-
   as.formula(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm)
 
 # create tibble with nested seasonal models
-season_mods <- snapshot %>%
+season_mods0 <- snapshot %>%
   
   # group by season, then "nest"
   group_by(seasonfac) %>% 
@@ -191,7 +191,7 @@ season_mods <- snapshot %>%
          )
 
 # show tibble
-season_mods
+season_mods0
 ```
 
 You can see `season_mods` is a grouped tibble with list-columns for each of the
@@ -207,7 +207,7 @@ above, but you can include or remove functions to suit your needs.
 #-----unnest-----
 
 # unnest glanced object - `glance()` provides model summaries
-unnest(season_mods, glanced)
+unnest(season_mods0, glanced)
 
 # unnest augmented dataframe for ".fitted" and ".resid" values. Unfortunately, 
 # the prediction intervals are not provided with `augment()`. We'll now assign 
@@ -215,7 +215,7 @@ unnest(season_mods, glanced)
 # by continuing the pipeline in the previous chunk. We split up this pipeline 
 # just to demonstrate how to access the different objects produced in the nest 
 # workflow.
-season_mods <- unnest(season_mods, augmented)
+season_mods <- unnest(season_mods0, augmented)
 
 # show augmented season_mods object
 season_mods
@@ -280,9 +280,8 @@ Summer "seasonfac" rows.
 
 # first, extract models from earlier regression procedures for convenience, 
 # setting the names of the models to match with their season
-models <- season_mods[["model"]] %>% 
-  unique() %>% 
-  setNames(unique(season_mods[["seasonfac"]]))
+models <- season_mods0$model %>%
+  setNames(as.character(season_mods0$seasonfac))
 
 # use lapply and an anonymous function to loop through the models
 allseas_both <- lapply(names(models), function(i){
