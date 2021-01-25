@@ -1,0 +1,342 @@
+---
+title: 'Week 4 Lecture:  Regression for Prediction'
+author: "Lianne Sheppard for ENVH 556"
+date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    html_document:
+        fig_caption: yes
+        toc: true
+        toc_depth: 3
+        number_sections: true
+---
+
+<!--Basic document set-up goes here  -->
+```{r clear.workspace, eval=FALSE, echo=TRUE}
+#---------clear.workspace------------
+# Clear the environment without clearing knitr
+#
+# This chunk is useful for code development because it simulates the knitr
+# environment. Run it as a code chunk when testing. When knitr is run, it uses a
+# fresh, clean environment, so we set eval=FALSE to disable this chunk when
+# rendering.
+
+# Clear workspace of all objects and unload all extra (non-base) packages
+rm(list = ls(all = TRUE))
+if (!is.null(sessionInfo()$otherPkgs)) {
+    res <- suppressWarnings(
+        lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
+               detach, character.only=TRUE, unload=TRUE, force=TRUE))
+   
+}
+
+```
+
+```{r setup, include=FALSE}
+#-------------r.setup-------------
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
+#----------------load.libraries.pacman----
+# Load pacman into memory, installing as needed
+my_repo <- 'http://cran.r-project.org'
+if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
+
+# Load the other packages, installing as needed.  Some reasons for packages:
+# knitr:  kable()
+# ggplot2: part of tidyverse
+# readr: part of tidyverse
+# dplyr: part of tidyverse
+# multcomp:  glht
+# modelr:  part of tidyverse and need for add_predictions and add_residuals
+# boot:  cv tools are available
+# Hmisc:  describe
+pacman::p_load(tidyverse, knitr, mutlcomp, dplyr, modelr, Hmisc)  
+```
+
+```{r read.data.from.a.web.site, eval=TRUE, echo=FALSE}
+#-----read.data.from.a.web.site--------
+# Download the data file from a web site if it is not already downloaded, then
+# read in the file
+
+datapath <- "Datasets"
+dir.create(datapath, showWarnings=FALSE, recursive = TRUE)
+
+snapshot.file <- "allseasonsR.rds"
+snapshot.path <- file.path(datapath, snapshot.file)
+
+# Only download the file if it's not already present
+if (!file.exists(snapshot.path)) {
+    url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
+                 snapshot.file, sep = '/')
+    download.file(url = url, destfile = snapshot.path)
+}
+
+# Output a warning message if the file cannot be found
+if (file.exists(snapshot.path)) {
+    snapshot <- readRDS(file = snapshot.path)
+} else warning(paste("Can't find", snapshot.file, "!"))
+
+```
+
+# Week 4 Lecture slides R code
+
+## Set-up to make the season variables match each other
+
+```{r check season}
+# recode season -----
+#snapshot1 <- snapshot
+#snapshot1$season <- snapshot1$season+1
+# test that season is coded correctly
+table(snapshot$season,snapshot$seasonfac)
+
+```
+
+
+## Slide 12:  In-sample assessment (fall)
+
+```{r Slide 12 commands}
+# slide 12 commands:  in-sample assessment -----
+# Note:  need the dplyr:: before the select command.  
+lm_fall <-
+    lm(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
+       data = subset(snapshot, season == 2))
+
+# make predictions on the full dataset using the fall model
+snap2 <- snapshot %>%  
+    modelr::add_predictions(lm_fall,"preds_fall")  
+
+# regression of in-sample predictions vs. data
+summary(lm(ln_nox ~ preds_fall, 
+           data = subset(snap2, season == 2)))
+
+# now compare correlations
+fallMSE_from_fall <-
+    dplyr::select(snap2,  
+                  c("ln_nox", "preds_fall", "ID", "season")) %>%
+    filter(season == 1) %>%
+    dplyr::summarize(r = cor(ln_nox, preds_fall),  
+              R2 = r^2)
+
+cat( "In-sample R2 of predictions from fall model, predicted in fall:  ", paste(round(fallMSE_from_fall[2], 2)) ) 
+    
+```
+
+
+## Slide 14:  Out-of-sample assessment (fall applied to winter)
+
+```{r slide 14}
+# slide 14:  out of sample assessment-----
+# regression of out-of-sample predictions vs. data (evaluate fall model in winter)
+
+summary(lm(ln_nox ~ preds_fall, 
+           data = subset(snap2, season == 3)))
+
+# now compare correlations
+winterMSE_from_fall <-
+    dplyr::select(snap2,  
+                  c("ln_nox", "preds_fall", "ID", "season")) %>%
+    filter(season == 3) %>%
+    dplyr::summarize(r = cor(ln_nox, preds_fall),
+    R2 = r ^ 2)
+
+cat("Out of sample R2 of predictions from fall model, predicted in winter:  ",
+    paste(round(winterMSE_from_fall[2], 2)))
+    
+```
+
+
+## Slide 15:  Plots of in- vs. out-of-sample predictions with prediction intervals
+
+```{r slide 15}
+# slide 15: plots of in- and out-of-sample predictions------
+# No prediction intervals
+
+# plot:  in-sample
+#fall_results <- 
+    snap2 %>%
+    filter(season == 2) %>%
+    ggplot(aes(preds_fall, ln_nox)) +
+    geom_point() +
+    coord_fixed() +
+    geom_abline(intercept = 0, slope = 1, color = "blue") +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+    labs(title = "In-sample: \nFall LA Results", 
+         x = "Predicted ln(NOx) (ln(ppb))",
+         y = "Observed ln(NOx) (ln(ppb))",
+         caption = "Best fit line is red; 1:1 line is blue")
+
+# now plot:  out-of-sample
+#winter_results <-
+    snap2 %>%
+    filter(season == 3) %>%
+    ggplot(aes(preds_fall, ln_nox)) +
+    geom_point() +
+    coord_fixed() +
+    geom_abline(intercept = 0, slope = 1, color = "blue") +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+    labs(title = "Out-of-sample: \nWinter LA Results", 
+         x = "Predicted ln(NOx) (ln(ppb))",
+         y = "Observed ln(NOx) (ln(ppb))",
+         caption = "Best fit to these data line is red; \npredicted and 1:1 line is blue")
+    
+```
+
+## Slide 17:  MSE-Based R2 estimates (& code), in- and out-of-sample
+
+*Correlations of predictions vs. observations by season:  (Note:  these are regression-based R^2^ estimates.)
+
+```{r season-specific reg-based correlations, eval = FALSE}
+# season-specific regression-based correlations ------
+pred_summary <-
+    dplyr::select(snap2,  
+                  c("ln_nox", "preds_fall", "ID", "season", "seasonfac")) %>%
+    group_by(seasonfac) %>%
+    dplyr::summarize(r = cor(ln_nox, preds_fall),
+    R2 = r ^ 2)
+
+kable(pred_summary, digits = 2)
+    
+```
+
+*MSE-based R^2^s by season:  (Note:  these are MSE-based R^2^ estimates.)
+
+```{r season-specific MSE-based correlations, eval = FALSE}
+# season-specific MSE-based correlations ------
+pred_summary <-
+    dplyr::select(snap2,  
+                  c("ln_nox", "preds_fall", "ID", "season", "seasonfac")) %>%
+    group_by(seasonfac) %>%
+    dplyr::summarize(ln_nox_avg = mean(ln_nox),
+                     MSE_nox = mean((ln_nox - ln_nox_avg)^2),
+                     MSE_pred = mean((ln_nox - preds_fall)^2),
+                     MSE_R2 = max(1 - MSE_pred/MSE_nox, 0)  
+    )
+
+kable(pred_summary, digits = 2)
+    
+```
+
+## Slide 18:  R command for AIC, BIC
+
+```{r Slide 18:  AIC & BIC}
+# slide 18:  AIC & BIC
+# The smaller the AIC, the better the model fit.
+# Note:  AIC is negative, so smaller AIC has a bigger absolute value
+AIC(lm_fall)
+BIC(lm_fall)
+
+```
+
+
+## Slide 20:  In- vs. out-of-sample prediction intervals
+
+```{r prediction intervals}
+# estimate prediction intervals for all seasons -----
+preds_from_fall <- predict(lm_fall, 
+                snapshot, 
+                interval="prediction")
+
+# combine these with snapshot data
+# We're assuming data are in the same order when we cbind
+snap_fpred <- cbind(snapshot,preds_from_fall)
+
+# now plot:  in-sample
+#fall_results <- 
+    snap_fpred %>%
+    filter(season == 2) %>%
+    ggplot(aes(fit, ln_nox)) +
+    geom_point() +
+    coord_fixed() +
+    geom_abline(intercept = 0, slope = 1, color = "blue") +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+        geom_ribbon(aes(ymin = lwr, ymax = upr),
+                fill = "blue", alpha = 0.2) +
+    labs(title = "In-sample: \nFall LA Results", 
+         x = "Predicted ln(NOx) (ln(ppb))",
+         y = "Observed ln(NOx) (ln(ppb))",
+         caption = "Best fit line is red; 1:1 line is blue")
+
+# now plot:  out-of-sample
+#winter_results <-
+    snap_fpred %>%
+    filter(season == 3) %>%
+    ggplot(aes(fit, ln_nox)) +
+    geom_point() +
+    coord_fixed() +
+    geom_abline(intercept = 0, slope = 1, color = "blue") +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+        geom_ribbon(aes(ymin = lwr, ymax = upr),
+                fill = "blue", alpha = 0.2) +
+    labs(title = "Out-of-sample: \nWinter LA Results", 
+         x = "Predicted ln(NOx) (ln(ppb))",
+         y = "Observed ln(NOx) (ln(ppb))",
+         caption = "Best fit to these data line is red; \npredicted and 1:1 line is blue")
+    
+
+```
+
+
+## Slide 36:  Forward selection example
+
+```{r fall subset}
+# fall subset ----
+# Traditional base R approach
+#fall <- subset(snapshot, season==2)
+
+# Tidyverse approach
+fall <- filter(snapshot, season == 2)
+
+```
+
+
+```{r forward selection set-up for fall snapshot}
+# forward selection set-up for fall snapshot ------
+# define the smallest model of interest, an intercept only model here
+null <- lm(ln_nox ~ 1, data=fall)
+#null
+    
+# create the largest possible model, a full model that includes all of the
+# predictor variables in the dataset.
+# Steps:
+# 1: get the list of all the potential covariates of interest from the dataset:
+covars_all <- names(fall[12:74])
+
+# 2: now turn this into a formula for the full model in stepwise regression:
+full <- as.formula(paste("ln_nox ~ ", paste(covars_all, collapse= "+")))
+#full
+
+```   
+
+
+```{r fitting forward selection}
+# forward selection model------
+# Note:  k=0 appears to put no restriction on the forward selection and doesn't
+# stop until the full model is incorporated. Using k=2 is comparable to AIC.
+# Using log(n), where n is the number of observations, is comparable to BIC.
+forwardreg_fall <- step(null, scope=list(lower=null, upper=full), trace = 0, direction="forward", k=0)
+
+# save the ordered list of names for later use, dropping the intercept
+covars_forward <- names(forwardreg_fall$coefficients)[-1]
+
+# print the ordered list of covariates
+covars_forward
+
+```
+
+
+
+
+# Appendix
+
+```{r session.info}
+#-----------------session.info: beginning of Appendix -----------------
+#This allows reproducibility by documenting the version of R and every package you used.
+sessionInfo()
+```
+
+```{r appendix.code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
+
+```
+
+
