@@ -131,7 +131,11 @@ summary(lm_fall <- lm(frml, data = fall))
 
 * AIC and BIC:  
 
-Note, you can provide these functions multiple model objects to facilitate comparisons of AIC or BIC across models fit on the same data.  I only show one model object here.  This has limited utility since there isn't inherent meaning in the AIC or BIC estimates.  Their value is in their comparison across fitted models.
+Note, you can provide these functions multiple model objects to facilitate
+comparisons of AIC or BIC across models fit on the same data.  I only show one
+model object here.  This has limited utility since there isn't inherent meaning
+in the AIC or BIC estimates.  Their value is in their comparison across fitted
+models.
 
 ```{r AIC.and.BIC}
 #-----AIC and BIC-----
@@ -201,7 +205,8 @@ ordering a sequence of models based on increasing complexity.
 Note:  The `step` function is available in both base R and in the `MASS`
 package.  While we won't use it in this lab, the function `addterm()` from the
 `MASS` package allows the addition of the next best term to a model.  This
-allows use of the F-test or a Chi-square test as alternatives to AIC which is implemented below.
+allows use of the F-test or a Chi-square test as alternatives to AIC which is
+implemented below.
 
 * **Model Set-up**
 First define the smallest starting model (the *null* model) and the largest
@@ -244,7 +249,10 @@ full <- as.formula(paste("ln_nox ~ ", paste(covars_all, collapse= "+")))
 
 * **Forward Selection**
 
-The first model listed in the command (the "object"), is the initial model used to start the search.  In forward regression we want to start with the smallest model of interest to us, here the intercept only model.  The scope gives the entire range of models by also incorporating the largest possible model.  
+The first model listed in the command (the "object"), is the initial model used
+to start the search.  In forward regression we want to start with the smallest
+model of interest to us, here the intercept only model.  The scope gives the
+entire range of models by also incorporating the largest possible model.
 
 ```{r fitting.forward.selection}
 #-----fitting forward selection model-----
@@ -272,7 +280,7 @@ class(forwardreg_fall)
 
 # gives the names of the coefficients for use in other work.  Should assign a
 # name to it for later use.
-# [CZ: we assign the names of this regression in the previous chunk - remove here?]
+# [CZ: Lianne, we assign the names of this regression in the previous chunk - remove here?]
 names(forwardreg_fall$coefficients)
 
 # print a few other things, preceded by what they are in the output (by using
@@ -346,8 +354,13 @@ paste("MSE-based R2:  ", max(1 - MSE_pred/MSE_obs, 0))
 
 ### Tips on writing functions
 
-From the *R for Data Science* [R4DS](https://r4ds.had.co.nz/index.html) chapter on functions, [Chapter 19](https://r4ds.had.co.nz/functions.html), the
-reason to write functions is to automate repetitive tasks and avoid copying and pasting.  This eliminates the need to update the code in multiple places when you make a change and reduces your chances of making mistakes.  A simple rule of thumb is to write a function whenever you have or will need at least three copies of a block of code.
+From the *R for Data Science* [R4DS](https://r4ds.had.co.nz/index.html) chapter
+on functions, [Chapter 19](https://r4ds.had.co.nz/functions.html), the reason to
+write functions is to automate repetitive tasks and avoid copying and pasting.
+This eliminates the need to update the code in multiple places when you make a
+change and reduces your chances of making mistakes.  A simple rule of thumb is
+to write a function whenever you have or will need at least three copies of a
+block of code.
 
 Here are the 3 basic steps to writing a function as described in *R4DS*:
 
@@ -355,7 +368,8 @@ Here are the 3 basic steps to writing a function as described in *R4DS*:
 2. List the inputs or *arguments* to the function inside the function call.
 3. Put code to accomplish what you want in the body of the function.
 
-Here is a list of twelve best practices for writing functions graciously provided by Brian High:  
+Here is a list of twelve best practices for writing functions graciously
+provided by Brian High:
 
 1. Use a function when you need to repeat a block of code, instead of simply 
    copying and pasting the same block of code. I.e. "do not repeat yourself".
@@ -553,7 +567,8 @@ fall <- mutate(fall, CV_grp = CV_grp)
 
 ```
 
-Now test the CV on random groups.  Note that these out-of-sample results should look better.  Why is that the case? (This is a homework challenge question.)
+Now test the CV on random groups.  Note that these out-of-sample results should
+look better.  Why is that the case? (This is a homework challenge question.)
 
 ```{r CV.results.on.random.groups}
 #-----CV results on random groups-----
@@ -687,7 +702,8 @@ res <- lapply(1:n_covars, function(i){
 
 ### Now plot the bias-variance trade-off
 
-Note: the precipitous drop in R2 in the out of sample assessment is best explained by major overfitting of this model after ~ 30 covariates.
+Note: the precipitous drop in R2 in the out of sample assessment is best
+explained by major overfitting of this model after ~ 30 covariates.
 
 ```{r bias-var separate plots}
 #-----bias-var separate plots-----
@@ -810,7 +826,8 @@ also include a column for the variable name of the variable added.
 
 # Homework Exercises
 
-1. Write a brief summary of the purpose of the lab and your approach.  Then present your results:
+1. Write a brief summary of the purpose of the lab and your approach.  Then
+present your results:
 
     a.  Describe the results (with appropriate displays in table(s) and/or
     figures(s)), and
@@ -819,7 +836,8 @@ also include a column for the variable name of the variable added.
     training data alone and after cross-validation. In your discussion, comment
     on how your in-sample and cross-validated MSE-based R^2^ estimates compare.
     
-2. **Extra credit**. Present one or both of the following results in your write-up:
+2. **Extra credit**. Present one or both of the following results in your
+write-up:
 
     a.  Repeat the exercise using randomly defined CV groups that ignore the
     gradient clusters.
