@@ -345,9 +345,10 @@ MSE_pred <- mean((cv_pred$ln_nox - cv_pred$preds)^2)
 # MSE of observations (for R2 denominator)
 MSE_obs <- mean((cv_pred$ln_nox - ln_nox_avg)^2)
 
-# print the results (rounded)
-#paste("RMSE:  ", round( sqrt(MSE_pred), 2))
-#paste("MSE-based R2:  ", round( max(1 - MSE_pred/MSE_obs, 0), 2))
+# # print the results (rounded)
+# paste("RMSE:  ", round( sqrt(MSE_pred), 2))
+# paste("MSE-based R2:  ", round( max(1 - MSE_pred/MSE_obs, 0), 2))
+
 # print the results not rounded
 paste("RMSE:  ", sqrt(MSE_pred))
 paste("MSE-based R2:  ", max(1 - MSE_pred/MSE_obs, 0))  
@@ -385,13 +386,13 @@ provided by Brian High:
    were not included in the parameter list. I.e., "make no assumptions".
 4. Define default values in the argument list if it makes sense to do so. 
 5. The order of arguments should be from most to least essential. If the
-    function operates on a data frame, for example, it should be the first 
-    argument (this also allows you to use your new function with the pipe 
-    operator, `%>%`). Put arguments with defined defaults at the end, so the 
-    function user can safely omit providing values for those arguments if they 
-    prefer to use the defaults you have defined for them. 6. Use argument names 
-    as consistently as possible. Refer to functions you commonly use for 
-    examples of consistently named arguments.
+   function operates on a data frame, for example, it should be the first 
+   argument (this also allows you to use your new function with the pipe 
+   operator, `%>%`). Put arguments with defined defaults at the end, so the 
+   function user can safely omit providing values for those arguments if they 
+   prefer to use the defaults you have defined for them. 6. Use argument names 
+   as consistently as possible. Refer to functions you commonly use for 
+   examples of consistently named arguments.
 7. The function should return a single value or object (e.g., a vector, 
    dataframe, list, etc.).
 8. Use the return() function at the end of your function to return this object 
@@ -402,8 +403,8 @@ provided by Brian High:
    it returns as output.
 10. Write the function to be as resuable (i.e., flexible, generic) as practical.
 11. When practical, validate the inputs (argument list) for expected data type 
-   and appropriate range if values to avoid strange results if the function is 
-   misused.
+    and appropriate range if values to avoid strange results if the function is 
+    misused.
 12. Avoid huge monolithic functions that perform all sorts of tasks. Separate 
     steps into separate functions when it makes sense to do so. This will make 
     your code more reusable, flexible, easier to understand, and therefore 
@@ -678,7 +679,8 @@ for (i in 1:n_covars) {
 
 
 # [Lianne, here is an lapply approach, for which the `res` object does not 
-# need to be pre-assigned (so can be deleted if this version is kept)]
+# need to be pre-assigned (so that can be deleted if this version is kept, {but 
+# keep n_covars object assignment})]
 res <- lapply(1:n_covars, function(i){
     
     # define the formula, updated to add a term each time
@@ -701,7 +703,10 @@ res <- lapply(1:n_covars, function(i){
            out_R2 = out_results[["MSE_based_R2"]] 
            )
     
-    }) %>% bind_rows()
+    }) %>% 
+  
+    # bind list rows together
+    bind_rows()
 
 ```
 
@@ -742,7 +747,7 @@ rmse_plot <- ggplot(temp) +
     geom_line(aes(x = n_pred, y = RMSE, color = Source)) +
     xlab("Model Complexity (# of terms)") +
     ylab(bquote(bold(RMSE))) +
-    scale_x_continuous(breaks = c(seq(0, 63, 5))) +
+    scale_x_continuous(breaks = c(seq(0, 63, 5))) + 
     theme_bw() +
     theme(axis.text = element_text(face = "bold"),
           axis.title = element_text(face = "bold")) +
@@ -753,6 +758,7 @@ rmse_plot <- ggplot(temp) +
 rmse_plot
 
 ```
+
 The next step puts both plots together.  We also restrict the range on the y-axis so that the plots are more informative visually.
 
 ```{r bias-var combined plots}
@@ -764,20 +770,44 @@ res$out_RMSE[31]
 
 # This suggests limits for the R2 plot of ~.5-.7 to 1 and limits for the RMSE
 # plot of 1 - ~.2 or so
-#CHRIS:  I don't know how to set the limits on this combined plot.  Do you?
+
+################################################################################
+# CHRIS:  I don't know how to set the limits on this combined plot.  Do you?
+# Lianne, the strategy below is certainly not ideal, but the appearance is the 
+# same as if we were able to restrict the axis limits. An alternative would be 
+# to combine the separate plots with `egg::ggarrange()` or similar (noted 
+# below).
+################################################################################
+
+# Note: it is very hard to "zoom in" on a particular facet (i.e. restrict the
+# axis limits), so one strategy is to omit the values above a certain level to
+# achieve the desired axis limits. Expanding the axis limits of a facet can be 
+# achieved with `geom_blank()`. An alternative would be to create the separate 
+# plots, specifying the axis limits if desired, then combining them with 
+# `egg::ggarrange()` or similar.
+
+# specify y axis limit for RMSE 
+# [Lianne, if you have a programmatic idea we calculate a number]
+y_lim <- 5
 
 # create temporary dataframe for plot
 temp <- res %>% 
+  
+  # make long dataframe
   pivot_longer(cols = c(ends_with("_RMSE"), ends_with("_R2")), 
                names_to = "Source_Estimate", 
-               values_to = "value" ) %>% 
-  separate(col = Source_Estimate, into = c("Source", "Estimate") )
-
+               values_to = "value" ) %>%
+  
+  # seperate the "Source" column for in and out of sample
+  separate(col = Source_Estimate, into = c("Source", "Estimate") ) %>% 
+  
+  # create a new column with the "plot values", setting high values to NA
+  mutate(plot_value = ifelse(Estimate == "RMSE" & value > y_lim, NA, value))
 
 # plot both model-based (in sample) and CV generated MSE and R2
 combined_plot <- ggplot(temp) +
-  geom_point(aes(x = n_pred, y = value, color = Source)) + 
-  geom_line(aes(x = n_pred, y = value, color = Source)) +
+  geom_point(aes(x = n_pred, y = plot_value, color = Source)) + 
+  geom_line(aes(x = n_pred, y = plot_value, color = Source)) +
   xlab("Model Complexity (# of terms)") +
   ylab("") +
   scale_x_continuous(breaks = c(seq(0, 63, 5))) +
