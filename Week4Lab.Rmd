@@ -35,7 +35,7 @@ my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.
-pacman::p_load(knitr, dplyr, tidyr, ggplot2, modelr)
+pacman::p_load(knitr, dplyr, tidyr, ggplot2, modelr, stringr)
 
 ```
 
@@ -224,26 +224,33 @@ understand exactly how the `k` option operates w.r.t. stopping the algorithm.
 ```{r forward.selection.set.up.for.fall.snapshot}
 #-----forward selection set-up for fall snapshot-----
 
-# define the smallest model of interest ("null"), an intercept only model here
+# 1: define the smallest model of interest ("null"), an intercept only model here
 null <- lm(ln_nox ~ 1, data = fall)
 
     
-# create the largest possible model, a full model that includes all of the
+# 2: create the largest possible model, a full model that includes all of the
 # predictor variables in the dataset.
+
 # Steps:
-# 1: get the list of all the potential covariates of interest from the dataset:
+# A: get the list of all the potential covariates of interest from the dataset:
 
-#[CZ: Lianne, there are 79 columns in the snapshot data frame, it's not clear
-# here if the last five columns are left out intentionally. Ideally, we would 
-# figure a way to do this without indexing by position...]
-covars_all <- names(fall[12:74])
+# Option 1 (not recommended):  The simple but inelegant way to do this is by
+# position.  However this is not a computing best practice because relying on
+# position in the data makes assumptions about the data format and risks new
+# errors in the future
+#covars_all <- names(fall[12:74])
 
-# 2: now turn this into a formula for the full model in stepwise regression:
+# Option 2 (recommended):  Rely on the beginning of the variable names and use
+# these with str_subset in the stringr package:
+covars_all <- str_subset(names(snapshot),"Pop_|Int_|Open_|D2|A1_|A23_")
+
+# B: now turn this into a formula for the full model in stepwise regression:
 full <- as.formula(paste("ln_nox ~ ", paste(covars_all, collapse= "+")))
 
-# # [CZ: Lianne, is there a reason the "full" model was not fit like the null 
-# # model (added but commented out below)?]
-# full <- lm(full, data = fall)
+# Note:  forward stepwise doesn't need the full model to be fit, only the null
+# model (as was done in step 1 above), because that is the "object" that
+# represents a model of the appropriate class that is used as the initial model
+# in the stepwise search
 
 ```   
 
@@ -278,10 +285,11 @@ str(forwardreg_fall)
 # class of the object
 class(forwardreg_fall)
 
-# gives the names of the coefficients for use in other work.  Should assign a
-# name to it for later use.
-# [CZ: Lianne, we assign the names of this regression in the previous chunk - remove here?]
-names(forwardreg_fall$coefficients)
+# The names of the coefficients in the selected order are stored in
+# "forwardfreg_fall$anova$step" and also in "covars_forward".  These vectors are
+# not identical because the $anova$step variable has the null model and includes
+# "+ ":
+cbind(forwardreg_fall$anova$Step[-1],covars_forward)
 
 # print a few other things, preceded by what they are in the output (by using
 # the cat() command to print text in the output.)
@@ -291,9 +299,6 @@ forwardreg_fall$anova$AIC
 
 cat("Deviance:  ", "\n")
 forwardreg_fall$anova$Deviance
-
-cat("Forward Regression Variables:  ", "\n")
-forwardreg_fall$anova$Step
 
 ```
 
@@ -465,7 +470,7 @@ do_CV <- function(data, group = "group", formula) {
     
     # Arguments:
       # data is the data frame
-      # group is the grouping variable (in the data frame)
+      # group is the grouping variable (a variable in the data frame)
       # formula is the formula to pass to lm
       # the function returns the dataset with a new variable called cvpreds
       # appended to the end; these are the out-of-sample predictions
@@ -748,9 +753,18 @@ rmse_plot <- ggplot(temp) +
 rmse_plot
 
 ```
+The next step puts both plots together.  We also restrict the range on the y-axis so that the plots are more informative visually.
 
 ```{r bias-var combined plots}
 #-----bias-var combined plots-----
+
+# Note that the out-of-sample R2 for a model with 31 terms is about .7; we can
+# find the RMSE using res$out_RMSE[31]:
+res$out_RMSE[31]
+
+# This suggests limits for the R2 plot of ~.5-.7 to 1 and limits for the RMSE
+# plot of 1 - ~.2 or so
+#CHRIS:  I don't know how to set the limits on this combined plot.  Do you?
 
 # create temporary dataframe for plot
 temp <- res %>% 
