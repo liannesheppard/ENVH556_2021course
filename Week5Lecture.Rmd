@@ -172,7 +172,7 @@ ggplot(fvc, aes(x = group_loc, y = ln_nox)) +
     geom_boxplot(aes(x=group_loc, group = group_loc),
                  outlier.color = NA, 
                  width = .6) +
-    geom_dotplot(aes(group = group_loc), binaxis = "y", binwidth = .01, s
+    geom_dotplot(aes(group = group_loc), binaxis = "y", binwidth = .01,
                  tackdir =  "center", color = "red", fill = NA, dotsize = 2) +
     labs(title = "Boxplots with Overlaid Dotplots\nfor Ln(NOx) in Fall by Gradient Site Index",
          y = "ln(NOx) in ln(ppb)",
