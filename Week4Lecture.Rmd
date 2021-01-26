@@ -84,9 +84,8 @@ if (file.exists(snapshot.path)) {
 ## Set-up to make the season variables match each other
 
 ```{r check season}
-# recode season -----
-#snapshot1 <- snapshot
-#snapshot1$season <- snapshot1$season+1
+# check season -----
+# an older version of this dataset had season coded off by 1
 # test that season is coded correctly
 table(snapshot$season,snapshot$seasonfac)
 
@@ -118,7 +117,8 @@ fallMSE_from_fall <-
     dplyr::summarize(r = cor(ln_nox, preds_fall),  
               R2 = r^2)
 
-cat( "In-sample R2 of predictions from fall model, predicted in fall:  ", paste(round(fallMSE_from_fall[2], 2)) ) 
+cat( "In-sample R2 of predictions from fall model, predicted in fall:  ", 
+     paste(round(fallMSE_from_fall[2], 2)) ) 
     
 ```
 
@@ -127,7 +127,8 @@ cat( "In-sample R2 of predictions from fall model, predicted in fall:  ", paste(
 
 ```{r slide 14}
 # slide 14:  out of sample assessment-----
-# regression of out-of-sample predictions vs. data (evaluate fall model in winter)
+# regression of out-of-sample predictions vs. data (evaluate fall model in
+# winter)
 
 summary(lm(ln_nox ~ preds_fall, 
            data = subset(snap2, season == 3)))
@@ -184,7 +185,8 @@ cat("Out of sample R2 of predictions from fall model, predicted in winter:  ",
 
 ## Slide 17:  MSE-Based R2 estimates (& code), in- and out-of-sample
 
-*Correlations of predictions vs. observations by season:  (Note:  these are regression-based R^2^ estimates.)
+*Correlations of predictions vs. observations by season:  (Note:  these are
+regression-based R^2^ estimates.)
 
 ```{r season-specific reg-based correlations, eval = FALSE}
 # season-specific regression-based correlations ------
@@ -314,7 +316,8 @@ full <- as.formula(paste("ln_nox ~ ", paste(covars_all, collapse= "+")))
 # Note:  k=0 appears to put no restriction on the forward selection and doesn't
 # stop until the full model is incorporated. Using k=2 is comparable to AIC.
 # Using log(n), where n is the number of observations, is comparable to BIC.
-forwardreg_fall <- step(null, scope=list(lower=null, upper=full), trace = 0, direction="forward", k=0)
+forwardreg_fall <- step(null, scope=list(lower=null, upper=full), 
+                        trace = 0, direction="forward", k=0)
 
 # save the ordered list of names for later use, dropping the intercept
 covars_forward <- names(forwardreg_fall$coefficients)[-1]
@@ -339,4 +342,15 @@ sessionInfo()
 
 ```
 
+```{r functions, eval = TRUE}
+#-----functions----
+
+# Show the names of all functions defined in the .Rmd
+# (e.g. loaded in the environment)
+lsf.str()
+
+# Show the definitions of all functions loaded into the current environment  
+lapply(c(lsf.str()), getAnywhere)
+
+```
 
