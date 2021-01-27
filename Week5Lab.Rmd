@@ -10,78 +10,66 @@ output:
         number_sections: true
 ---
 
-<!--Basic document set-up goes here  -->
-
 ```{r setup, include=FALSE}
-#-------------r.setup-------------
+#-----setup-----
+
+# set knitr options
 knitr::opts_chunk$set(echo = TRUE)
-```
 
-```{r clear.workspace, eval=FALSE, echo=FALSE}
-#---------clear.workspace------------
-# Clear the environment without clearing knitr
-#
-# This chunk is useful for code development because it simulates the knitr
-# environment. Run it as a code chunk when testing. When knitr is run, it uses a
-# fresh, clean environment, so we set eval=FALSE to disable this chunk when
-# rendering.
-
-# Clear workspace of all objects and unload all extra (non-base) packages
+# clear work space of all objects and unload all extra (non-base) packages
 rm(list = ls(all = TRUE))
 if (!is.null(sessionInfo()$otherPkgs)) {
     res <- suppressWarnings(
         lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
                detach, character.only=TRUE, unload=TRUE, force=TRUE))
-   
 }
 
 ```
 
-
 ```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
-#----------------load.libraries.pacman----
+#-----load libraries pacman-----
+
 # Load pacman into memory, installing as needed
 my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
-# Load the other packages, installing as needed.  Some reasons for packages:
-# knitr:  kable()
-# ggplot2: part of tidyverse
-# readr: part of tidyverse
-# dplyr: part of tidyverse
-# multcomp:  glht
-# modelr:  part of tidyverse and need for add_predictions and add_residuals
-# boot:  cv tools are available
-# Hmisc:  describe
-# lme4
-pacman::p_load(tidyverse, knitr, dplyr, modelr, Hmisc, lme4, VCA)  
+# Load the other packages, installing as needed.
+pacman::p_load(knitr, dplyr, tidyr, modelr, stringr, ggplot2, Hmisc, lme4, VCA)
+
 ```
 
-```{r read.data.from.a.web.site, eval=TRUE, echo=FALSE}
-#-----read.data.from.a.web.site--------
-# Download the data file from a web site if it is not already downloaded, then
-# read in the file
+```{r directory.organization.read.data, echo=FALSE, warning=FALSE}
+#-----directory organization and read data-----
 
-datapath <- "Datasets"
-dir.create(datapath, showWarnings=FALSE, recursive = TRUE)
+# specify working directory
+project_path <- getwd()
 
-weldschool.file <- "weldschool.rds"
-weldschool.path <- file.path(datapath, weldschool.file)
+# create "Datasets" directory if one does not already exist    
+dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
 
-# Only download the file if it's not already present
-if (!file.exists(weldschool.path)) {
+# specify data path
+data_path <- file.path(project_path,"Datasets")
+
+# specify the file name and path
+file_name <- "weldschool.rds"
+file_path <- file.path(data_path, file_name)
+
+# Download the file if it is not already present
+if (!file.exists(file_path)) {
     url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
-                 weldschool.file, sep = '/')
-    download.file(url = url, destfile = weldschool.path)
+                 file_name, sep = '/')
+    download.file(url = url, destfile = file_path)
 }
 
 # Output a warning message if the file cannot be found
-if (file.exists(weldschool.path)) {
-    weldschool <- readRDS(file = weldschool.path)
-} else warning(paste("Can't find", weldschool.file, "!"))
+if (file.exists(file_path)) {
+    weldschool <- readRDS(file_path)
+} else warning(paste("Can't find", file_name, "!"))
+
+# remove temporary variables
+rm(url, file_name, file_path, data_path)
 
 ```
-
 
 # Introduction and Purpose
 
