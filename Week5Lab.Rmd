@@ -1,0 +1,173 @@
+---
+title: "Week 5 Lab:  Variance Components"
+author: "Lianne Sheppard for ENVH 556"
+date: "Winter 2019; Updated `r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    html_document:
+        fig_caption: yes
+        toc: true
+        toc_depth: 3
+        number_sections: true
+---
+
+<!--Basic document set-up goes here  -->
+
+```{r setup, include=FALSE}
+#-------------r.setup-------------
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r clear.workspace, eval=FALSE, echo=FALSE}
+#---------clear.workspace------------
+# Clear the environment without clearing knitr
+#
+# This chunk is useful for code development because it simulates the knitr
+# environment. Run it as a code chunk when testing. When knitr is run, it uses a
+# fresh, clean environment, so we set eval=FALSE to disable this chunk when
+# rendering.
+
+# Clear workspace of all objects and unload all extra (non-base) packages
+rm(list = ls(all = TRUE))
+if (!is.null(sessionInfo()$otherPkgs)) {
+    res <- suppressWarnings(
+        lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
+               detach, character.only=TRUE, unload=TRUE, force=TRUE))
+   
+}
+
+```
+
+
+```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
+#----------------load.libraries.pacman----
+# Load pacman into memory, installing as needed
+my_repo <- 'http://cran.r-project.org'
+if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
+
+# Load the other packages, installing as needed.  Some reasons for packages:
+# knitr:  kable()
+# ggplot2: part of tidyverse
+# readr: part of tidyverse
+# dplyr: part of tidyverse
+# multcomp:  glht
+# modelr:  part of tidyverse and need for add_predictions and add_residuals
+# boot:  cv tools are available
+# Hmisc:  describe
+# lme4
+pacman::p_load(tidyverse, knitr, dplyr, modelr, Hmisc, lme4, VCA)  
+```
+
+```{r read.data.from.a.web.site, eval=TRUE, echo=FALSE}
+#-----read.data.from.a.web.site--------
+# Download the data file from a web site if it is not already downloaded, then
+# read in the file
+
+datapath <- "Datasets"
+dir.create(datapath, showWarnings=FALSE, recursive = TRUE)
+
+weldschool.file <- "weldschool.rds"
+weldschool.path <- file.path(datapath, weldschool.file)
+
+# Only download the file if it's not already present
+if (!file.exists(weldschool.path)) {
+    url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
+                 weldschool.file, sep = '/')
+    download.file(url = url, destfile = weldschool.path)
+}
+
+# Output a warning message if the file cannot be found
+if (file.exists(weldschool.path)) {
+    weldschool <- readRDS(file = weldschool.path)
+} else warning(paste("Can't find", weldschool.file, "!"))
+
+```
+
+
+# Introduction and Purpose
+
+The purpose of this lab is to practice estimating variance components for random and mixed effect models.
+
+In this lab exercise we will use the Welding School personal survey data.  The data are stored in the file named “*weldschoolexp.rds*”.  The exposure concentration variables in the dataset consist of *mnconc* and *particulate*, the airborne concentrations of manganese and total particulate, respectively, both in µg/m^3^.    The grouping variable is *subjid*.  Further description of the variables can be found in “*Welding School Exposures variables 556 rev021015.docx*”, and the background and study design is in the published paper with file name “*Baker Blood Mn Review*.”
+
+# Getting Started
+
+The companion file *Week5Lecture.Rmd* gives R commands relevant to this lab.  The lecture examples are applied to the DEMS underground and Snapshot traffic gradient site data.
+
+## Tools for estimating variance components
+
+Below is a summary of R packages.  See the *Week5Lecture.Rmd* file for coding examples.
+
+* Descriptively estimate variance components using `dplyr`
+* Random effects models only
+    - ANOVA method of moments using `VCA`
+    - ANOVA restricted maximum likelihood using `VCA`
+* Random effects and mixed models
+    - ANOVA restricted maximum likelihood using `lmer` in the `lme4` package
+    - ANOVA maximum likelihood using `lmer` in the `lme4` package
+
+## Overview of `lmer` commands
+
+### `lmer` overview
+
+The `lmer` function in the `lme4` package looks similar to a standard linear regression model, but it adds capacity to incorporate structured errors as random effects.  You can fit a variety of random effects models including the simplest (a single random intercept), to more complex with multiple random effects terms, nested (v.s. crossed) terms, and random slope models.
+
+The formula part of the lmer command allows random effects to be specified with terms inside parentheses.  The vertical bar separates the formula part of the random effect model specification (before "|") from the variable that defines the random effect (after "|") .
+
+Fitting of `lmer` models is done by maximum likelihood estimation.  The random effects and residual (unstructured) error in this model are assumed to have normal distributions.  The default estimation uses restricted maximum likelihood, which corrects for the bias in the variance component estimates.  However, when comparing models with different number of terms, standard maximum likelihood should be used.
+
+### `lmer` random effects coding
+
+Here is a [link](https://stats.stackexchange.com/questions/13166/rs-lmer-cheat-sheet) to a helpful stackexchange post on `lme4` random effects coding.  Here is a brief summary for categorical (grouping) variable G and continuous variable X where our goal is to have random effects for levels of G:
+
+* Random intercept only: (1|G)
+* Random slope only:  (0 + X|G)
+* Correlated random slopes and intercepts: (1 + X|G)
+* Independent random slopes and intercepts: (1|G) + (0 + X|G)  
+
+
+
+# Practice Session
+
+1.  Determine your project for this lab.  
+2.	Read in the *weldschoolexp.rds* dataset:
+    a.	Become familiar with your data
+    b.	How many observations, students, quarters are in your dataset?  How many observations are there per student (average, minimum, maximum)?
+    c.	Characterize the outcome variables *mnconc* and *particulate*, airborne measurements of Mn concentration and total particulate, respectively, and all potential covariates. 
+    d.	Get a basic understanding of the distribution of the airborne measurements on both the native and log-transformed scale.  What scale do you think you should conduct your variance components analysis on?
+    
+For the rest of the practice session we will focus on the Mn concentration variable:
+
+3.	Try to estimate the variance components within and between subject by hand using `dplyr`.  
+
+4.	Now use `VCA` to estimate the variance components using a method of moments or ANOVA approach.  
+    a.	Do your estimates agree with those from Step 3?  Why or why not?
+5.	Now use `lmer` to estimate the variance components.  (Decide whether you want maximum likelihood or restricted maximum likelihood estimates.  Be able to articulate your reason for your choice.)
+    a.	Do your estimates agree with those from Step 3?  Why or why not?
+6.	Decide whether you should add any fixed effects into your model.  
+    a.	If so, which one(s)?  Why?  (Note:  Make sure to consider science in your answer!)
+    b.	Compare the variance components from the models with and without fixed effect(s).  What happens to the variance component estimates from Step 5 after you add your selected covariate(s)?  Does this make sense to you?  (Hint:  Consider how your covariate is distributed within and between subjects in the data.)
+
+# Homework Exercises
+
+1.	Repeat the practice session analysis with particulate concentration.  Does this produce any different results? Why or why not?
+2.	How do your variance component estimates compare with the DEMS and Snapshot examples we discussed in lecture? 
+3.	Report and discuss the results of your analysis of Mn and total particulate for this lab, touching on the following points:
+    a.	The design of the study and structure of the dataset.
+    b.	The scale of the data on which you did your analysis.
+    c.	The comparability of variance component estimates using different estimation approaches and some possible reasons for (lack of) comparability.
+    d.	The impact on the variance component estimates when you include fixed effect(s) in your model and the reason for the change(s) in these data.
+    e.	Incorporate insights from the Symanski et al and Peretz et al papers.
+
+# Appendix
+
+```{r session.info}
+#-----------------session.info: beginning of Appendix -----------------
+#This allows reproducibility by documenting the version of R and every package you used.
+sessionInfo()
+```
+
+```{r appendix.code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
+
+```
+
+
