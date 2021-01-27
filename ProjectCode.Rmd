@@ -256,7 +256,7 @@ jem <- jem %>% mutate(periodfac = fct_recode(period,
 
 ```
 
-# Analysis Steps
+# Analysis Steps when **Year** is the Time Variable
 
 ## REC Models:  
 
