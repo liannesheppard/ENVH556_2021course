@@ -1,7 +1,7 @@
 ---
 title: "Week5Lecture: Variance Components"
 author: "Lianne Sheppard for ENVH 556"
-date: "Winter 2019; Updated `r format(Sys.time(), '%d %B, %Y')`"
+date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
 output: 
     html_document:
         fig_caption: yes
@@ -11,108 +11,92 @@ output:
         
 ---
 
-<!--Basic document set-up goes here  -->
-
 ```{r setup, include=FALSE}
-#-------------r.setup-------------
+#-----setup-----
+
+# set knitr options
 knitr::opts_chunk$set(echo = TRUE)
-```
 
-```{r clear.workspace, eval=FALSE, echo=FALSE}
-#---------clear.workspace------------
-# Clear the environment without clearing knitr
-#
-# This chunk is useful for code development because it simulates the knitr
-# environment. Run it as a code chunk when testing. When knitr is run, it uses a
-# fresh, clean environment, so we set eval=FALSE to disable this chunk when
-# rendering.
-
-# Clear workspace of all objects and unload all extra (non-base) packages
+# clear work space of all objects and unload all extra (non-base) packages
 rm(list = ls(all = TRUE))
 if (!is.null(sessionInfo()$otherPkgs)) {
     res <- suppressWarnings(
-        lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
-               detach, character.only=TRUE, unload=TRUE, force=TRUE))
-   
+            lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
+                   detach, character.only=TRUE, unload=TRUE, force=TRUE)) 
+    rm(res)
 }
 
 ```
 
-
 ```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
-#----------------load.libraries.pacman----
+#-----load libraries pacman-----
+
 # Load pacman into memory, installing as needed
 my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
-# Load the other packages, installing as needed.  Some reasons for packages:
-# knitr:  kable()
-# ggplot2: part of tidyverse
-# readr: part of tidyverse
-# dplyr: part of tidyverse
-# multcomp:  glht
-# modelr:  part of tidyverse and need for add_predictions and add_residuals
-# boot:  cv tools are available
-# Hmisc:  describe
-# lme4: mixed models and random effects ANOVA
-# VCA for variance component analysis (note it masks several lme4 objects:  
-#      fixef, getL, ranef)
-pacman::p_load(tidyverse, knitr, lme4, VCA)  
-```
-
-```{r read.data.from.a.web.site, eval=TRUE, echo=FALSE, include = FALSE}
-#-----read.data.from.a.web.site--------
-# Download the data file from a web site if it is not already downloaded, then
-# read in the file
-
-datapath <- "Datasets"
-dir.create(datapath, showWarnings=FALSE, recursive = TRUE)
-
-snapshot.file <- "allseasonsR.rds"
-snapshot.path <- file.path(datapath, snapshot.file)
-
-# Only download the file if it's not already present
-if (!file.exists(snapshot.path)) {
-    url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
-                 snapshot.file, sep = '/')
-    download.file(url = url, destfile = snapshot.path)
-}
-
-# Output a warning message if the file cannot be found
-if (file.exists(snapshot.path)) {
-    snapshot <- readRDS(file = snapshot.path)
-} else warning(paste("Can't find", snapshot.file, "!"))
+# Load the other packages, installing as needed.
+pacman::p_load(knitr, dplyr, tidyr, modelr, stringr, ggplot2, Hmisc, lme4, VCA)
 
 ```
 
-```{r read.data.from.a.web.siteDEMS, eval=TRUE, echo = FALSE, include = FALSE}
-#-----read.data.from.a.web.siteDEMS--------
-# Download the data file from a web site if it is not already downloaded, then
-# read in the file
+```{r directory.organization.and.read.data, echo=FALSE, warning=FALSE}
+#-----directory organization and read data-----
 
-DEMS.file <- "DEMSCombinedPersonal.rds"
-DEMS.path <- file.path(datapath, DEMS.file)
+# specify working directory
+project_path <- getwd()
 
-# Only download the file if it's not already present
-if (!file.exists(DEMS.path)) {
-    url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
-                 DEMS.file, sep = '/')
-    download.file(url = url, destfile = DEMS.path)
-}
+# create "Datasets" directory if one does not already exist    
+dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
 
-# Output a warning message if the file cannot be found
-if (file.exists(DEMS.path)) {
-    DEMS <- readRDS(file = DEMS.path)
-} else warning(paste("Can't find", DEMS.file, "!"))
+# specify data path
+data_path <- file.path(project_path,"Datasets")
+
+# specify files to read (their names will be used for variable assignment)
+file_names <- c(snapshot = "allseasonsR.rds", DEMS = "DEMSCombinedPersonal.rds")
+
+# read in files programmatically to a temporary object
+temp <- lapply(file_names, function(x){
+
+    # build file path
+    file_path <- file.path(data_path, x)
+    
+    # Download the file if it is not already present
+    if (!file.exists(file_path)) {
+        url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
+                     x, sep = '/')
+        download.file(url = url, destfile = file_path)
+    }
+    
+    # Output a warning message if the file cannot be found
+    if (file.exists(file_path)) {
+        readRDS(file_path)
+    } else warning(paste("Can't find", file_name, "!"))
+
+}) %>% 
+    
+    # name list elements
+    setNames(names(file_names)) %>% 
+    
+    # extract list elements into the global environment
+    list2env(globalenv())
+
+# remove temporary variables
+rm(temp, file_names, object_names, data_path)
 
 ```
+
 
 # R commands & output for Variance Components Lecture Slides
 
-```{r DEMS data setup}
-# DEMS data setup ------
-# create the varaiable ln_ecdata among non-missing
-DEMS <- DEMS %>% filter(ecdata > 0) %>%
+```{r DEMS.data.setup}
+#-----DEMS data setup-----
+
+# create the varaiable ln_ecdata among non-missing 
+# (`VCA::varPlot()` doesn't like tibbles)
+DEMS <- DEMS %>% 
+    #as_tibble() %>% 
+    filter(ecdata > 0) %>%
     mutate(ln_ecdata = log(ecdata)) 
     
 ```
@@ -120,8 +104,9 @@ DEMS <- DEMS %>% filter(ecdata > 0) %>%
 ## slide 10:  Plot the DEMS facility example 
 
 
-```{r dotplot of DEMS}
-# dotplot of DEMS ----------
+```{r dotplot.of.DEMS}
+#-----dotplot of DEMS-----
+
 ggplot(DEMS, aes(x = facilityno, y = ln_ecdata)) +
     geom_boxplot(aes(x=facilityno, group = facilityno),
                  outlier.color = NA, 
@@ -130,91 +115,154 @@ ggplot(DEMS, aes(x = facilityno, y = ln_ecdata)) +
                  stackdir =  "center", color = "red", fill = NA, dotsize = 2) +
     labs(title = "Boxplots with Overlaid Dotplots\nfor Ln(REC) by Facility Number",
          y = "ln(REC) in ln(ug/m3)",
-         x = "Facility ID")
+         x = "Facility ID") + 
+    theme_classic()
+
 ```
 ## DEMS Stratified by facility ID (not a slide)
 
-```{r DEMS tidyverse stratified summary}
-# DEMSvtidyverse stratified summary-----
+```{r DEMS.tidyverse.stratified.summary}
+#-----DEMS tidyverse stratified summary-----
+
 vc_summary <- DEMS %>%
     group_by(facilityid) %>%
-    summarize( N = n(), 
-               mean = mean(ln_ecdata),
-               sd = sd(ln_ecdata)) 
+    summarise(N = n(), 
+              mean = mean(ln_ecdata),
+              sd = sd(ln_ecdata))
+
 # kludge to get the total
 vc_total <- DEMS %>%
-    summarize( N = n(), 
-               mean = mean(ln_ecdata),
-               sd = sd(ln_ecdata))
+    summarise(N = n(), 
+              mean = mean(ln_ecdata),
+              sd = sd(ln_ecdata))
+
 vc_total <- cbind(facilityid = "Total", vc_total)
 
 kable(rbind(vc_summary,vc_total), digits = 2)
+
+
+# # Lianne, here is an option to get things in one pipeline (still not great though)
+# DEMS %>%
+#     # summary by facility
+#     group_by(facilityid) %>%
+#     summarise(N = n(), 
+#               mean = mean(ln_ecdata),
+#               sd = sd(ln_ecdata), 
+#               .groups = "drop") %>% 
+#     
+#     # summary of all facilities
+#     bind_rows(DEMS %>% summarise(facilityid = "Total", 
+#                                  N = n(), 
+#                                  mean = mean(ln_ecdata), 
+#                                  sd = sd(ln_ecdata) ) ) %>% 
+#     # round
+#     mutate_if(is.double, round, 2)
+
 ```
 
 ## slide 12:  Plot the example of traffic gradient site as one grouping variable in the snapshot data
 
-```{r Snapshot data setup}
-# Snapshot data setup -----------
+```{r Snapshot.data.setup}
+#-----Snapshot data setup-----
+
 # get the gradient sites
 gradient_sites <- snapshot %>% 
     filter(season == 2)  %>% 
     group_by(group_loc) %>%
-    summarize(count = n()) %>%
+    summarise(count = n()) %>%
     filter( count > 3)
+
 # fall dataset for variance components
 # keeps only gradient sites with at least 4 observations
 fvc <- snapshot %>% filter(season == 2, group_loc %in% gradient_sites$group_loc) 
+
+
+# # Lianne, a bit easier way to do this below (perhaps less straightforward though?)
+# fvc <- snapshot %>%
+#     as_tibble() %>%
+#     filter(season == 2)  %>%
+#     group_by(group_loc) %>%
+#     mutate(count = n()) %>%
+#     ungroup() %>%
+#     filter(count > 3) %>%
+#     select(-count)
+
 ```
 
-```{r dotplot of fvc}
-# dotplot of fvc ----------
+```{r dotplot.of.fvc}
+#-----dotplot of fvc-----
+
 ggplot(fvc, aes(x = group_loc, y = ln_nox)) +
     geom_boxplot(aes(x=group_loc, group = group_loc),
                  outlier.color = NA, 
                  width = .6) +
     geom_dotplot(aes(group = group_loc), binaxis = "y", binwidth = .01,
-                 tackdir =  "center", color = "red", fill = NA, dotsize = 2) +
+                 stackdir =  "center", color = "red", fill = NA, dotsize = 2) +
     labs(title = "Boxplots with Overlaid Dotplots\nfor Ln(NOx) in Fall by Gradient Site Index",
          y = "ln(NOx) in ln(ppb)",
-         x = "Gradient Site Index")
+         x = "Gradient Site Index") + 
+    theme_bw()
+
 ```
 ## Slide 18:  Stratified by gradient location
 
-```{r tidyverse stratified summary snapshot}
-# tidyverse stratified summary-----
+```{r tidyverse.stratified.summary.snapshot}
+#-----tidyverse stratified summary snapshot-----
+
 vc_summary <- fvc %>%
     group_by(group_loc) %>%
-    summarize( N = n(), 
+    summarise( N = n(), 
                mean = mean(ln_nox),
                sd = sd(ln_nox)) 
 #vc_summary <- recode_factor(group_loc,.default)
 vc_total <- fvc %>%
-    summarize( N = n(), 
+    summarise( N = n(), 
                mean = mean(ln_nox),
                sd = sd(ln_nox))
 vc_total <- cbind(group_loc = 100, vc_total)
 
 kable(rbind(vc_summary,vc_total), digits = 3)
+
+# # Lianne, one pipeline option below like earlier (though `vc_summary` is used later on)
+# fvc %>%
+#     group_by(group_loc) %>%
+#     summarise(N = n(),
+#               mean = mean(ln_nox),
+#               sd = sd(ln_nox)) %>%
+#     mutate(group_loc = as.character(group_loc) ) %>%
+#     bind_rows(fvc %>% summarise(group_loc = "Total",
+#                                 N = n(),
+#                                 mean = mean(ln_nox),
+#                                 sd = sd(ln_nox) ) ) %>% 
+#     mutate_if(is.double, round, 3)
+
 ```
 
 ## Slide 19:  Assessing between and within site variability
 
-```{r gradient variability}
-# slide 19: gradient variability
+```{r gradient.variability}
+#-----gradient variability-----
+
+# create variance table
 vc_var <- vc_summary %>%
-    summarize(N_sites = n(),
+    summarise(N_sites = n(),
               median_grand = median(mean),
               mean_grand = mean(mean),
               median_sd = median(sd), 
               within_sd = sqrt(mean(sd^2)),
               between_sd = sd(mean)
-              )
+              ) %>% 
+    mutate_if(is.double, round, 3)
+
+# show table
 vc_var
 
-paste("Between-group variance estimate(SD scale) = ", round(vc_var$between_sd,3))
-paste("Within-group  variance estimate(SD scale) = ", round(vc_var$within_sd,3))
+# paste a few numbers of interest
+paste("Between-group variance estimate(SD scale) = ", round(vc_var$between_sd, 3))
+paste("Within-group  variance estimate(SD scale) = ", round(vc_var$within_sd, 3))
 paste("Total         variance estimate(SD scale) = ", round(sqrt(vc_var$within_sd^2 + 
-                                                                    vc_var$between_sd^2),3))
+                                                                    vc_var$between_sd^2), 3))
+
 ```
 
 ## Dropped from lecture:  Site as a fixed effect
@@ -223,8 +271,11 @@ Needs development to focus this result in comparison to the random effect
 result.  Note that this is a regression model based approach to the previous
 more descriptive approach.
 
-```{r}
-# slide 16: site as a fixed effect
+```{r site.as.a.fixed.effect}
+#-----site as a fixed effect-----
+
+# (formerly slide 16)
+
 fixed_ef <- lm(ln_nox ~ as.factor(group_loc), data = fvc)
 summary(fixed_ef)
 ```
@@ -232,8 +283,10 @@ summary(fixed_ef)
 ### Dropped from lecture:  Same in ANOVA (fixed effect model)
 
 
-```{r}
-#slide 17:  same in ANOVA
+```{r ANOVA.on.site}
+#-----ANOVA on site-----
+
+# (formerly slide 17):  same in ANOVA
 anova(fixed_ef)
 ```
 
@@ -242,18 +295,25 @@ anova(fixed_ef)
 VCA allows the MOM estimates and easy comparison with REML estimates of variance
 components.
 
-```{r}
-#slide 21+22:  VCA immplementation
+```{r VCA.implementation}
+#-----VCA implementation-----
+
+# (slides 21+22)
+
 # visualize data
-varPlot(form = ln_nox~group_loc, Data=fvc)
-## different ways to estimate variance components
+varPlot(form = ln_nox~group_loc, Data = fvc)
+
+# different ways to estimate variance components
 fit_MOM <- anovaVCA(ln_nox ~ group_loc, Data = fvc)
 fit_MOM
+
 fit_REML <- fitVCA(ln_nox ~ group_loc, Data = fvc, method = "REML")
 fit_REML
+
 # the following gives the same result so is not repeated
 #fit_ANOVA <- fitVCA(ln_nox ~ group_loc, Data = fvc, method = "anova")
 #fit_ANOVA
+
 ```
 
 
@@ -262,16 +322,20 @@ fit_REML
 A key point here that the `lmer` REML estimates are the same as from `VCA`.
 Discuss why we use ML at all -- basicially to easily compare models.
 
-```{r REML snapshot}
-# REML with snapshot -----------
+```{r REML.with.snapshot}
+#-----REML with snapshot-----
+
 lmefit_REML <- lmer(ln_nox ~ (1|group_loc), data = fvc, REML = TRUE)
 summary(lmefit_REML)
+
 ```
 
-```{r ML snapshot}
-# ML with snapshot ----------------
+```{r ML.with.snapshot}
+#-----ML with snapshot-----
+
 lmefit_ML <- lmer(ln_nox ~ (1|group_loc), data = fvc, REML = FALSE)
 summary(lmefit_ML)
+
 ```
 
 
@@ -280,15 +344,21 @@ summary(lmefit_ML)
 ### DEMS with VCA
 
 
-```{r}
-#slide 26+27:  VCA immplementation in DEMS
+```{r VCA.implementation.in.DEMS}
+#-----VCA implementation in DEMS-----
+
+# (slide 26+27)
+
 # visualize data
-varPlot(form = ln_ecdata~facilityid, Data=DEMS)
+varPlot(form = ln_ecdata ~ facilityid, Data = DEMS)
+
 ## different ways to estimate variance components
 fit_MOM <- anovaVCA(ln_ecdata ~ facilityid, Data = DEMS)
 fit_MOM
+
 fit_REML <- fitVCA(ln_ecdata ~ facilityid, Data = DEMS, method = "REML")
 fit_REML
+
 fit_ANOVA <- fitVCA(ln_ecdata ~ facilityid, Data = DEMS, method = "anova")
 fit_ANOVA
 ```
@@ -308,18 +378,22 @@ impact should affect the between site or within site variance estimates.
 Note:  Because one might want to do some model selection comparisons with these
 analyses, I used the ML option (i.e. REML = FALSE).
 
-```{r mixed model with Pop_5000}
-# mixed model with Pop_5000 ----------
+```{r mixed.model.with.Pop_5000}
+#-----mixed model with Pop_5000-----
+
 mixedfit1_ML <- lmer(ln_nox ~ Pop_5000 + (1|group_loc), data = fvc, REML = FALSE)
 summary(mixedfit1_ML)
+
 ```
 
 ## Slide 31:  Mixed model with the Snapshot data: D2R
 
-```{r mixed model with D2R}
-# mixed model with D2R ----------
+```{r mixed.model.with.D2R}
+#-----mixed model with D2R-----
+
 mixedfit2_ML <- lmer(ln_nox ~ D2R + (1|group_loc), data = fvc, REML = FALSE)
 summary(mixedfit2_ML)
+
 ```
 
 
@@ -329,9 +403,12 @@ Note: to compare models you need to use ML because of how the variance
 components are estimated to be unbiased in REML.  For final estimates we should
 report REML.
 
-```{r}
+```{r mixed.with.two.covars}
+#-----mixed with two covars-----
+
 mixedfit3_ML <- lmer(ln_nox ~ Pop_5000 + D2Comm + (1|group_loc), data = fvc, REML = FALSE)
 summary(mixedfit3_ML)
+
 ```
 
 
@@ -341,29 +418,38 @@ Verifying:  This result has the same number of observations (108) and mdj groups
 (13) compared to the Stata example from lecture.  My mean is about the same
 (5.85).  This seems to be the same dataset
 
-```{r DEMSV_U1}
-# Model DEMSV_U1 --------------
+```{r model.DEMSV_U1}
+#-----model DEMSV_U1-----
 
-DEMSV_U1 <- lmer(ln_ecdata ~  (1|mdj), data = DEMS, REML = TRUE, subset = facilityid == "A" & u_s == "u")
+DEMSV_U1 <- lmer(ln_ecdata ~  (1|mdj), data = DEMS, REML = TRUE, 
+                 subset = facilityid == "A" & u_s == "u")
+
 summary(DEMSV_U1)
+
 ```
 
 ## Slides 36:  DEMS V Table 3 Facility A example U2 groups
 
-```{r DEMSV_U2}
-# Model DEMSV_U2 --------------
+```{r model.DEMSV_U2}
+#-----model DEMSV_U2-----
+
 DEMSV_U2 <- lmer(ln_ecdata ~  as.factor(group2time) + (1|mdj), data = DEMS, 
                  REML = TRUE, subset = facilityid == "A" & u_s == "u")
+
 summary(DEMSV_U2)
+
 ```
 
 ## Slide 37:  DEMS V Table 3 Facility A example U3 groups
 
-```{r DEMSV_U3}
-# Model DEMSV_U3-------------
+```{r model.DEMSV_U3}
+#-----model DEMSV_U3-----
+
 DEMSV_U3 <- lmer(ln_ecdata ~  as.factor(group3area) + (1|mdj), data = DEMS, 
                  REML = TRUE, subset = facilityid == "A" & u_s == "u")
+
 summary(DEMSV_U3)
+
 ```
 
 ## Slide 41:  Regression for association with random effects
@@ -371,8 +457,9 @@ summary(DEMSV_U3)
 Use the snapshot data to compare estimates and SEs for a fixed effect with and
 without random effects
 
-```{r mixed model vs lm}
-# mixed model vs lm -----------
+```{r mixed.model.vs.lm}
+#-----mixed model vs lm-----
+
 # Compare estimates and SEs
 # linear model:
 lmfit1 <- lm(ln_nox ~ Pop_5000, data = fvc)
@@ -403,8 +490,9 @@ following example there appears to be some correlation between the *D2Comm*
 variable and the random effects, leading to a change in the coefficient estimate
 for *D2Comm* between the fixed and mixed models.
 
-```{r mixed model vs lm: 2 covars}
-# mixed model vs lm: 2 covars ------------
+```{r mixed.model.vs.lm.2.covars}
+#-----mixed model vs lm: 2 covars-----
+
 # Compare estimates and SEs
 # linear model:
 lmfit2 <- lm(ln_nox ~ Pop_5000 + D2Comm, data = fvc)
@@ -441,8 +529,9 @@ The following shows full predictions (fixed+random) and then fixed effect only
 predictions in the snapshot gradient site data for the mixed effect model with
 only one covariate:
 
-```{r ME model prediction on same data}
-# mixed effects model prediction, same data -------
+```{r mixed.effects.model.prediction.on.same.data}
+#-----mixed effects model prediction on same data-----
+
 # Prediction incorporating fixed & random effects
 p0 <- predict(mixedfit1_REML)
 plot(fvc$group_loc,p0)
@@ -454,6 +543,7 @@ plot(fvc$group_loc,p1)
 
 identical(p0,p1)
 plot(p1,p0)
+
 # Note the predictions with random effects are more variable, as one would expect.
 summary(p1)
 summary(p0)
@@ -466,23 +556,26 @@ this [predict.merMod help
 page](https://www.rdocumentation.org/packages/lme4/versions/1.1-19/topics/predict.merMod)
 For example, to predict at one location per gradient site in the snapshot data:
 
-```{r ME model prediction on new data}
-# ME model prediction on new data--------
+```{r mixed.effects.model.prediction.on.new.data}
+#-----mixed effects model prediction on new data-----
+
 newdata <- with(fvc, expand.grid(Pop_5000=unique(Pop_5000), 
                                  group_loc=unique(group_loc)))
 dim(newdata)
+
 # new data, all RE
-p2 <- predict(mixedfit1_REML,newdata)
+p2 <- predict(mixedfit1_REML, newdata)
 
 # new data, level 0 (fixed effects only)
-p3 <- predict(mixedfit1_REML,newdata,re.form=NA)
+p3 <- predict(mixedfit1_REML, newdata, re.form = NA)
 
 # explicitly specify RE model we want
-p4 <- predict(mixedfit1_REML,newdata,re.form= ~(1|group_loc)) 
+p4 <- predict(mixedfit1_REML, newdata, re.form = ~(1|group_loc)) 
 
 # verify that p2 and p4 are identical as they are supposed to be
 identical(p2, p4)
-plot(p3,p2)
+plot(p3, p2)
+
 # Note the predictions with random effects are more variable, as one would expect.
 summary(p3)
 summary(p2)
