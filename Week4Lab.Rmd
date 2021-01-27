@@ -629,58 +629,11 @@ possibly the variable added to use in plotting
 #get the length of the vector of names from forward selection
 n_covars <- length(covars_forward)
 
-# set up an object to store the results in 
-# this is better practice
-res <- tibble(n_pred = numeric(n_covars),
-              covar = character(n_covars),
-              in_RMSE = numeric(n_covars),
-              in_R2 = numeric(n_covars),
-              out_RMSE = numeric(n_covars),
-              out_R2 = numeric(n_covars) 
-              )
 
-# here is the base R approach.  Note need to use stringsAsFactors = FALSE
-#res <-
-#    data.frame(
-#        n_pred           = numeric(n_covars),
-#        covar            = character(n_covars),
-#        in_RMSE           = numeric(n_covars),
-#        in_R2            = numeric(n_covars),
-#        out_RMSE          = numeric(n_covars),
-#        out_R2           = numeric(n_covars),
-#        stringsAsFactors = FALSE
-#    ) 
-
-# loop over n_covars
-for (i in 1:n_covars) {
-    
-    # assign first few variables
-    res$n_pred[i] <- i
-    res$covar[i] <- covars_forward[i]
-    
-    # define the formula, updated to add a term each time
-    fmla <- as.formula(
-        paste("ln_nox ~ 1 + ", paste(covars_forward[1:i], collapse = "+"))) 
-    
-    # in-sample model and estimates
-    in_model <- lm(fmla, data = fall) 
-    res$in_RMSE[i] <- sqrt(mean(in_model$residuals^2))
-    res$in_R2[i] <- summary(in_model)$r.squared
-    
-    # out-of sample model and estimates
-    out_ests <- do_CV(fall, group = 'cluster', fmla)
-    out_results <- get_MSE(out_ests$ln_nox, out_ests$cvpreds)
-    res$out_RMSE[i] <- out_results[1]
-    res$out_R2[i] <- out_results[2]
-    
-    }
-
-# the data frame res should have all pieces for ggplot
-
-
-# [Lianne, here is an lapply approach, for which the `res` object does not 
-# need to be pre-assigned (so that can be deleted if this version is kept, {but 
-# keep n_covars object assignment})]
+# Create a tibble `res` with the results from multiple cross-validation steps.
+# This tibble should have all pieces for ggplot.  The following code uses an
+# lapply approach, for which the `res` object does not need to be pre-assigned
+# to be an empty formatted object
 res <- lapply(1:n_covars, function(i){
     
     # define the formula, updated to add a term each time
@@ -746,7 +699,7 @@ rmse_plot <- ggplot(temp) +
     geom_point(aes(x = n_pred, y = RMSE, color = Source)) + 
     geom_line(aes(x = n_pred, y = RMSE, color = Source)) +
     xlab("Model Complexity (# of terms)") +
-    ylab(bquote(bold(RMSE))) +
+    ylab(bquote(bold(RMSE) (ln(ppb)) )) +
     scale_x_continuous(breaks = c(seq(0, 63, 5))) + 
     theme_bw() +
     theme(axis.text = element_text(face = "bold"),
@@ -766,18 +719,11 @@ The next step puts both plots together.  We also restrict the range on the y-axi
 
 # Note that the out-of-sample R2 for a model with 31 terms is about .7; we can
 # find the RMSE using res$out_RMSE[31]:
-res$out_RMSE[31]
+max(res$out_RMSE[1:31])
+min(res$out_RMSE[1:31])
 
 # This suggests limits for the R2 plot of ~.5-.7 to 1 and limits for the RMSE
-# plot of 1 - ~.2 or so
-
-################################################################################
-# CHRIS:  I don't know how to set the limits on this combined plot.  Do you?
-# Lianne, the strategy below is certainly not ideal, but the appearance is the 
-# same as if we were able to restrict the axis limits. An alternative would be 
-# to combine the separate plots with `egg::ggarrange()` or similar (noted 
-# below).
-################################################################################
+# plot of 0 - ~.5 or so
 
 # Note: it is very hard to "zoom in" on a particular facet (i.e. restrict the
 # axis limits), so one strategy is to omit the values above a certain level to
@@ -787,8 +733,7 @@ res$out_RMSE[31]
 # `egg::ggarrange()` or similar.
 
 # specify y axis limit for RMSE 
-# [Lianne, if you have a programmatic idea we calculate a number]
-y_lim <- 5
+y_lim <- 0.5
 
 # create temporary dataframe for plot
 temp <- res %>% 
@@ -798,10 +743,10 @@ temp <- res %>%
                names_to = "Source_Estimate", 
                values_to = "value" ) %>%
   
-  # seperate the "Source" column for in and out of sample
+  # separate the "Source" column for in and out of sample
   separate(col = Source_Estimate, into = c("Source", "Estimate") ) %>% 
   
-  # create a new column with the "plot values", setting high values to NA
+  # create a new column with the "plot values", setting high RMSE values to NA
   mutate(plot_value = ifelse(Estimate == "RMSE" & value > y_lim, NA, value))
 
 # plot both model-based (in sample) and CV generated MSE and R2
@@ -887,7 +832,8 @@ write-up:
     gradient clusters.
     
     b.  Repeat the exercise using yet another different set of CV groups, either
-    chosen randomly, or spatially, or based on some other criterion.
+    chosen randomly, or spatially, or based on some other criterion.  Make sure
+    you describe your choice and scientific rationale.
 
 
 
