@@ -204,6 +204,8 @@ ggplot(fvc, aes(x = group_loc, y = ln_nox)) +
     theme_bw()
 
 ```
+
+
 ## Slide 18:  Stratified by gradient location
 
 ```{r tidyverse.stratified.summary.snapshot}
