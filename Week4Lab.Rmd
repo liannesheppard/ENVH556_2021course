@@ -274,10 +274,14 @@ forwardreg_fall <- step(null, scope = list(lower = null, upper = full),
 # save the ordered list of names for later use, dropping the intercept
 covars_forward <- names(forwardreg_fall$coefficients)[-1]
 
+# show the ordered list
+covars_forward
+
 ```
 
 ```{r explore.forward.stepwise.results, eval=FALSE}
 #-----explore forward stepwise results-----
+# (not shown in ouptput b/c chunk option is eval=FALS)
 
 # structure of the object
 str(forwardreg_fall)
@@ -390,9 +394,9 @@ provided by Brian High:
    argument (this also allows you to use your new function with the pipe 
    operator, `%>%`). Put arguments with defined defaults at the end, so the 
    function user can safely omit providing values for those arguments if they 
-   prefer to use the defaults you have defined for them. 6. Use argument names 
-   as consistently as possible. Refer to functions you commonly use for 
-   examples of consistently named arguments.
+   prefer to use the defaults you have defined for them. 
+6. Use argument names as consistently as possible. Refer to functions you
+   commonly use for examples of consistently named arguments.
 7. The function should return a single value or object (e.g., a vector, 
    dataframe, list, etc.).
 8. Use the return() function at the end of your function to return this object 
@@ -611,16 +615,16 @@ number of selected variables:
 2. Estimate predicted values using cross-validation.  
 3.  Compute out-of-sample RMSE and MSE-based R2 estimates.  
  
-Steps to coding this:
-* compute/retrieve the vector of names output from the forward selection model
-* loop over the maximum number of covariates from forward selection
+Steps to coding this:  
+* compute/retrieve the vector of names output from the forward selection model  
+* loop over the maximum number of covariates from forward selection  
 * create a formula that is the linear combination of the first `i` terms of the
-forward selection model
-* summarize the in-sample prediction MSE and R2
-* cross-validate this and summarize the out-of-sample MSE and R2
+forward selection model   
+* summarize the in-sample prediction MSE and R2   
+* cross-validate this and summarize the out-of-sample MSE and R2   
 * store the key set of results, plus the number of covariates in the model and
-possibly the variable added to use in plotting
-* use ggplot to make the bias-variance trade-off plot
+possibly the variable added to use in plotting   
+* use ggplot to make the bias-variance trade-off plot  
 
 
 ```{r model.order.and.CV, echo = TRUE, warning = FALSE}
@@ -797,7 +801,7 @@ predictions on the x-axis rather than the y-axis.)
 7. Create your own version of the bias-variance trade-off plot shown in class
 using the following steps:
     a. Do a forward stepwise regression of *ln_nox* on a set of plausible variables
-with a lax entry criterion (`k=0` in the `step()` function.  (You may restrict
+with a lax entry criterion (`k=0`) in the `step()` function.  (You may restrict
 your attention to the list in the forward selection model example given above.)
 See the code to learn how to keep track of the order the variables were added.
     b. Use the order of entry into the stepwise to sequentially complete the
