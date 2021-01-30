@@ -10,99 +10,81 @@ output:
         number_sections: true
 ---
 
-<!--Basic document set-up goes here  -->
-
 ```{r setup, include=FALSE}
-#-------------r.setup-------------
+#-----setup-----
+
+# set knitr options
 knitr::opts_chunk$set(echo = TRUE)
 
-```
-
-```{r clear.workspace, eval=FALSE, echo=FALSE}
-#---------clear.workspace------------
-# Clear the environment without clearing knitr
-#
-# This chunk is useful for code development because it simulates the knitr
-# environment. Run it as a code chunk when testing. When knitr is run, it uses a
-# fresh, clean environment, so we set eval=FALSE to disable this chunk when
-# rendering.
-
-# Clear workspace of all objects and unload all extra (non-base) packages
+# clear work space of all objects and unload all extra (non-base) packages
 rm(list = ls(all = TRUE))
 if (!is.null(sessionInfo()$otherPkgs)) {
     res <- suppressWarnings(
-        lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
-               detach, character.only=TRUE, unload=TRUE, force=TRUE))
-   
+            lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
+                   detach, character.only=TRUE, unload=TRUE, force=TRUE)) 
+    rm(res)
 }
 
 ```
 
-
 ```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
-#----------------load.libraries.pacman----
+#-----load libraries pacman-----
+
 # Load pacman into memory, installing as needed
 my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
-# Load the other packages, installing as needed.  Some reasons for packages:
-# knitr:  kable()
-# ggplot2: part of tidyverse
-# readr: part of tidyverse
-# dplyr: part of tidyverse
-# multcomp:  glht
-# modelr:  part of tidyverse and need for add_predictions and add_residuals
-# boot:  cv tools are available
-# Hmisc:  describe
-# lme4
-# stringr:  string management functions in tidyverse
-# forcats:  factor handling in tidyverse
-pacman::p_load(tidyverse, knitr, dplyr,  
-               stringr, forcats, Hmisc)  
+# Load the other packages, installing as needed.
+pacman::p_load(knitr, dplyr, tidyr, forcats, stringr, ggplot2, Hmisc)
 
 ```
 
-```{r read.datasets.from.a.web.site, eval=TRUE, echo=FALSE}
-#-----read.datasets.from.a.web.site--------
-# Download the data file from a web site if it is not already downloaded, then
-# read in the file
-# This version reads in multiple files using a loop
+```{r directory.organization.and.read.data, echo=FALSE, warning=FALSE}
+#-----directory organization and read data-----
 
-datapath <- "Datasets"
-dir.create(datapath, showWarnings=FALSE, recursive = TRUE)
+# specify working directory
+project_path <- getwd()
 
-# fn has the file names (before ".rds") to loop over
-fn <- c("cohist", "RECpersonal", "jem")
+# create "Datasets" directory if one does not already exist    
+dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
 
-# loop through the files to be read
-for (i in seq_along(fn)){
-    # define the input file name, linking it to the .rds
-    input.file <- str_c(fn[i],".rds")
+# specify data path
+data_path <- file.path(project_path,"Datasets")
+
+# specify files to read (their names will be used for variable assignment)
+file_names <- c(cohist = "cohist.rds", 
+                REC = "RECpersonal.rds", 
+                jem = "jem.rds"
+                )
+
+# read in files programmatically to a temporary object
+temp <- lapply(file_names, function(x){
+
+    # build file path
+    file_path <- file.path(data_path, x)
     
-    # define the full path for the dataset
-    input.path <- file.path(datapath, input.file)
-    
-    # Only download the file if it's not already present
-   if (!file.exists(input.path)) {
-    url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
-                 input.file, sep = '/')
-    download.file(url = url, destfile = input.path) 
+    # Download the file if it is not already present
+    if (!file.exists(file_path)) {
+        url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
+                     x, sep = '/')
+        download.file(url = url, destfile = file_path)
     }
-
-    # Assign the file to an object of the same input name
+    
     # Output a warning message if the file cannot be found
-if (file.exists(input.path)) {
-    assign(fn[i],readRDS(file = input.path))
-} else warning(paste("Can't find", input.file, "!"))
+    if (file.exists(file_path)) {
+        readRDS(file_path)
+    } else warning(paste("Can't find", file_name, "!"))
 
-}
+}) %>% 
+    
+    # name list elements
+    setNames(names(file_names)) %>% 
+    
+    # extract list elements into the global environment
+    list2env(globalenv())
 
-```
-
-```{r rename REC, echo = FALSE}
-#----- rename REC to simplify references below-----
-REC <- RECpersonal
-rm(RECpersonal)
+# remove temporary variables
+rm(temp, file_names, object_names, data_path)
 
 ```
 
