@@ -405,7 +405,7 @@ Use your results from the previous step.
 
 See above.  Combined with the regression and prediction chunk.
 
-## JEM target file: Put predictions into the JEM
+## Put predictions into the JEM by merging dataframes
 
 We have created the JEM for you.  It has a record for each combination of job,
 year (thus also period) and facilityno.  This step requires that you merge the
@@ -572,7 +572,7 @@ Use your results from the previous step.
 
 See above.  Combined with the regression and prediction chunk.
 
-## JEM target file: Put predictions into the JEM
+## Put predictions into the JEM
 
 
 
@@ -632,9 +632,42 @@ year.  While both approaches used fairly simple-minded models, and so there
 could be good reasons to see these differences, I'm suspicious that this might
 be a clue that there is something that should be corrected.
 
+[Lianne, I looked at the co_ratio by year and by quarter - there are differences, but they didn't seem wild to me. (I'll send along figure). We can re-visit this together if you'd like.]
+
 TODO:  At a minimum it would be worthwhile to look at how these compare with the
 numbers given in Table 3 of DEMS IV.
+
+[Lianne, I started looking at this below, but not sure if that is what you were
+getting at.
+
+Currently, we estimate CO with 2 different "simple_fit" models (one by year, one
+by period) and merge dataframes, creating the `JEM` object. The second time we
+do that we reassign all the same variables, overwriting them, including `JEM`.
+One thought is to assign `JEM_year` and `JEM_period` so we have both objects at
+the end of the script (to compare?). OR name `co_AM_year` and `co_AM_period`
+(and similar for `co_ratio` and `rec_mjy`) variables which we could then merge
+the JEM objects together into one.]
 -->
+
+```{r compare.to.DEMS.IV}
+#-----compare to DEMS IV-----
+
+dems_IV <- tibble(facilityno = c("B16", "D21", "E13", "H6", "I8", "J18"), 
+                  CO_1976_1977 = c(5.15, 7.98, 10.60, 3.90, 4.85, 4.36))
+
+JEM %>% 
+    filter(periodfac == "1976-1979") %>% 
+    group_by(facilityno) %>% 
+    summarise(mean_CO = mean(co_AM), 
+              .groups = "drop")
+
+
+
+# these can be merged if desired...
+
+```
+
+
 
 # Appendix
 
