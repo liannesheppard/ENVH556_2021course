@@ -82,7 +82,7 @@ temp <- lapply(file_names, function(x){
     list2env(globalenv())
 
 # remove temporary variables
-rm(temp, file_names, object_names, data_path)
+rm(temp, file_names, data_path)
 
 ```
 
@@ -124,39 +124,22 @@ ggplot(DEMS, aes(x = facilityno, y = ln_ecdata)) +
 ```{r DEMS.tidyverse.stratified.summary}
 #-----DEMS tidyverse stratified summary-----
 
-vc_summary <- DEMS %>%
+# This compiles the results in one pipeline, labels the total properly, and shows the result because we didn't assign it a name
+DEMS %>%
+    # summary by facility
     group_by(facilityid) %>%
-    summarise(N = n(), 
+    summarise(N = n(),
               mean = mean(ln_ecdata),
-              sd = sd(ln_ecdata))
+              sd = sd(ln_ecdata),
+              .groups = "drop") %>%
 
-# kludge to get the total
-vc_total <- DEMS %>%
-    summarise(N = n(), 
-              mean = mean(ln_ecdata),
-              sd = sd(ln_ecdata))
-
-vc_total <- cbind(facilityid = "Total", vc_total)
-
-kable(rbind(vc_summary,vc_total), digits = 2)
-
-
-# # Lianne, here is an option to get things in one pipeline (still not great though)
-# DEMS %>%
-#     # summary by facility
-#     group_by(facilityid) %>%
-#     summarise(N = n(), 
-#               mean = mean(ln_ecdata),
-#               sd = sd(ln_ecdata), 
-#               .groups = "drop") %>% 
-#     
-#     # summary of all facilities
-#     bind_rows(DEMS %>% summarise(facilityid = "Total", 
-#                                  N = n(), 
-#                                  mean = mean(ln_ecdata), 
-#                                  sd = sd(ln_ecdata) ) ) %>% 
-#     # round
-#     mutate_if(is.double, round, 2)
+    # summary of all facilities
+    bind_rows(DEMS %>% summarise(facilityid = "Total",
+                                 N = n(),
+                                 mean = mean(ln_ecdata),
+                                 sd = sd(ln_ecdata) ) ) %>%
+    # round
+    mutate_if(is.double, round, 2)
 
 ```
 
@@ -165,19 +148,11 @@ kable(rbind(vc_summary,vc_total), digits = 2)
 ```{r Snapshot.data.setup}
 #-----Snapshot data setup-----
 
-# get the gradient sites
-gradient_sites <- snapshot %>% 
-    filter(season == 2)  %>% 
-    group_by(group_loc) %>%
-    summarise(count = n()) %>%
-    filter( count > 3)
+# The goal is to create a fall dataset for the variance components that
+# identifies the gradient sites by keeping all observations that have more than
+# 3 observations for the group_loc variable
+# TODO Chris:  This version fails in the VCA.implementation chunk.  It has something to do with how group_loc is characterized here vs. in the original coding, below.  Do you know why?  I'd use this version of the code if it didn't cause problems below.
 
-# fall dataset for variance components
-# keeps only gradient sites with at least 4 observations
-fvc <- snapshot %>% filter(season == 2, group_loc %in% gradient_sites$group_loc) 
-
-
-# # Lianne, a bit easier way to do this below (perhaps less straightforward though?)
 # fvc <- snapshot %>%
 #     as_tibble() %>%
 #     filter(season == 2)  %>%
@@ -186,6 +161,18 @@ fvc <- snapshot %>% filter(season == 2, group_loc %in% gradient_sites$group_loc)
 #     ungroup() %>%
 #     filter(count > 3) %>%
 #     select(-count)
+
+# Original version: This version works in the VCA.implementation chunk
+#get the gradient sites
+gradient_sites <- snapshot %>% 
+    filter(season == 2)  %>% 
+    group_by(group_loc) %>%
+    summarise(count = n()) %>%
+    filter( count > 3)
+# fall dataset for variance components
+# keeps only gradient sites with at least 4 observations
+fvc <- snapshot %>% filter(season == 2, group_loc %in% gradient_sites$group_loc) 
+
 
 ```
 
@@ -198,7 +185,7 @@ ggplot(fvc, aes(x = group_loc, y = ln_nox)) +
                  width = .6) +
     geom_dotplot(aes(group = group_loc), binaxis = "y", binwidth = .01,
                  stackdir =  "center", color = "red", fill = NA, dotsize = 2) +
-    labs(title = "Boxplots with Overlaid Dotplots\nfor Ln(NOx) in Fall by Gradient Site Index",
+        labs(title = "Boxplots with Overlaid Dotplots\nfor Ln(NOx) in Fall by Gradient Site Index",
          y = "ln(NOx) in ln(ppb)",
          x = "Gradient Site Index") + 
     theme_bw()
@@ -211,32 +198,22 @@ ggplot(fvc, aes(x = group_loc, y = ln_nox)) +
 ```{r tidyverse.stratified.summary.snapshot}
 #-----tidyverse stratified summary snapshot-----
 
+# One pipeline approach to coding this.  Note that since `vc_summary` is used
+# later on, we need to filter out the "Total" row below
 vc_summary <- fvc %>%
     group_by(group_loc) %>%
-    summarise( N = n(), 
-               mean = mean(ln_nox),
-               sd = sd(ln_nox)) 
-#vc_summary <- recode_factor(group_loc,.default)
-vc_total <- fvc %>%
-    summarise( N = n(), 
-               mean = mean(ln_nox),
-               sd = sd(ln_nox))
-vc_total <- cbind(group_loc = 100, vc_total)
+    summarise(N = n(),
+              mean = mean(ln_nox),
+              sd = sd(ln_nox)) %>%
+    mutate(group_loc = as.character(group_loc) ) %>%
+    bind_rows(fvc %>% summarise(group_loc = "Total",
+                                N = n(),
+                                mean = mean(ln_nox),
+                                sd = sd(ln_nox) ) ) %>%
+    mutate_if(is.double, round, 3)
 
-kable(rbind(vc_summary,vc_total), digits = 3)
-
-# # Lianne, one pipeline option below like earlier (though `vc_summary` is used later on)
-# fvc %>%
-#     group_by(group_loc) %>%
-#     summarise(N = n(),
-#               mean = mean(ln_nox),
-#               sd = sd(ln_nox)) %>%
-#     mutate(group_loc = as.character(group_loc) ) %>%
-#     bind_rows(fvc %>% summarise(group_loc = "Total",
-#                                 N = n(),
-#                                 mean = mean(ln_nox),
-#                                 sd = sd(ln_nox) ) ) %>% 
-#     mutate_if(is.double, round, 3)
+# note we can omit the "digits = 3" option in kable because we already rounded
+kable(vc_summary)
 
 ```
 
@@ -245,8 +222,8 @@ kable(rbind(vc_summary,vc_total), digits = 3)
 ```{r gradient.variability}
 #-----gradient variability-----
 
-# create variance table
-vc_var <- vc_summary %>%
+# create variance table after omitting the total row
+vc_var <- vc_summary %>% filter(N < 100) %>%
     summarise(N_sites = n(),
               median_grand = median(mean),
               mean_grand = mean(mean),
@@ -280,6 +257,7 @@ more descriptive approach.
 
 fixed_ef <- lm(ln_nox ~ as.factor(group_loc), data = fvc)
 summary(fixed_ef)
+
 ```
 
 ### Dropped from lecture:  Same in ANOVA (fixed effect model)
@@ -290,6 +268,7 @@ summary(fixed_ef)
 
 # (formerly slide 17):  same in ANOVA
 anova(fixed_ef)
+
 ```
 
 ## Slide 21 + 22:  Variance components with VCA
@@ -303,7 +282,7 @@ components.
 # (slides 21+22)
 
 # visualize data
-varPlot(form = ln_nox~group_loc, Data = fvc)
+varPlot(form = ln_nox~ group_loc, Data = fvc)
 
 # different ways to estimate variance components
 fit_MOM <- anovaVCA(ln_nox ~ group_loc, Data = fvc)
@@ -363,6 +342,7 @@ fit_REML
 
 fit_ANOVA <- fitVCA(ln_ecdata ~ facilityid, Data = DEMS, method = "anova")
 fit_ANOVA
+
 ```
 
 ## Slide 26:  DEMS comparison of estimates
@@ -484,7 +464,7 @@ confint(mixedfit1_REML)
 
 ```
 
-Note (not discussed in lecture):  The fixed effect estimates will change when
+Note (not necessarily discussed in lecture):  The fixed effect estimates will change when
 there is correlation between fixed and random effect parts of the model.  Random
 effects do not address residual confounding.  The most appropriate assumption is
 to assume the random effects are independent of the fixed effects.  In the
@@ -549,6 +529,7 @@ plot(p1,p0)
 # Note the predictions with random effects are more variable, as one would expect.
 summary(p1)
 summary(p0)
+
 ```
 
 When you predict in a new dataset from a mixed model, you MUST have all grouping
@@ -581,6 +562,7 @@ plot(p3, p2)
 # Note the predictions with random effects are more variable, as one would expect.
 summary(p3)
 summary(p2)
+
 ```
 
 
@@ -590,6 +572,7 @@ summary(p2)
 #-----------------session.info: beginning of Appendix -----------------
 #This allows reproducibility by documenting the version of R and every package you used.
 sessionInfo()
+
 ```
 
 ```{r appendix.code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
