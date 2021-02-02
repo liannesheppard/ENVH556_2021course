@@ -8,7 +8,6 @@ output:
         toc: true
         toc_depth: 3
         number_sections: true
-        
 ---
 
 ```{r setup, include=FALSE}
@@ -36,7 +35,8 @@ my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.
-pacman::p_load(knitr, dplyr, tidyr, modelr, stringr, ggplot2, Hmisc, lme4, VCA)
+pacman::p_load(knitr, dplyr, tidyr, modelr, stringr, ggplot2, Hmisc, lme4, VCA, 
+               formatR)
 
 ```
 
@@ -151,28 +151,33 @@ DEMS %>%
 # The goal is to create a fall dataset for the variance components that
 # identifies the gradient sites by keeping all observations that have more than
 # 3 observations for the group_loc variable
+
 # TODO Chris:  This version fails in the VCA.implementation chunk.  It has something to do with how group_loc is characterized here vs. in the original coding, below.  Do you know why?  I'd use this version of the code if it didn't cause problems below.
 
-# fvc <- snapshot %>%
-#     as_tibble() %>%
+# Lianne, see if this works for you (it does for me). It was a silly object
+# class thing. VCA requires class data.frame and not tibble. fvc is still a
+# tibble here, though, what I did was just add as.data.frame() to the VCA
+# function arguments. Alternatively you could add this to the fvc assignment
+# below: %>% as.data.frame()
+
+fvc <- snapshot %>%
+    filter(season == 2)  %>%
+    group_by(group_loc) %>%
+    mutate(count = n()) %>%
+    ungroup() %>%
+    filter(count > 3) %>%
+    select(-count)
+
+# # Original version: This version works in the VCA.implementation chunk
+# #get the gradient sites
+# gradient_sites <- snapshot %>%
 #     filter(season == 2)  %>%
 #     group_by(group_loc) %>%
-#     mutate(count = n()) %>%
-#     ungroup() %>%
-#     filter(count > 3) %>%
-#     select(-count)
-
-# Original version: This version works in the VCA.implementation chunk
-#get the gradient sites
-gradient_sites <- snapshot %>% 
-    filter(season == 2)  %>% 
-    group_by(group_loc) %>%
-    summarise(count = n()) %>%
-    filter( count > 3)
-# fall dataset for variance components
-# keeps only gradient sites with at least 4 observations
-fvc <- snapshot %>% filter(season == 2, group_loc %in% gradient_sites$group_loc) 
-
+#     summarise(count = n()) %>%
+#     filter( count > 3)
+# # fall dataset for variance components
+# # keeps only gradient sites with at least 4 observations
+# fvc <- snapshot %>% filter(season == 2, group_loc %in% gradient_sites$group_loc)
 
 ```
 
@@ -280,19 +285,21 @@ components.
 #-----VCA implementation-----
 
 # (slides 21+22)
+# note: VCA functions require Data of class data.frame, not tibble, so we've
+# made that adjustment in the function arguments
 
 # visualize data
-varPlot(form = ln_nox~ group_loc, Data = fvc)
+varPlot(form = ln_nox~ group_loc, Data = as.data.frame(fvc) )
 
 # different ways to estimate variance components
-fit_MOM <- anovaVCA(ln_nox ~ group_loc, Data = fvc)
+fit_MOM <- anovaVCA(ln_nox ~ group_loc, Data = as.data.frame(fvc) )
 fit_MOM
 
-fit_REML <- fitVCA(ln_nox ~ group_loc, Data = fvc, method = "REML")
+fit_REML <- fitVCA(ln_nox ~ group_loc, Data = as.data.frame(fvc), method = "REML")
 fit_REML
 
 # the following gives the same result so is not repeated
-#fit_ANOVA <- fitVCA(ln_nox ~ group_loc, Data = fvc, method = "anova")
+#fit_ANOVA <- fitVCA(ln_nox ~ group_loc, Data = as.data.frame(fvc), method = "anova")
 #fit_ANOVA
 
 ```
