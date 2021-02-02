@@ -1,0 +1,394 @@
+---
+title: "Week 7 Lab:  Measurement Error"
+author: "Lianne Sheppard for ENVH 556"
+date: "Winter 2019; Updated `r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    html_document:
+        fig_caption: yes
+        toc: true
+        toc_depth: 3
+        number_sections: true
+editor_options: 
+  chunk_output_type: console
+---
+
+<!--Basic document set-up goes here  -->
+
+```{r setup, include=FALSE}
+#-------------r.setup-------------
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r clear.workspace, eval=FALSE, echo=FALSE}
+#---------clear.workspace------------
+# Clear the environment without clearing knitr
+#
+# This chunk is useful for code development because it simulates the knitr
+# environment. Run it as a code chunk when testing. When knitr is run, it uses a
+# fresh, clean environment, so we set eval=FALSE to disable this chunk when
+# rendering.
+
+# Clear workspace of all objects and unload all extra (non-base) packages
+rm(list = ls(all = TRUE))
+if (!is.null(sessionInfo()$otherPkgs)) {
+    res <- suppressWarnings(
+        lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
+               detach, character.only=TRUE, unload=TRUE, force=TRUE))
+   
+}
+
+```
+
+
+```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
+#----------------load.libraries.pacman----
+# Load pacman into memory, installing as needed
+my_repo <- 'http://cran.r-project.org'
+if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
+
+# Load the other packages, installing as needed.  Some reasons for packages:
+# knitr:  kable()
+# ggplot2: part of tidyverse
+# readr: part of tidyverse
+# dplyr: part of tidyverse
+# broom: tidyr
+# multcomp:  glht
+# modelr:  part of tidyverse and need for add_predictions and add_residuals
+# boot:  cv tools are available
+# Hmisc:  describe
+# lme4:  for lmer, mixed models and random effects models
+# parallel:  for parallel processing
+pacman::p_load(tidyverse, knitr, dplyr, Hmisc, broom, parallel)  
+```
+
+TODO:  Also allow one full dataset to be output.
+
+# Introduction and Purpose
+
+The purpose of this lab is to **better understand pure classical and Berkson measurement error**, and **optionally** to 1) replicate the results reported in Szpiro et al (2011) and 2) use the replication process to **gain a deeper understanding of the role of exposure prediction in inference from epidemiological studies**.  An additional benefit of this lab is that you will gain some experience with **simulation studies**, a skill that is generally applicable to a wide range of problems.
+
+In this lab exercise we will start by looking at **pure measurement error** properties.  We will simulate exposure and health data in a single population and use this to understand pure Berkson and classical measurement error.  After simulating true exposure and three different versions each of pure Berkson and classically mismeasured covariates, we will then condition on these exposures in our health analysis to estimate the health effect parameter β, the effect of exposure on the health measure.  The parameter β is our target of inference, so over the multiple (e.g. 1,000) simulations we will store the estimates of this target of inference and then summarize these estimates to draw conclusions about the role of different exposure models on this target.  The program we will use for this exercise is `mesim_pure` found in the file named *MEprograms_pure.R*.  Some sample code for running this program is below.
+
+As an **optional** additional exercise we will then generalize this to consider two groups of locations:  monitoring (or sampling) locations and subject residence locations.  (In an occupational study we can view these as data that come from two worker cohorts:  the worker cohort with exposure monitoring data and the cohort with health outcome data.  In the current application the two are distinct (i.e. mutually exclusive).  In other applications, some of the workers with health outcome data also provide exposure data.)  We then simulate health outcome data for subjects conditional on the true exposures.  We will predict subject exposures using a regression model developed on the monitoring data (i.e. out-of-sample predictions for subjects).  We then condition on the exposure predictions in our health analysis to estimate the health effect parameter β, the effect of exposure on the health measure.  The parameter β is our target of inference, so over the multiple (e.g. 1,000) simulations we will store the estimates of this target of inference and then summarize these estimates to draw conclusions about the role of different exposure models on this target.  The program we will use for this exercise is `me_like` found in the file named *mesim_like.R*.  Some sample code for running this program is below.
+
+**Simulation studies** are a form of experimental study most often used to understand properties of statistical estimators.  (Simulations are also used for other purposes such as in study planning as a tool to estimate study power.) The basic idea behind a simulation study is that data are generated using an assumed **data-generating model**.  These data are then used to estimate one or more quantities of interest using one or more approaches to analysis.  (The **analysis model(s)** may or may not correspond to the data-generating model; this misalignment can be done on purpose to understand some important feature of the role of data analysis under varying data-generating conditions.)  The resulting estimates are then summarized and compared to quantify their properties.  The simultaneous strength and weakness of simulation studies is that the true data-generating model is known.  Thus we can evaluate exactly how a statistics performs under a given set of assumptions.  Of course, in the real world we never know whether our assumed model holds.
+
+# Getting Started
+
+## Overview
+
+We have written two functions to demonstrate measurement error scenarios:
+1.	`mesim_pure`:  The simpler version to allow some basic understanding of pure Berkson and classical measurement error.  It generates true exposure and health outcome data in a group of subjects, along with modifications of the true exposure to give mismeasured exposures, both pure Berkson and pure classical.   You will find this on the class web page with name: mesim_pure.r.
+2.	`mesim_like`:  The more complex version is based on the work done by Szpiro et al.  It generates the exposure and health data, computes predictions and estimates the quantities of interest that can be summarized, as described in Szpiro et al.  You will find this on the class web page with name: mesim_like.r.
+
+## Comments on simulating data
+
+Computer simulations give realizations from probability distributions.  They are based on pseudo-random numbers – these numbers are generated by the computer to behave like random numbers but they are deterministic.  Thus if you want to be able to replicate a specific simulation exactly each time it is run, you set the seed or starting value for the pseudo-random number generator.  In R we use the `set.seed()` command with an arbitrary number inside the parentheses.
+
+
+## Outline of the steps to simulate and analyze the data for the pure Berkson and classical measurement error settings 
+
+1.  **Data generation**:  Generate the exposure and outcome data on subjects for one "cohort".  (Note:  In a sumulation study we can assume the true exposure is known.  In real life this is (essentially) never true.)
+    a.  Assume a **cohort of a fixed size**, e.g. `n_subj = 10,000`.
+    b.  Our **true exposure**, `x`, is built from a model that has 3 covariates and an error term:
+    $$x = \alpha_0 + \alpha_1 s_1 + \alpha_2 s_2 + \alpha_3 s_3 + \eta$$
+    c. **Berkson ME exposures**:  Exposures with Berkson error allow one to observe part of the true exposure.  Connected to our true exposure model, we define `Berk_1` to have 1 covariate ($s_1$), `Berk_2` to have 2 ($s_1$,$s_2$), and `Berk_3` to have 3 ($s_1$,$s_2$,$s_3$):
+    $$
+    \begin{align}
+    Berk_1 &= \alpha_0 + \alpha_1 s_1 \\
+    Berk_2 &= \alpha_0 + \alpha_1 s_1 + \alpha_2 s_2 \\
+    Berk_3 &= \alpha_0 + \alpha_1 s_1 + \alpha_2 s_2 + \alpha_3 s_3 
+    \end{align}$$ 
+    d. **Classical ME exposures**:  Exposures with classical measurement error have independent noise added to the true exposure.  We define `class1` to have additional error added, while `class2` has more added error, and `class3` has even more added error:
+$$  \begin{align}
+    class_1 &= x + e_1 \\
+    class_2 &= x + e_1 + e_2 \\
+    class_3 &=x + e_1 + e_2 + e_3 
+    \end{align}  $$
+    
+    d. **Health outcome model**:  We assume a simple linear regression for health outcome `y`.  Note the true health model is conditional on the true exposure, NOT one of our mismeasued exposures defined above.  
+    $$ y = \beta_0 + \beta_1 x + \epsilon $$
+2.  **Data analysis**:  For a single cohort, use all exposures in a health analyses, one health analysis for each exposure; save health results
+    a. First estimate health effect given true exposure
+    b. Then consider health effect estimates using the 3 Berkson error exposures
+    c. Then consider health effect estimates using the 3 classical error exposures
+    
+3.  We use **simulation** to get the statistical properties of our results:  To simulate this we replicate steps 1. and 2. `n_iter` number of times.  Our default value for `n_iter` is 1,000.  For testing it is good practice to use a MUCH smaller number of replicates, such as `n_iter=10`.   
+4.  **Summarize the results** of the exposures and health effect estimates after the program completes
+
+```{r ME simulation_pure}
+# ------- ME simulation for pure Berkson & classical ------
+
+# Steps to accomplish the above:  
+#   I. define function that creates the data for one iteration of n_iter
+#   II. repeat over n_iter iterations.  We will use lapply(); the replicate
+#       command is an alternative
+#   III. transform the list structure to one easier to analyze
+#   IV. Summarize the results
+
+# Step I: Read in the function in the mesim_pure.R code
+source("mesim_pure.R")
+
+# Step II:  Iterate
+# Set the seed
+set.seed(100)
+
+# define the number of simulation iterations to use
+n_iter <- 10
+
+# Single-core processing
+system.time(result_pure_sp <- lapply(1:n_iter, function(x) me_pure()))
+
+# Bonus topic:  parallel processing
+# The above application uses single-core processing.  Multi-core (or parallel)
+# processing can greatly speed up long programs.  We use the system.time()
+# function to determine how long a procedure works.  We use multi-core versions
+# of functions to allow the parallel processing as in the following steps:
+# Multi-core processing - Note: mclapply() does not work in Windows
+# if (.Platform$OS.type != "windows") {
+#     system.time(result_pure_mp <- mclapply(1:n_iter, function(x) me_pure(), 
+#                                            mc.cores = 8, 
+#                                            mc.set.seed = TRUE,
+#                                            mc.preschedule = TRUE))
+#}
+
+# Step III.  Transform the list into a structure more easily summarized
+# 
+# Define vectors to be used in the function below
+predictors <- c("x", 
+                "Berk_1", 
+                "Berk_2", 
+                "Berk_3", 
+                "class_1", 
+                "class_2", 
+                "class_3")
+parameters <-  c("b1", "seb1", "R2", "exp_var")
+
+# The result returned from mesim_pure.R is a list of lists (of lists), or a 3D
+# list.  At the first level we have n_iter lists where each of those contains a
+# list for each of the 7 exposures (in predictors), each of which contains the 4
+# returned parameters. We would like to convert this into a structure that is
+# easier to analyze.  The next two conversion steps accomplish this:
+
+# 1. Transform the 3D list of lists into a 2D list of tibbles
+res_lst_tbl <- lapply(1:n_iter, function(x) { 
+    res_tbl <- as_tibble(matrix(unlist(result_pure_sp[[x]]), 
+                                nrow=length(predictors), byrow=TRUE, 
+                                dimnames = list(predictors, parameters)))
+    res_tbl$predictor <- predictors
+    res_tbl$replicate <- x
+    return(res_tbl)
+    }
+    )
+
+# 2. Transform the 2D list of tibbles into one large tibble
+res_tbl <- dplyr::bind_rows(res_lst_tbl)
+ 
+# Step IV. (In the next chunk) Summarize the results
+
+```
+
+The next chunk is to summarize the results using basic descriptive tools and plots.  You should build upon the tools you have learned earlier in the quarter to conduct descriptive analyses and develop plots.  See some of the text in the practice session below for some more thoughts on what quantities you want to summarize.  Also refer to the Table and Figures in Szpiro et al 2011.
+
+```{r Summarize pure ME results}
+# --------- Summarize pure ME results -------------
+
+# Summarize the results: find mean and sd of "b1" for all 7 predictors Note:
+# Students need to expand this summary to also get the E(se(beta1)), mean R2,
+# and average variance of each exposure (ideally reported on the SD scale).
+# Students should also think about graphical displays such as density plots.
+res <- res_tbl %>% 
+    group_by(predictor) %>% 
+    dplyr::summarize(
+        N = n(),
+        `E(b1)` = mean(b1),
+        sd_b1 = sd(b1),
+        `E(se_b1)` = sqrt(mean(seb1^2)),
+        `E(R2)` = mean(R2),
+        `E(exp_var)` = mean(exp_var)
+        ) %>%
+   arrange(`E(exp_var)`) 
+    
+# Display results
+# TODO: remove N from the table; how to put it in the caption
+knitr::kable(res, caption = "Health effect estimate properties")
+
+```
+
+
+## Outline of the steps to simulate and analyze the data for the Berkson**-like** and classical**-like** measurement error setting 
+
+1.  **Data generation**:  Generate the exposure and outcome data on subjects for one "cohort".  (Note:  In a sumulation study we can assume the true exposure is known.  In real life this is (essentially) never true.)
+    a.  Assume a **cohort of a fixed size**, e.g. `n_subj = 10,000`.
+    b.  Our **true exposure**, `x`, is built from a model that has 3 covariates and an error term:
+    $$x = \alpha_0 + \alpha_1 s_1 + \alpha_2 s_2 + \alpha_3 s_3 + \eta$$
+    c. **Predicted exposure using the correctly specified exposure model (full model)**:  Predict exposures in the monitoring data using the same correctly specified exposure model as determines the true exposure:  
+    $$ \hat{x}_{full} = \hat{\alpha}_0 + \hat{\alpha}_1 s_1 + \hat{\alpha}_2 s_2 + \hat{\alpha}_3 s_3 $$   
+    
+    d. **Predicted exposure using the mis-specified exposure model (reduced model)**:  Predict exposures in the monitoring data using a mis-specified exposure model as compared to the one that determines the true exposure. This one is simpler than the one that determines the true exposure:  
+    $$ \hat{x}_{red} = \hat{\alpha}_0 + \hat{\alpha}_1 s_1 + \hat{\alpha}_2 s_2 $$ 
+    
+    e. **Health outcome model**:  We assume a simple linear regression for health outcome `y`.  Note the true health model is conditional on the true exposure, NOT one of our mismeasued exposures defined above.  
+    $$ y = \beta_0 + \beta_1 x + \epsilon $$
+    
+2.  **Data analysis**:  For a single cohort, use all exposures in a health analyses, one health analysis for each exposure; save health results
+    a. First estimate health effect given true exposure
+    b. Then consider health effect estimates conditional on exposures prediced using a model developed from the monitor dataset that is representative of the subject population.  Consider both the correctly specified exposure model (full) and the mis-specified exposure model (reduced).
+    c. Then consider health effect estimates conditional on exposures prediced using a model developed from the monitor dataset that is *not* representative of the subject population.  Consider both the correctly specified exposure model (full) and the mis-specified exposure model (reduced).
+    
+3.  We use **simulation** to get the statistical properties of our results:  To simulate this we replicate steps 1. and 2. `n_iter` number of times.  Our default value for `n_iter` is 1,000.  For testing it is good practice to use a MUCH smaller number of replicates, such as `n_iter=10`.   
+4.  **Summarize the results** of the exposures and health effect estimates after the program completes
+
+```{r ME simulation_like}
+# ------- ME simulation for Berkson-like & classical-like measurement error ------
+
+# Steps to accomplish the above:  
+#   I. define function that creates the data for one iteration of n_iter
+#   II. repeat over n_iter iterations.  We will use lapply(); the replicate
+#       command is an alternative
+#   III. transform the list structure to one easier to analyze
+#   IV. Summarize the results
+
+# # Step I: Read in the function in the mesim_like.R code
+source("mesim_like.R")
+
+# Step II:  Iterate
+# Set the seed
+set.seed(101)
+
+# define the number of simulation iterations to use
+n_iter <- 10
+
+# Single-core processing
+system.time(result_like_sp <- lapply(1:n_iter, function(x) me_like()))
+
+# Bonus topic:  parallel processing (see the pure version for explanation)
+# Multi-core processing - Note: mclapply() does not work in Windows
+# if (.Platform$OS.type != "windows") {
+#     system.time(result_like_mp <- mclapply(1:n_iter, function(x) me_like(), 
+#                                            mc.cores = 8, 
+#                                            mc.set.seed = TRUE,
+#                                            mc.preschedule = TRUE))
+#}
+
+# Step III.  Transform the list into a structure more easily summarized
+# 
+# Define vectors to be used in the function below
+predictors <- c("x", "xhat_1full", "xhat_1red", "xhat_2full", "xhat_2red")
+parameters <- c("b1", "seb1", "R2_y", "exp_var", "a3hat", "a3var", "r2")
+
+# The result returned from mesim_like.R is a list with n_iter lists that each
+# contain a list for each of the 5 exposures (in predictors), and the (4-)7 returned
+# parameters for each.  We would like to convert this into a structure that is
+# easier to analyze.  The next two conversion steps accomplish this:
+# 1. Transform the 3D list of vectors into a 2D list of tibbles
+res_lst_tbl <- lapply(1:n_iter, function(x) { 
+    res_tbl <- as_tibble(suppressWarnings(matrix(unlist(result_like_sp[[x]]), 
+                                nrow=length(predictors), byrow=TRUE, 
+                                dimnames = list(predictors, parameters))))
+    res_tbl$predictor <- predictors
+    res_tbl$replicate <- x
+    res_tbl})
+
+# 2. Transform the 2D list of tibbles into one large tibble
+res_tbl <- dplyr::bind_rows(res_lst_tbl)
+
+# Display results
+#knitr::kable(res_tbl)
+
+# Step IV. (In the next chunk) Summarize the results
+
+```
+
+The next chunk is to summarize the results using basic descriptive tools and plots.  We only show a simple version of part of the summary needed.
+
+```{r Summarize like ME results}
+# --------- Summarize like ME results -------------
+
+# This repeats similar results as developed for the pure ME case.
+# Note:  Students need to analyze the other features and develop plots
+res <- res_tbl %>% 
+    group_by(predictor) %>% 
+    dplyr::summarize(
+        N = n(),
+        `R2_W` = mean(r2),
+        `E(a3)` = mean(a3hat),
+        `E(se(a3))` = sqrt(mean(a3var)),
+        `E(exp_var)` = mean(exp_var),
+        `E(b1)` = mean(b1),
+        `SD(b1)` = sd(b1),
+        `E(se_b1)` = sqrt(mean(seb1^2)),
+        `E(R2)` = mean(R2_y)
+        ) %>%
+   arrange(predictor) 
+
+# Display results
+knitr::kable(res)
+
+```
+
+# Practice Session
+
+1.  Decide your project for this lab.  Make sure all the code files you will need are available inside your project folder.    
+2.  In lab we will read through the `mesim_pure` function together to make sure you understand each step.  
+    a. You can practice on one interation so you better understand its results by running `me_pure()`.
+    b. While it will take more work, you may wish to try each of the data-generating and fitting steps manually to solidify your understanding.
+3.  Run a small number of simulations for practice (e.g. 10-50).
+4.  Develop some procedures to summarize the results.  Think about what variables you will need to summarize to be able to show results using a format similar to those reported in the Table and Figures (1 and 2) of Szpiro et al.
+    a.  Considering the summary statistics for $\hat{\beta}_x$, how were the standard deviation, RMSE, and E(SE) in the Table estimated?  (Hint: the standard deviation and RMSE are estimated using $\hat{\beta}_x$, while E(SE) is shorthand notation for the “expected” (or average) standard error of $\hat{\beta}_x$ estimated using the variance of $\hat{\beta}_x$.)
+    b.  You will need to calculate your own coverage probabilities.  To do this, calculate a 95% CI for (each) $\hat{\beta}_x$ in each simulation and determine whether or not the true value for $\beta_x$ (=2) is covered by that CI.  (Hint:  Generate a new variable that is an indicator variable for your result and summarize this over all simulations.)
+    c.  You may also want to consider summarizing one full dataset used in one simulation iteration.  
+5.  For your homework, we’d like you to run a large number of simulations (e.g. 1,000 or more).  Then summarize these in a table and one or more figures, thinking creatively about what you can show in these data to highlight the insights you have gained
+6.  For the optional extra credit part of the homework, we would like you to study both 1) the two conditions shown in the Szpiro et al (2011) Table in order to replicate the table, and 2) in addition choose (at least) one more pair of conditions to investigate.
+
+
+# Homework Exercises for Standard Lab
+
+1.  Create your own version of the Szpiro et al Table using the results from your simulation study.  Make sure to show some exposure characteristics as well as characteristics of the health effect estimates for pure Berkson and classical measurement error, respectively.  Discuss your understanding of these results.
+2.  In your lab write-up:  
+    a. Make sure you describe clearly the conditions you studied in your simulation study.   State the assumptions used in the simulation.  (Note:  If you wish you may change the underlying assumptions, but if you do, make sure you convey what you did completely clearly in your write-up.)
+    b.  Develop some informative figures to help you make your points.  Think about both the exposure side and the health effect estimate side of the simulation study results.
+    c.  Discuss your understanding of pure Berkson and classical measurement error and connect that understanding to the quantities you simulated and estimated in the simulation study.
+
+# Homework Exercises:  Optional Extra Credit lab on exposure prediction & measurement error  
+
+1.  Reproduce the Szpiro et al (2011) Table using the same two conditions for the variance of $s_3$ in your simulation study.  Discuss your understanding of these results.
+2.  Choose (at least) one more pair of conditions to investigate in a second simulation study by varying one or more of: the sample sizes for the monitoring data and/or the health study, and/or the relative variability of $s_3$ in the two sets of monitoring data.  (One option is to try to reproduce Figure 3 in the paper.)  
+    a.  Describe the conditions you studied in your second simulation study.  Summarize your results and discuss them.
+    b.  With respect to both 1. and 2. above, if you have gained any additional insights from looking at any of the other statistics available from the simulation but not reported in the paper, please incorporate these insights into your comments.
+3.  Think about the title of this paper and your intuition about the role of exposure prediction on inference about health effects (or at least any intuition you may have had prior to reading this paper).  Why do you think the authors had difficulty convincing the journal editors to publish this paper?  Do you think the inclusion of the sample code in the supplement and your work trying to replicate the simulation studies inspired by this paper helps make the results more convincing? 
+4.  In a simulation study we can use the true exposure at subject locations as out-of-sample test data for assessing the quality of the exposure prediction model as was done here.  Typically we never know the true exposure and also we don’t have detailed exposure measurements on all the subjects who also provide health data.  Thus in applications we often resort to assessing the quality of the exposure predictions in the exposure monitoring data alone, using .e.g. hold-out datasets or cross-validation strategies. In the settings evaluated in this simulation study, speculate on how our inference and conclusions could be impacted by using the monitoring data instead of the subject data for the assessment of the performance of the exposure model.   (If you wish, you may try cross-validating the exposure model results and comparing these to the true out-of-sample results you have already reported.)
+5.  If you decide to submit this extra credit portion of the lab, please prepare it as a separate lab report.   This extra credit lab is worth a full 10 points.
+
+
+
+# Code Appendix
+
+## Session Information
+
+```{r session.info}
+#-----------session.info: beginning of Code Appendix -------------
+
+sessionInfo()
+```
+
+## Code in the R Markdown file
+
+```{r appendix.code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
+
+```
+
+## User-written functions loaded in the R Markdown environment
+
+```{r Functions used in this Rmd, eval = TRUE}
+#----------- functions used in this Rmd ------------
+
+# Show the names of all functions used (loaded in the current environment)
+lsf.str()
+
+# Show the definitions of all functions loaded into the current environment  
+lapply(c(lsf.str()), getAnywhere)
+
+```
+
+
