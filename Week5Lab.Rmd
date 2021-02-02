@@ -73,22 +73,28 @@ rm(url, file_name, file_path, data_path)
 
 # Introduction and Purpose
 
-The purpose of this lab is to practice estimating variance components for random
-and mixed effect models.
+The purpose of this lab is to practice estimating variance components both by
+using descriptive statistics as well as through application of random and mixed
+effect models. In addition, as with all the labs in this course, you should
+focus on writing up a coherent lab report that addresses the scientific context
+and scientific questions that can be answered using variance components.
+
 In this lab exercise we will use the Welding School personal survey data.  The
 data are stored in the file named “*weldschool.rds*”.  The exposure
 concentration variables in the dataset consist of *mnconc* and *particulate*,
 the airborne concentrations of manganese and total particulate, respectively,
 both in µg/m^3^.  The grouping variable is *subjid*.  Further description of the
-variables can be found in “*Welding School Exposures variables 556
-rev021015.docx*”, and the background and study design is in the published paper
+variables can be found in the document with title "*Welding School Exposures variables 556
+rev021015*", and the background and study design is in the published paper
 with file name “*Baker Blood Mn Review*.”
 
 # Getting Started
 
-The companion file *Week5Lecture.Rmd* gives R commands relevant to this lab.
-The lecture examples are applied to the DEMS underground and Snapshot traffic
-gradient site data.
+The companion file *Week5Lecture.Rmd* gives R commands relevant to this lab. The
+lecture examples are applied to the DEMS underground and Snapshot traffic
+gradient site data.  Unlike previous labs, we do not provide you with worked
+examples from the Welding School dataset.  You will need to apply the tools
+demonstrated in the *Week5Lecture.Rmd* to your analyses for this lab.
 
 ## Tools for estimating variance components
 
@@ -196,9 +202,8 @@ variable:
         comparability.
     d.	The impact on the variance component estimates when you include fixed
         effect(s) in your model and the reason for the change(s) in these data.
-    e.	Incorporate insights from the [Symanski et al,
-        2006](https://doi.org/10.1093/annhyg/mel006) and [Peretz et al,
-        2002](https://doi.org/10.1093/annhyg/mef009) papers.
+    e.	Incorporate insights from the [Peretz et al,
+        2002](https://doi.org/10.1093/annhyg/mef009) paper.
 
 # Appendix
 
