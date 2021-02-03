@@ -149,7 +149,7 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
                a3hat = predictor[[i]][["a3hat"]], 
                a3var = predictor[[i]][["a3var"]], 
                r2 = predictor[[i]][["r2"]] 
-        )
+               )
     }) %>% 
         
         # Set names for list items and the items contained in each item
