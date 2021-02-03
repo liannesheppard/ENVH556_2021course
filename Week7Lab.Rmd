@@ -1,7 +1,7 @@
 ---
 title: "Week 7 Lab:  Measurement Error"
 author: "Lianne Sheppard for ENVH 556"
-date: "Winter 2019; Updated `r format(Sys.time(), '%d %B, %Y')`"
+date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
 output: 
     html_document:
         fig_caption: yes
@@ -12,54 +12,34 @@ editor_options:
   chunk_output_type: console
 ---
 
-<!--Basic document set-up goes here  -->
-
 ```{r setup, include=FALSE}
-#-------------r.setup-------------
+#-----setup-----
+
+# set knitr options
 knitr::opts_chunk$set(echo = TRUE)
-```
 
-```{r clear.workspace, eval=FALSE, echo=FALSE}
-#---------clear.workspace------------
-# Clear the environment without clearing knitr
-#
-# This chunk is useful for code development because it simulates the knitr
-# environment. Run it as a code chunk when testing. When knitr is run, it uses a
-# fresh, clean environment, so we set eval=FALSE to disable this chunk when
-# rendering.
-
-# Clear workspace of all objects and unload all extra (non-base) packages
+# clear work space of all objects and unload all extra (non-base) packages
 rm(list = ls(all = TRUE))
 if (!is.null(sessionInfo()$otherPkgs)) {
     res <- suppressWarnings(
         lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
                detach, character.only=TRUE, unload=TRUE, force=TRUE))
-   
 }
 
 ```
 
-
 ```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
-#----------------load.libraries.pacman----
+#-----load libraries pacman-----
+
 # Load pacman into memory, installing as needed
 my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
-# Load the other packages, installing as needed.  Some reasons for packages:
-# knitr:  kable()
-# ggplot2: part of tidyverse
-# readr: part of tidyverse
-# dplyr: part of tidyverse
-# broom: tidyr
-# multcomp:  glht
-# modelr:  part of tidyverse and need for add_predictions and add_residuals
-# boot:  cv tools are available
-# Hmisc:  describe
-# lme4:  for lmer, mixed models and random effects models
-# parallel:  for parallel processing
-pacman::p_load(tidyverse, knitr, dplyr, Hmisc, broom, parallel)  
+# Load the other packages, installing as needed.
+pacman::p_load(knitr, dplyr, tidyr, ggplot2, broom, parallel, Hmisc)
+
 ```
+
 
 TODO:  Also allow one full dataset to be output.
 
@@ -367,7 +347,7 @@ knitr::kable(res)
 ## Session Information
 
 ```{r session.info}
-#-----------session.info: beginning of Code Appendix -------------
+#-----session info: beginning of Code Appendix -------------
 
 sessionInfo()
 ```
@@ -375,13 +355,13 @@ sessionInfo()
 ## Code in the R Markdown file
 
 ```{r appendix.code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
-
+#-----appendix code
 ```
 
 ## User-written functions loaded in the R Markdown environment
 
-```{r Functions used in this Rmd, eval = TRUE}
-#----------- functions used in this Rmd ------------
+```{r functions.used.in.this.Rmd, eval = TRUE}
+#-----functions used in this Rmd-----
 
 # Show the names of all functions used (loaded in the current environment)
 lsf.str()
