@@ -4,8 +4,8 @@
 
 # Load the broom package for the tidy() function
 pacman::p_load(broom)
-#
-#
+
+
 # getMSE function:
 getMSE <- function(obs,pred) {
     # obs is the outcome variable
@@ -79,24 +79,25 @@ me_pure <- function(n_subj = 10000) {
                     "class_2",
                     "class_3")
     
-    # Define a list for 4 parameters x 7 models
+    # Define a tibble of 4 parameters x 7 models
     # note use of "get()" to refer to the variable as a variable, not its name
-    ret.list <- lapply(predictors, function(i) {
+    ret <- lapply(predictors, function(i) {
         lmfit <- lm(y ~ get(i))
-        list(tidy(lmfit)$estimate[2], 
-             tidy(lmfit)$std.error[2],
-             as.numeric(getMSE(y, lmfit$fitted.values)[2]),
-             var(get(i)))
-    })
+        tibble(b1 = tidy(lmfit)$estimate[2], 
+               seb1 = tidy(lmfit)$std.error[2], 
+               R2 = as.numeric(getMSE(y, lmfit$fitted.values)[2]), 
+               exp_var = var(get(i)) 
+               )
+    }) %>% 
+        
+        # Set names for list items
+        setNames(predictors) %>% 
+        
+        # bind list rows together
+        bind_rows(.id = "predictor")
     
-    # Set names for list items and the items contained in each item
-    names(ret.list) <- predictors
-    for (i in 1:length(ret.list)) {
-        names(ret.list[[i]]) <- c('b1', 'seb1', 'R2', 'exp_var')
-    }
-    
-    # Return the list
-    return(ret.list)
+    # Return the dataframe
+    return(ret)
 }
 
 # The following belongs outside of the function file once we finish coding:
