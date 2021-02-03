@@ -74,7 +74,7 @@ rm(url, file_name, file_path, data_path)
 
 # Purpose
 
-The purpose of this lab is to get practice using and reporting regression models with a focus on regression for association and some beginning work on regression for prediction.   We will use the ACT snapshot data for this lab.
+The purpose of this lab is to get practice using and reporting regression models with a focus on regression for association and some beginning work on regression for prediction.   We will use the snapshot data for this lab.
 
 # Getting Started
 
