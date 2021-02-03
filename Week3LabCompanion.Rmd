@@ -81,8 +81,8 @@ clarity and transparency to support learning about regression. Here we
 demonstrate some techniques that will scale well (for example to many regression
 models), reduce code repetition, and reduce the amount of "hard coding" in the
 analysis, but that are less explicit and may obscure what is going on "behind
-the scenes" a bit. As with `Week3Lab.Rmd`, this document will use the ACT
-snapshot data.
+the scenes" a bit. As with `Week3Lab.Rmd`, this document will use the snapshot 
+data.
 
 
 # Preliminaries
