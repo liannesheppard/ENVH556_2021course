@@ -119,6 +119,7 @@ ggplot(DEMS, aes(x = facilityno, y = ln_ecdata)) +
     theme_classic()
 
 ```
+
 ## DEMS Stratified by facility ID (not a slide)
 
 ```{r DEMS.tidyverse.stratified.summary}
@@ -143,22 +144,18 @@ DEMS %>%
 
 ```
 
-## slide 12:  Plot the example of traffic gradient site as one grouping variable in the snapshot data
+## Slide 12:  Traffic gradient sites in the snapshot data
+
+Plot the example of traffic gradient sites as an example of a single grouping variable in the snapshot data
 
 ```{r Snapshot.data.setup}
 #-----Snapshot data setup-----
 
 # The goal is to create a fall dataset for the variance components that
 # identifies the gradient sites by keeping all observations that have more than
-# 3 observations for the group_loc variable
+# 3 observations for the group_loc variable.  Note:  `fvc` is a tibble.  In the
+# VCA package below it needs to be converted to a data frame.
 
-# TODO Chris:  This version fails in the VCA.implementation chunk.  It has something to do with how group_loc is characterized here vs. in the original coding, below.  Do you know why?  I'd use this version of the code if it didn't cause problems below.
-
-# Lianne, see if this works for you (it does for me). It was a silly object
-# class thing. VCA requires class data.frame and not tibble. fvc is still a
-# tibble here, though, what I did was just add as.data.frame() to the VCA
-# function arguments. Alternatively you could add this to the fvc assignment
-# below: %>% as.data.frame()
 
 fvc <- snapshot %>%
     filter(season == 2)  %>%
@@ -167,17 +164,6 @@ fvc <- snapshot %>%
     ungroup() %>%
     filter(count > 3) %>%
     select(-count)
-
-# # Original version: This version works in the VCA.implementation chunk
-# #get the gradient sites
-# gradient_sites <- snapshot %>%
-#     filter(season == 2)  %>%
-#     group_by(group_loc) %>%
-#     summarise(count = n()) %>%
-#     filter( count > 3)
-# # fall dataset for variance components
-# # keeps only gradient sites with at least 4 observations
-# fvc <- snapshot %>% filter(season == 2, group_loc %in% gradient_sites$group_loc)
 
 ```
 
@@ -198,7 +184,7 @@ ggplot(fvc, aes(x = group_loc, y = ln_nox)) +
 ```
 
 
-## Slide 18:  Stratified by gradient location
+## Slide 18:  Snapshot data stratified by gradient site
 
 ```{r tidyverse.stratified.summary.snapshot}
 #-----tidyverse stratified summary snapshot-----
@@ -255,6 +241,8 @@ Needs development to focus this result in comparison to the random effect
 result.  Note that this is a regression model based approach to the previous
 more descriptive approach.
 
+### Regression with site as a fixed effect
+
 ```{r site.as.a.fixed.effect}
 #-----site as a fixed effect-----
 
@@ -285,8 +273,8 @@ components.
 #-----VCA implementation-----
 
 # (slides 21+22)
-# note: VCA functions require Data of class data.frame, not tibble, so we've
-# made that adjustment in the function arguments
+# Note: the VCA package functions require data of class data.frame, not a
+# tibble, so we've made that adjustment in the function arguments
 
 # visualize data
 varPlot(form = ln_nox~ group_loc, Data = as.data.frame(fvc) )
@@ -305,10 +293,10 @@ fit_REML
 ```
 
 
-## Slide 23:  Estimation using lme
+## Slides 23 & 24:  Estimation using lme
 
 A key point here that the `lmer` REML estimates are the same as from `VCA`.
-Discuss why we use ML at all -- basicially to easily compare models.
+Discuss why we use ML at all -- basically to easily compare models.  Because REML adjusts for the bias in estimation, we can't compare models fit with REML.
 
 ```{r REML.with.snapshot}
 #-----REML with snapshot-----
@@ -327,15 +315,15 @@ summary(lmefit_ML)
 ```
 
 
-## Dropped from lecture:  Same examples with DEMS 
+## Same examples with DEMS 
 
-### DEMS with VCA
+### Dropped from lecture:  DEMS with VCA
 
 
 ```{r VCA.implementation.in.DEMS}
 #-----VCA implementation in DEMS-----
 
-# (slide 26+27)
+# (some results for slide 26 are included in this chunk)
 
 # visualize data
 varPlot(form = ln_ecdata ~ facilityid, Data = DEMS)
@@ -352,12 +340,12 @@ fit_ANOVA
 
 ```
 
-## Slide 26:  DEMS comparison of estimates
+### Slide 26:  DEMS comparison of estimates
 
-I did not develop the R coding for this.  We would need to use the code for the
-snapshot data, now applied to DEMS, in this section
+I did not develop all the R coding for this.  In this section we would need to
+use the code for the snapshot data, now applied to DEMS.
 
-## Slide 30:  Mixed model with the Snapshot data: Pop_5000
+## Slide 32:  Mixed model with the Snapshot data: Pop_5000 as one fixed covariate
 
 The following analyses address how the two variance components change when
 different covariates are in the model.  As was done in the Peretz paper, think
@@ -375,7 +363,7 @@ summary(mixedfit1_ML)
 
 ```
 
-## Slide 31:  Mixed model with the Snapshot data: D2R
+## Slide 33:  Mixed model with the Snapshot data: D2R as one fixed covariate
 
 ```{r mixed.model.with.D2R}
 #-----mixed model with D2R-----
@@ -401,7 +389,7 @@ summary(mixedfit3_ML)
 ```
 
 
-## Slide 35:  DEMS V Table 3 Facility A example U1 groups
+## Slide 37:  DEMS V Table 3 Facility A example U1 groups
 
 Verifying:  This result has the same number of observations (108) and mdj groups
 (13) compared to the Stata example from lecture.  My mean is about the same
@@ -417,7 +405,7 @@ summary(DEMSV_U1)
 
 ```
 
-## Slides 36:  DEMS V Table 3 Facility A example U2 groups
+## Slides 38:  DEMS V Table 3 Facility A example U2 groups
 
 ```{r model.DEMSV_U2}
 #-----model DEMSV_U2-----
@@ -429,7 +417,7 @@ summary(DEMSV_U2)
 
 ```
 
-## Slide 37:  DEMS V Table 3 Facility A example U3 groups
+## Slide 39:  DEMS V Table 3 Facility A example U3 groups
 
 ```{r model.DEMSV_U3}
 #-----model DEMSV_U3-----
@@ -441,7 +429,7 @@ summary(DEMSV_U3)
 
 ```
 
-## Slide 41:  Regression for association with random effects
+## Slide 43:  Regression for association with random effects
 
 Use the snapshot data to compare estimates and SEs for a fixed effect with and
 without random effects
@@ -471,13 +459,13 @@ confint(mixedfit1_REML)
 
 ```
 
-Note (not necessarily discussed in lecture):  The fixed effect estimates will change when
-there is correlation between fixed and random effect parts of the model.  Random
-effects do not address residual confounding.  The most appropriate assumption is
-to assume the random effects are independent of the fixed effects.  In the
-following example there appears to be some correlation between the *D2Comm*
-variable and the random effects, leading to a change in the coefficient estimate
-for *D2Comm* between the fixed and mixed models.
+Note (not necessarily discussed in lecture):  The fixed effect estimates will
+change when there is correlation between fixed and random effect parts of the
+model.  Random effects do not address residual confounding.  The most
+appropriate assumption is to assume the random effects are independent of the
+fixed effects.  In the following example there appears to be some correlation
+between the *D2Comm* variable and the random effects, leading to a change in the
+coefficient estimate for *D2Comm* between the fixed and mixed models.
 
 ```{r mixed.model.vs.lm.2.covars}
 #-----mixed model vs lm: 2 covars-----
@@ -502,7 +490,7 @@ coef(summary(mixedfit2_REML))
 confint(mixedfit2_REML)
 
 ```
-## Slide 42:  Regression for prediction with random effects
+## Slide 44:  Regression for prediction with random effects
 
 To predict from a mixed model, i.e. a linear model with fixed and random
 effects, you MUST have the same groups as you used to fit your model.  You can't
@@ -543,7 +531,8 @@ When you predict in a new dataset from a mixed model, you MUST have all grouping
 variables and random effects used in the model fitting.  However, if you don't
 want to predict at all groups, you can set their values to NA.  For details, see
 this [predict.merMod help
-page](https://www.rdocumentation.org/packages/lme4/versions/1.1-19/topics/predict.merMod)
+page](https://www.rdocumentation.org/packages/lme4/versions/1.1-19/topics/predict.merMod).
+
 For example, to predict at one location per gradient site in the snapshot data:
 
 ```{r mixed.effects.model.prediction.on.new.data}
