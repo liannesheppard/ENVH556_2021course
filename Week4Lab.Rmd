@@ -752,7 +752,8 @@ temp <- res %>%
   mutate(plot_value = ifelse(Estimate == "RMSE" & value > y_lim, NA, value))
 
 # plot both model-based (in sample) and CV generated MSE and R2
-combined_plot <- ggplot(temp) +
+# filter out rows NA for plot_value column to prevent ggplot error messages
+combined_plot <- ggplot(filter(temp,!is.na(plot_value))) +
   geom_point(aes(x = n_pred, y = plot_value, color = Source)) + 
   geom_line(aes(x = n_pred, y = plot_value, color = Source)) +
   xlab("Model Complexity (# of terms)") +
