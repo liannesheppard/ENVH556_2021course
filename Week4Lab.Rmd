@@ -272,7 +272,7 @@ forwardreg_fall <- step(null, scope = list(lower = null, upper = full),
                         trace = 0, direction = "forward", k = 0)
 
 # save the ordered list of names for later use, dropping the intercept
-covars_forward <- names(forwardreg_fall$coefficients)[-1]
+covars_forward <- names(forwardreg_fall$coefficients) %>% setdiff('(Intercept)')
 
 # show the ordered list
 covars_forward
@@ -630,19 +630,17 @@ possibly the variable added to use in plotting
 ```{r model.order.and.CV, echo = TRUE, warning = FALSE}
 #-----model order and CV-----
 
-#get the length of the vector of names from forward selection
-n_covars <- length(covars_forward)
-
-
 # Create a tibble `res` with the results from multiple cross-validation steps.
 # This tibble should have all pieces for ggplot.  The following code uses an
 # lapply approach, for which the `res` object does not need to be pre-assigned
 # to be an empty formatted object
-res <- lapply(1:n_covars, function(i){
+
+# apply along length of the vector of names from forward selection
+res <- lapply(seq_along(covars_forward), function(i){
     
     # define the formula, updated to add a term each time
     fmla <- as.formula(
-        paste("ln_nox ~ 1 + ", paste(covars_forward[1:i], collapse = "+"))) 
+        paste("ln_nox ~ 1 + ", paste(covars_forward[seq_len(i)], collapse = "+"))) 
     
     # in-sample model and estimates
     in_model <- lm(fmla, data = fall) 
