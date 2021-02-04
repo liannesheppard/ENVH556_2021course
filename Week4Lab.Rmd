@@ -525,8 +525,8 @@ Now test the `do_CV` function:
   # Note: the function assumes the group variable is part of the input dataset. 
 temp <- do_CV(data = fall, group = "cluster", formula = frml)
 
-# Check to see if result is identical with manual method (done earlier)
-identical(cv_pred$preds, temp$cvpreds)
+# Check to see if result is same as manual method (done earlier)
+all.equal(cv_pred$preds, temp$cvpreds)
 
 ```
 
