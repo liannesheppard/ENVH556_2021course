@@ -319,6 +319,51 @@ these.  (See e.g. the *Introduction to Statistical Learning* textbook:
 ```{r manual.CV}
 #-----manual CV-----
 
+# create a numeric variable for CV predictions (using -999 as a placeholder)
+cv_pred <- fall %>% mutate(preds = -999)
+
+# loop over the 10 clusters
+for (i in 1:10){
+
+    # define the current cluster variable as a logical vector
+    is_cluster <- cv_pred$cluster == i
+
+    # fit the "common" model to the training set by omitting cluster i
+    CV_lm <- lm(frml, data = cv_pred, subset = !is_cluster)
+
+    # generate predictions using CV_lm
+    preds <- predict(CV_lm, fall)
+
+    # add results to cv_pred dataframe
+    cv_pred$preds[is_cluster] <- preds[is_cluster]
+}
+
+# now calculate the MSE, RMSE, MSE-based R2
+
+# mean of observations
+ln_nox_avg <- mean(cv_pred$ln_nox)
+
+# MSE of predictions
+MSE_pred <- mean((cv_pred$ln_nox - cv_pred$preds)^2)
+
+# MSE of observations (for R2 denominator)
+MSE_obs <- mean((cv_pred$ln_nox - ln_nox_avg)^2)
+
+# # print the results (rounded)
+# paste("RMSE:  ", round( sqrt(MSE_pred), 2))
+# paste("MSE-based R2:  ", round( max(1 - MSE_pred/MSE_obs, 0), 2))
+
+# print the results not rounded
+paste("RMSE:  ", sqrt(MSE_pred))
+paste("MSE-based R2:  ", max(1 - MSE_pred/MSE_obs, 0))
+
+```
+
+
+```{r manual.CV.dplyr}
+#-----manual CV using dplyr-----
+
+# Alternative 'tidy' method for manual cross-validation
 cv_pred <-
   # do for each cluster in the fall dataset
   lapply(unique(fall$cluster), function(this_cluster){
