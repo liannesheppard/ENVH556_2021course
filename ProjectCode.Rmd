@@ -112,16 +112,16 @@ There are basically 4 steps to creating the JEM for REC from the DEMS data:
 The syntax that we provide for you in this R Markdown file is supposed to be
 generic – that is, it will work, but the models we have provided are not
 necessarily the best ones to use.  For instance, in the sample code in Section
-3, we have fit simple models for all mines combined, and we have also showed you
-the methods you would need to predict from these models.  Because there were
-some complicated aspects of handling the period factor variables, in Section 4
-we repeated parts of this work using period instead of year as the time
-variable.   You need to explore and determine the best models, and interpret the
-results.
+3, we have fit simple models for all mines combined, and we have also
+demonstrated the methods you would need to predict from these models.  Because
+there were some complicated aspects of handling the period factor variables, in
+Section 4 we repeated parts of this work using period instead of year as the
+time variable.   You need to explore and determine the best models, and
+interpret the results.
 
 # Data overview
 
-**Basic observations about the datasets and some preliminary data management**
+## Basic observations about the datasets
 
 Let's get a quick summary of each dataset to begin to grapple with some of the
 data features we will need to address in this project.
@@ -136,13 +136,12 @@ jem
 
 ```
 
-Observations about the datasets:
+Observations about the datasets: (also demonstrates inline reporting from R)
 
 * **Numbers of observations**:  The number of rows in each dataset:
-[Lianne, we've recommended inline code, use here? drafted for each if yes]
-    - `REC`: 688           `r nrow(REC)`
-    - `cohist`: 6,040      `r nrow(cohist)`
-    - `jem`: 6,480         `r nrow(jem)`
+    - `REC`:      `r nrow(REC)`
+    - `cohist`:   `r nrow(cohist)`
+    - `jem`:      `r nrow(jem)`
 
 * **Facility**:  All datasets have one or two variables to identify facility.
 Two of them (`cohist` and `REC`) have two variables while `jem` has only one.
@@ -163,7 +162,9 @@ concatenation of mine (as a number), department, and job, and *job98* which is
 not identical to *job* and is an integer variable, a slightly recoded version of
 *mdj*.
 
-Here is some code to create a factor variable for faciity in `cohist` that
+## Some preliminary data management
+
+Here is some code to create a factor variable for facility in `cohist` that
 aligns with the similar factor variable in the other two datasets.  We also
 investigate the period variable in `cohist` and `jem` and then create a new
 variable *periodfac* which is a factor variable coded the same across datasets.
@@ -189,42 +190,41 @@ with(cohist, table(year, period))
 # 
 # period in jem
 with(jem, table(year, period))
+
 # observe 
 #   1. 120 observations per year-period combo
 #   2. year starts in 1947, ends in 2003
-#   3. periods are:  
-#           1 -- 55 (1947-1970)
-#           2 -- 71-72 (1971-1975)
-#           3 -- 76-79 (1976-1979)
-#           4 -- 80-84 (1980-1984)
-#           5 -- 85-89 (1985-1989)
-#           6 -- 90-94 (1990-1994)
-#           7 -- 95-99 (1995-1999)
-#           8 -- 2001  (2000-2003)
+#   3. periods and their two versions of coding are: 
+#       cohist:  jem:    Definitions:  i.e.,
+#  period level  period  (all years in the time period)
+#  ============  ======  ==========================
+#           1 -- 55      (1947-1970)
+#           2 -- 71-72   (1971-1975)
+#           3 -- 76-79   (1976-1979)
+#           4 -- 80-84   (1980-1984)
+#           5 -- 85-89   (1985-1989)
+#           6 -- 90-94   (1990-1994)
+#           7 -- 95-99   (1995-1999)
+#           8 -- 2001    (2000-2003)
 
+# Now check the jem vs cohist data and see who they align at the year level
 # get the first period of each year in cohist
-#[Lianne, maybe we should be consistent with "_uniq" and "_u"? do they mean the
-#same thing, unique?]
 cohist_uniq <- cohist %>%
     group_by(year) %>%
-    summarise(period_u = first(period), 
+    summarise(period_uniq = first(period), 
               .groups = "drop")
 
-# join jem and cohist as an inner join (only keep those that match) and then
-# compare period on them
+# join jem and cohist_uniq as an inner join (only keep those that match) and
+# then make a table to learn the number of years they have in common by period
 testjem <- inner_join(jem, cohist_uniq, by = "year" )
 
-# observe the periods line up in jem and cohist, though there are no cohist data
-# for the earliest time period in the jem
-with(testjem,table(period, period_u))
+# observe how the periods line up in jem and cohist; note that there are no
+# cohist data for the earliest time period available in the jem
+with(testjem,table(period, period_uniq))
 
-# # get period levels 
-# period_levels <- c("1947-1970", "1971-1975", "1976-1979", "1980-1984", 
-#                    "1985-1989", "1990-1994", "1995-1999", "2000-2003" )
-# period_levels_co <- period_levels[-1]
-
-# make period a factor, then recode to create periodfac variable that aligns
-# across datasets
+# fix the period coding to be consistent across datasets:
+# 1. make period a factor in cohist
+# 2. recode in jem to create periodfac variable that aligns across datasets
 cohist <- cohist %>% 
     mutate(period = factor(period), 
            periodfac = fct_recode(period, 
@@ -256,7 +256,7 @@ jem <- jem %>%
 **Predict REC from observations and create a new dataset with an estimated AM
 for each mine and job**
 
-###	Create a variable lnrec = ln(ecdata) 
+###	Create lnrec = ln(ecdata) 
 
 ```{r update.REC}
 #-----update REC-----
@@ -272,11 +272,11 @@ REC <- mutate(REC, lnrec = log(ecdata))
 
 We show regression and the MLE estimate of the arithmetic mean (AM) using a
 single very simple model with all facilities together.  Your job is to decide
-how you want to approach this (e.g what model will you select and why?) using
+how you want to approach this analysis (e.g how will you estimate the AM for each facility-job combination and why?) using
 the tools we have learned over the quarter.  Here are some considerations (some
 apply to the CO data also):
 
-* Regression is just one way to do this.  
+* Regression is just one way to do this. Even if you use regression, what kind of model will you use?  Should you collapse any jobs into groups? 
 * How you approach the modeling will affect whether you can predict for all job
 and facility combinations.  Think about what predictions you believe are
 supported scientifically.
@@ -302,14 +302,15 @@ rec_fit <- lm(lnrec ~ facilityno + jobfac, data = REC)
 # (Make sure you include all covariates in your regression model)
 
 # Choose one of the following; comment out the other
-# The following only picks out the distinct job-facility combinations that exist
-# in the dataset, n = 50
+
+# 1. The following only picks out the distinct job-facility combinations that
+# exist in the dataset, n = 50
 # newdat <- REC %>%
 #    select(facilityno, facilityid, job, jobfac) %>%
 #    distinct()
 
-# Here is the alternative to get all possible values of the facilityno and job
-# combinations, n = 105
+# 2. Here is the alternative to get all possible values of the facilityno and
+# job combinations, n = 105
 # Note:  still need to address the missing facility J 
 newdat <- with(REC, expand.grid(facilityno = unique(facilityno), 
                                 jobfac = unique(jobfac)) ) %>% 
@@ -318,7 +319,7 @@ newdat <- with(REC, expand.grid(facilityno = unique(facilityno),
 # prediction over all facilityno job combinations
 rec_pred <- predict(rec_fit, newdat, se.fit = TRUE)
 
-# add to newdat
+# add variables to newdat, including the MLE-based AM
 newdat <- newdat %>% 
     mutate(lnrec_p = rec_pred$fit, 
            lnrec_pvar = rec_pred$se.fit^2 + rec_pred$residual.scale^2, 
@@ -326,11 +327,11 @@ newdat <- newdat %>%
 
 # for getting the above variance of a new obs from predict(), see e.g. https://stackoverflow.com/questions/38109501/how-does-predict-lm-compute-confidence-interval-and-prediction-interval/38110406#38110406
  
-# use this version for the first newdat definition
+# use this code version for the first newdat definition
 #REC_new <- newdat %>% 
 #    select(facilityno, job, jobfac, rec_AM)
 
-# use this version for the second newdat definition
+# use this code version for the second newdat definition
 REC_new <- newdat %>% 
     mutate(job = as.integer(as.character(jobfac))) %>%
     select(facilityno, job, jobfac, rec_AM)
@@ -340,20 +341,20 @@ REC_new <- newdat %>%
 
 ###	Estimate of the AM for each mine and job combination
 
-Use your results from the previous step.
-
 See above.  Combined with the regression and prediction chunk.
 
 ## CO models:  By year
-**Model CO concentration from observations and create a new dataset with an estimated AM for each mine and *year* (or period)**
 
-###	Estimate an AM for each mine and job combination by time period (categorized or **individual years**).
+**Model CO concentration from observations and create a new dataset with an estimated AM for each mine and *year*. **
 
-Use one of the approaches we learned.
+###	Estimate an AM for each mine and job combination by time period (individual **years**).
+
+Use one of the approaches we learned. 
 
 We show regression and the MLE estimate of the arithmetic mean (AM) using a
-single very simple model with all facilities together.  Your job is to decide
-how you want to approach this using the tools we have learned over the quarter.
+single very simple model with all facilities together and year as a factor
+variable.  Your job is to decide how you want to approach this using the tools
+we have learned over the quarter.
 
 ```{r CO.regression.for.prediction}
 #-----CO regression for prediction-----
@@ -361,16 +362,16 @@ how you want to approach this using the tools we have learned over the quarter.
 # a basic regression
 simple_fit <- lm(lnco ~ facilityfac + as.factor(year), data = cohist)
 
-# prediction over all facilityno year combinations
+# prediction over all facility-year combinations
 # Choose one of the following; comment out or delete the other
 #
-# The following only picks out the distinct year-facility combinations that exist
-# in the dataset, n = ADD
+# The following only picks out the distinct year-facility combinations that
+# exist in the dataset, n = 159
 #newdat <- cohist %>% 
 #    select(facilityfac, facilityno, facilityid, year, period) %>%
 #    distinct()
 
-# Here is the alternative to get all possible values of the facilityno and times
+# Here is the alternative to get all possible values of the facility and times
 # combinations, n = 208
 newdat <- with(cohist, expand.grid(facilityfac = unique(facilityfac), 
                                    year = unique(year))) %>% 
@@ -399,9 +400,7 @@ CO_new <- newdat %>%
     select(facilityno, facilityfac, year, co_AM)
 
 ```
-###	Produce an estimate of the AM for each mine and time combination
-
-Use your results from the previous step.
+###	Produce an estimate of the AM for each mine and time combination (**year**)
 
 See above.  Combined with the regression and prediction chunk.
 
@@ -428,12 +427,13 @@ different.
 
 ### Merge REC into the JEM by facility and job
 
-We will use a left join and join REC into the JEM.  In principle we want to
-preserve all rows of the JEM, although if the REC data don't have values we
-don't want bogus data to be inserted.  We'd prefer to have those be NAs.  (An
-alternative would be to drop row of the JEM that don't match REC.  However, it
-is probably easier to keep track of our objectives by keeping all JEM rows and
-then addressing later those that don't have data in them.)
+We will use a left join and join REC into the JEM.  The left join includes all rows in the first object x (jem here), and will repeat the value in the second object y (REC_new here) as needed.  Since the JEM has multiple  years per facility and job, the values of REC_new will be repeated every year.
+
+In principle we want to preserve all rows of the JEM, although if the REC data
+don't have values we don't want bogus data to be inserted.  We'd prefer to have
+those be NAs.  (An alternative would be to drop row of the JEM that don't match
+REC.  However, it is probably easier to keep track of our objectives by keeping
+all JEM rows and then addressing later those that don't have data in them.)
 
 ```{r leftjoin.JEM.with.REC}
 #-----leftjoin JEM with REC-----
@@ -452,12 +452,23 @@ match.  Does it make sense to you that these records haven't matched?
 ```{r check.the.join.of.JEM.with.REC}
 #-----check the join of JEM with REC-----
 
-# ADD this
+# This has 855 observations per facility (n = 8 facilities) and 57 per job (n=15
+# jobs).
+
+JEM_REC %>% group_by(facilityno, job) %>%
+    summarise( N = n(),
+            AM_missing = sum(is.na(rec_AM) ),
+            mean_AM = mean(rec_AM),
+            sd_AM = sd(rec_AM),
+            zero_AM = sum(rec_AM == 0),
+            .groups = "drop")
+
+# It would be good to spot check some AM values or otherwise verify that the join worked properly.  There is a value for every job and facility except facility J.  Does this make sense scientifically and given the way we generated the data?
 
 ```
 
 
-###	Merge CO into the JEM by facility and time (period or **year**)
+###	Merge CO into the JEM by facility and time (**year**)
 
 ```{r leftjoin.JEM.with.CO}
 #-----leftjoin JEM with CO-----
@@ -469,10 +480,11 @@ JEM_new <- left_join(JEM_REC, CO_new,
 ```
 
 
-Make sure to verify you did the merge correctly.  TODO:  
+Make sure to verify you did the merge correctly.  Fill in some code to check the JEM_new object until you are reassured that the merge worked as you expect and intend.
 
 ```{r check.the.join.of.JEM.with.CO}
 #-----check the join of JEM with CO------
+
 # ADD this
 
 ```
@@ -483,8 +495,9 @@ Use a version of the formula in DEMS IV to estimate the REC for each observation
 in the JEM dataset
     - Formula:  `rec_mjy = (co_AM / baselineco) * rec_AM`, or in  $\LaTeX$ mode:  
     $$  rec_{mjy} = \frac{co_{AM}}{baselineco} * rec_{AM} $$  
-    - Note:  Not all combinations of mine, job, and year have AM estimates,
-    therefore you should have missing predictions that you will need to drop.
+    - Note:  Not all combinations of mine, job, and year should have AM
+    estimates, therefore you should have missing predictions that you will need
+    to drop or impute using assumptions and other information in your dataset.
     In conjuction with this step, make sure you are only missing predictions
     where you expect them to be missing.
 
@@ -525,9 +538,9 @@ No changes needed
 
 **Model CO concentration from observations and create a new dataset with an estimated AM for each mine and *period*. **
 
-###	Estimate an AM for each mine and job combination by time period (categorized here). 
+###	Estimate an AM for each mine and job combination by time **period**. 
 
-Use one of the approaches we learned.
+Use one of the approaches we learned.  Time periods are categories here.
 
 Repeat example regression and the MLE estimate of the arithmetic mean (AM) using
 a single very simple model with all facilities together.  This time with period
@@ -568,8 +581,6 @@ CO_new <- newdat %>%
 
 ###	Produce an estimate of the AM for each mine and time combination
 
-Use your results from the previous step.
-
 See above.  Combined with the regression and prediction chunk.
 
 ## Put predictions into the JEM
@@ -581,7 +592,7 @@ See above.  Combined with the regression and prediction chunk.
 Completed previously.  Result is in `JEM_new`.
 
 
-###	Merge CO into the JEM by facility and time (**period** or year)
+###	Merge CO into the JEM by facility and time **period**
 
 ```{r leftjoin.JEM.with.CO.by.period}
 #-----leftjoin JEM with CO by period-----
@@ -592,11 +603,12 @@ JEM_new <- left_join(JEM_REC, CO_new,
 ```
 
 
-Make sure to verify you did the merge correctly.  TODO:  
+Make sure to verify you did the merge correctly.  
 
 ```{r check.the.join.of.JEM.with.CO.by.period}
 #-----check the join of JEM with CO by period-----
-# ADD this
+
+# ADD your own code to check this
 
 ```
 
@@ -625,29 +637,30 @@ describe(JEM)
 
 ```
 
-<!--
-TODO:  Understand the reasons behind the somewhat substantial differences in
-`co_ratio` estimates between the approach using period and the approach using
-year.  While both approaches used fairly simple-minded models, and so there
-could be good reasons to see these differences, I'm suspicious that this might
-be a clue that there is something that should be corrected.
 
-[Lianne, I looked at the co_ratio by year and by quarter - there are differences, but they didn't seem wild to me. (I'll send along figure). We can re-visit this together if you'd like.]
+# Further comments and suggestions
 
-TODO:  At a minimum it would be worthwhile to look at how these compare with the
-numbers given in Table 3 of DEMS IV.
+In this project code file we have worked through the entire process of computing a JEM using two different ways of handling time in the CO data: using individual years vs time periods.  Note that the analyses in this file are for demonstration purposes only and **do not necessarily represent the best scientific choices for each modeling step**.  The purpose of this file is to give you the technical support to complete coding of the Term Project without also making scientific choices for you.
 
-[Lianne, I started looking at this below, but not sure if that is what you were
-getting at.
+As you work through the analysis of your project, think about how you can check your results and determine how sensible you think they are.  Below are some examples that we considered:
 
-Currently, we estimate CO with 2 different "simple_fit" models (one by year, one
-by period) and merge dataframes, creating the `JEM` object. The second time we
-do that we reassign all the same variables, overwriting them, including `JEM`.
-One thought is to assign `JEM_year` and `JEM_period` so we have both objects at
-the end of the script (to compare?). OR name `co_AM_year` and `co_AM_period`
-(and similar for `co_ratio` and `rec_mjy`) variables which we could then merge
-the JEM objects together into one.]
--->
+* Are there meaningful differences in the `co_ratio` estimates between using year vs. time period?  
+
+    - In this example we used fairly simple-minded models, so there could be good reasons why there are differences.  However, differences could suggest a problem with the data analysis that needs to be corrected before the results are reported.  It is good to generally question your data and look for errors.
+
+    - In this sample code we estimated CO with 2 different "simple_fit" models (one
+by year, one by period) and merged dataframes, creating the `JEM` object. The
+second time we did that we reassigned all the same variables, overwriting them,
+including the final `JEM`. One alternative would be to assign each JEM object to
+new names, e.g., `JEM_year` and `JEM_period`, so we retain both objects to allow
+comparisons. Also if we name variables by the approach to creating them, e.g.,
+`co_AM_year` and `co_AM_period` (and similar for `co_ratio` and `rec_mjy`), then
+we could then merge the JEM objects together into one and make direct
+comparisons of results.
+
+* It would be worthwhile to look at how the CO estimates compare with the
+numbers given in Table 3 of DEMS IV.  The following chunk accomplishes this comparison.  A follow-up to this analysis would be to think about what this comparison tells you and consider whether you need to make any changes to your approach based on it.
+
 
 ```{r compare.to.DEMS.IV}
 #-----compare to DEMS IV-----
@@ -655,21 +668,22 @@ the JEM objects together into one.]
 dems_IV <- tibble(facilityno = c("B16", "D21", "E13", "H6", "I8", "J18"), 
                   CO_1976_1977 = c(5.15, 7.98, 10.60, 3.90, 4.85, 4.36))
 
-JEM %>% 
+est_dems_IV <- JEM %>% 
     filter(periodfac == "1976-1979") %>% 
     group_by(facilityno) %>% 
     summarise(mean_CO = mean(co_AM), 
               .groups = "drop")
 
-
-
-# these can be merged if desired...
+# these can be merged to inspect their comparability:
+right_join(dems_IV, est_dems_IV, by = "facilityno")
 
 ```
 
 
 
 # Appendix
+
+## Session information
 
 ```{r session.info}
 #-----session information-----
@@ -679,9 +693,13 @@ sessionInfo()
 
 ```
 
+## Embedded code
+
 ```{r code.appendix, ref.label = knitr::all_labels(), echo = TRUE, eval = FALSE, , include=TRUE}
 #-----code appendix-----
 ```
+
+## Functions defined 
 
 ```{r functions, eval = TRUE}
 #-----functions-----
