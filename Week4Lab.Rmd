@@ -272,7 +272,7 @@ forwardreg_fall <- step(null, scope = list(lower = null, upper = full),
                         trace = 0, direction = "forward", k = 0)
 
 # save the ordered list of names for later use, dropping the intercept
-covars_forward <- names(forwardreg_fall$coefficients)[-1]
+covars_forward <- names(forwardreg_fall$coefficients) %>% setdiff('(Intercept)')
 
 # show the ordered list
 covars_forward
@@ -324,19 +324,62 @@ cv_pred <- fall %>% mutate(preds = -999)
 
 # loop over the 10 clusters
 for (i in 1:10){
-  
+
     # define the current cluster variable as a logical vector
     is_cluster <- cv_pred$cluster == i
-    
-    # fit the "common" model to the training set by omitting cluster i 
+
+    # fit the "common" model to the training set by omitting cluster i
     CV_lm <- lm(frml, data = cv_pred, subset = !is_cluster)
-  
-    # generate predictions using CV_lm 
+
+    # generate predictions using CV_lm
     preds <- predict(CV_lm, fall)
-    
-    # add results to cv_pred dataframe    
+
+    # add results to cv_pred dataframe
     cv_pred$preds[is_cluster] <- preds[is_cluster]
 }
+
+# now calculate the MSE, RMSE, MSE-based R2
+
+# mean of observations
+ln_nox_avg <- mean(cv_pred$ln_nox)
+
+# MSE of predictions
+MSE_pred <- mean((cv_pred$ln_nox - cv_pred$preds)^2)
+
+# MSE of observations (for R2 denominator)
+MSE_obs <- mean((cv_pred$ln_nox - ln_nox_avg)^2)
+
+# # print the results (rounded)
+# paste("RMSE:  ", round( sqrt(MSE_pred), 2))
+# paste("MSE-based R2:  ", round( max(1 - MSE_pred/MSE_obs, 0), 2))
+
+# print the results not rounded
+paste("RMSE:  ", sqrt(MSE_pred))
+paste("MSE-based R2:  ", max(1 - MSE_pred/MSE_obs, 0))
+
+```
+
+
+```{r manual.CV.dplyr}
+#-----manual CV using dplyr-----
+
+# Alternative 'tidy' method for manual cross-validation
+cv_pred <-
+  # do for each cluster in the fall dataset
+  lapply(unique(fall$cluster), function(this_cluster){
+
+    # fit the "common" model to the training set lacking this cluster
+    CV_lm <- lm(frml, data = filter(fall, cluster != this_cluster))
+
+    # generate predictions for this cluster using training model
+    # "." below represents what came before the pipe ("%>%")
+    # unname() removes the names attribute created by predict()
+
+    filter(fall, cluster == this_cluster) %>%
+      mutate(preds = predict(CV_lm, newdata = .) %>% unname())
+
+    # recombine data from all clusters and sort by ID column
+  }) %>% bind_rows() %>% arrange(ID)
 
 # now calculate the MSE, RMSE, MSE-based R2
 
@@ -467,50 +510,37 @@ Now convert our cross-validation to a function:
 ```{r define.CV.function}
 #-----define CV function-----
 
-do_CV <- function(data, group = "group", formula) {
-    # In writing functions, it is good practice to:
-      # 1. put the dataset first in the function definition
-      # 2. put most important arguments first, followed by the specific ones
-      # 3. include defaults in the function definitions, where appropriate
-    
-    # Arguments:
-      # data is the data frame
-      # group is the grouping variable (a variable in the data frame)
-      # formula is the formula to pass to lm
-      # the function returns the dataset with a new variable called cvpreds
-      # appended to the end; these are the out-of-sample predictions
+do_CV <- function(data, id = "id", group = "group", formula) {
+  # In writing functions, it is good practice to:
+  # 1. put the dataset first in the function definition
+  # 2. put most important arguments first, followed by the specific ones
+  # 3. include defaults in the function definitions, where appropriate
 
-    # create a variable to store CV predictions 
-    CV_pred <- data %>% mutate(cvpreds = -999)
+  # Arguments:
+  # data is the data frame
+  # id is the unique variable for determining sort order of data frame
+  # group is the grouping variable (a variable in the data frame)
+  # formula is the formula to pass to lm
+  # the function returns the dataset with a new variable called cvpreds
+  # appended to the end; these are the out-of-sample predictions
+
+  # do for each cluster in the  dataset
+  # (Note the use of "[[ ]]" rather than "$" because group is input in the
+  # function call as a quoted variable)
+  lapply(unique(data[[group]]), function(this_group){
     
-    # get the number of distinct groups or clusters
-    # Note the use of "[[ ]]" rather than "$" because group is input in the
-    # function call as a quoted variable
-    k <- length(unique(data[[group]]))
+    # fit the "common" model to the training set (without this group)
+    CV_lm <- lm(formula, data = data[data[[group]] != this_group,])
     
-    # loop over all the groups or clusters
-    for (i in 1:k){
-        # define the current group variable as a logical vector
-        # again using "[[ ]]" instead of "$"
-        is_group <- data[[group]] == i
-        
-        # subset the data to create the training set by omitting cluster i
-        # Note: better to use "!" rather than "-" for negating a logical vector
-        training <- data[!is_group, ]
-        
-        # fit the linear model to the training set
-        CV_lm <- lm(formula = formula, data = training)
+    # generate predictions for this group using training model
+    data[data[[group]] == this_group,] %>%
+      mutate(cvpreds = predict(CV_lm, newdata = .) %>% unname())
+    
+    # recombine data from all clusters and sort by ID column
+    # note use of ".data[[ ]]" to return the value of variable id
+  }) %>% bind_rows() %>% arrange(.data[[id]])
   
-        # generate predictions using CV_lm 
-        cvpreds <- predict(CV_lm, data)
-        
-        # add results to the CV_pred dataframe, for rows of interest
-        CV_pred$cvpreds[is_group] <- cvpreds[is_group]
-        
-    }
-    
-    # return the dataset
-    return(CV_pred)
+  # return the dataset (the last-evaluated object is always returned by default)
 }
 
 ```
@@ -523,10 +553,10 @@ Now test the `do_CV` function:
 # run `do_CV()` function
   # Recall we have already specified a common model formula, `frml`
   # Note: the function assumes the group variable is part of the input dataset. 
-temp <- do_CV(data = fall, group = "cluster", formula = frml)
+temp <- do_CV(data = fall, id = 'ID', group = "cluster", formula = frml)
 
-# Check to see if result is identical with manual method (done earlier)
-identical(cv_pred$preds, temp$cvpreds)
+# Check to see if result is same as manual method (done earlier)
+all.equal(cv_pred$preds, temp$cvpreds)
 
 ```
 
@@ -584,7 +614,7 @@ look better.  Why is that the case? (This is a homework challenge question.)
 #-----CV results on random groups-----
 
 # fit the CV with the random groups
-temp2 <- do_CV(data = fall, group = 'CV_grp', formula = frml)
+temp2 <- do_CV(data = fall, id = 'ID', group = 'CV_grp', formula = frml)
 
 # now check the results from the CV function
 # Summarize with get_MSE
@@ -630,25 +660,23 @@ possibly the variable added to use in plotting
 ```{r model.order.and.CV, echo = TRUE, warning = FALSE}
 #-----model order and CV-----
 
-#get the length of the vector of names from forward selection
-n_covars <- length(covars_forward)
-
-
 # Create a tibble `res` with the results from multiple cross-validation steps.
 # This tibble should have all pieces for ggplot.  The following code uses an
 # lapply approach, for which the `res` object does not need to be pre-assigned
 # to be an empty formatted object
-res <- lapply(1:n_covars, function(i){
+
+# apply along length of the vector of names from forward selection
+res <- lapply(seq_along(covars_forward), function(i){
     
     # define the formula, updated to add a term each time
     fmla <- as.formula(
-        paste("ln_nox ~ 1 + ", paste(covars_forward[1:i], collapse = "+"))) 
+        paste("ln_nox ~ 1 + ", paste(covars_forward[seq_len(i)], collapse = "+"))) 
     
     # in-sample model and estimates
     in_model <- lm(fmla, data = fall) 
     
     # out-of sample model and estimates
-    out_ests <- do_CV(fall, group = 'cluster', fmla)
+    out_ests <- do_CV(fall, id = "ID", group = 'cluster', fmla)
     out_results <- get_MSE(out_ests$ln_nox, out_ests$cvpreds)
     
     # compile results
@@ -749,14 +777,16 @@ temp <- res %>%
   
   # separate the "Source" column for in and out of sample
   separate(col = Source_Estimate, into = c("Source", "Estimate") ) %>% 
-  
-  # create a new column with the "plot values", setting high RMSE values to NA
-  mutate(plot_value = ifelse(Estimate == "RMSE" & value > y_lim, NA, value))
+
+  # set high RMSE values to NA, then filter out these values before plotting
+  mutate(value = ifelse(Estimate == "RMSE" & value > y_lim, NA, value)) %>%
+  filter(!is.na(value))
 
 # plot both model-based (in sample) and CV generated MSE and R2
+# filter out rows NA for plot_value column to prevent ggplot error messages
 combined_plot <- ggplot(temp) +
-  geom_point(aes(x = n_pred, y = plot_value, color = Source)) + 
-  geom_line(aes(x = n_pred, y = plot_value, color = Source)) +
+  geom_point(aes(x = n_pred, y = value, color = Source)) +
+  geom_line(aes(x = n_pred, y = value, color = Source)) +
   xlab("Model Complexity (# of terms)") +
   ylab("") +
   scale_x_continuous(breaks = c(seq(0, 63, 5))) +
