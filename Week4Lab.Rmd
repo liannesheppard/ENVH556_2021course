@@ -376,10 +376,10 @@ cv_pred <-
     # unname() removes the names attribute created by predict()
 
     filter(fall, cluster == this_cluster) %>%
-      mutate(preds = predict(CV_lm, newdata = .) %>% unname)
+      mutate(preds = predict(CV_lm, newdata = .) %>% unname())
 
     # recombine data from all clusters and sort by ID column
-  }) %>% bind_rows %>% arrange(ID)
+  }) %>% bind_rows() %>% arrange(ID)
 
 # now calculate the MSE, RMSE, MSE-based R2
 
@@ -534,11 +534,11 @@ do_CV <- function(data, id = "id", group = "group", formula) {
     
     # generate predictions for this group using training model
     data[data[[group]] == this_group,] %>%
-      mutate(cvpreds = predict(CV_lm, newdata = .) %>% unname)
+      mutate(cvpreds = predict(CV_lm, newdata = .) %>% unname())
     
     # recombine data from all clusters and sort by ID column
     # note use of ".data[[ ]]" to return the value of variable id
-  }) %>% bind_rows %>% arrange(.data[[id]])
+  }) %>% bind_rows() %>% arrange(.data[[id]])
   
   # return the dataset (the last-evaluated object is always returned by default)
 }
