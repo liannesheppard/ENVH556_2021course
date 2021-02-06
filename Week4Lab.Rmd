@@ -777,15 +777,16 @@ temp <- res %>%
   
   # separate the "Source" column for in and out of sample
   separate(col = Source_Estimate, into = c("Source", "Estimate") ) %>% 
-  
-  # create a new column with the "plot values", setting high RMSE values to NA
-  mutate(plot_value = ifelse(Estimate == "RMSE" & value > y_lim, NA, value))
+
+  # set high RMSE values to NA, then filter out these values before plotting
+  mutate(value = ifelse(Estimate == "RMSE" & value > y_lim, NA, value)) %>%
+  filter(!is.na(value))
 
 # plot both model-based (in sample) and CV generated MSE and R2
 # filter out rows NA for plot_value column to prevent ggplot error messages
-combined_plot <- ggplot(filter(temp,!is.na(plot_value))) +
-  geom_point(aes(x = n_pred, y = plot_value, color = Source)) + 
-  geom_line(aes(x = n_pred, y = plot_value, color = Source)) +
+combined_plot <- ggplot(temp) +
+  geom_point(aes(x = n_pred, y = value, color = Source)) +
+  geom_line(aes(x = n_pred, y = value, color = Source)) +
   xlab("Model Complexity (# of terms)") +
   ylab("") +
   scale_x_continuous(breaks = c(seq(0, 63, 5))) +
