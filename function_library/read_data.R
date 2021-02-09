@@ -6,7 +6,7 @@
 
 library(pacman)
 
-p_load("tools","lubridate")
+p_load("tools","lubridate", "zoo")
 
 #ensure columns are numeric if necessary
 makenum <- function(x) {
