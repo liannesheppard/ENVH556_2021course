@@ -1,0 +1,436 @@
+---
+title: "Week x Lab:  Time Series Data and Analysis Strategies"
+author: "Lianne Sheppard for ENVH 556"
+date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    html_document:
+        fig_caption: yes
+        toc: true
+        toc_depth: 3
+        number_sections: true
+---
+
+```{r setup, include=FALSE}
+#-----setup-----
+
+# set knitr options
+knitr::opts_chunk$set(echo = TRUE)
+
+# clear work space of all objects and unload all extra (non-base) packages
+rm(list = ls(all = TRUE))
+if (!is.null(sessionInfo()$otherPkgs)) {
+    res <- suppressWarnings(
+        lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
+               detach, character.only=TRUE, unload=TRUE, force=TRUE))
+}
+
+```
+
+```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
+#-----load libraries pacman-----
+
+# Load pacman into memory, installing as needed
+my_repo <- 'http://cran.r-project.org'
+if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
+
+# Load the other packages, installing as needed.
+pacman::p_load(knitr, dplyr, tidyr, data.table, modelr, stringr, ggplot2, lubridate)
+
+```
+
+```{r directory.organization.read.data, echo=FALSE, warning=FALSE}
+#-----directory organization and read data-----
+
+# specify working directory
+project_path <- getwd()
+
+# create "Datasets" directory if one does not already exist    
+dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
+
+# specify data path
+data_path <- file.path(project_path,"Datasets")
+
+# specify the file name and path
+file_name <- "weldschool.rds"
+file_path <- file.path(data_path, file_name)
+
+# Download the file if it is not already present
+if (!file.exists(file_path)) {
+    url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
+                 file_name, sep = '/')
+    download.file(url = url, destfile = file_path)
+}
+
+# Output a warning message if the file cannot be found
+if (file.exists(file_path)) {
+    weldschool <- readRDS(file_path)
+} else warning(paste("Can't find", file_name, "!"))
+
+# remove temporary variables
+rm(url, file_name, file_path, data_path)
+
+```
+
+# Introduction and Purpose
+
+The purpose of this lab is to practice working with time series data, developing facility in importing and merging data of varying time scales, developing smoothing approaches and developing some analysis tools to reduce the complexity of these data. In addition, as with all the labs in this course, you should
+focus on writing up a coherent lab report that addresses the scientific context
+and scientific questions that can be answered using variance components.
+
+In this lab exercise we will use data collected as part of the MOV-UP mobile monitoring campaign. This data was collected on 1 second and 10 second time scales. The lab will walk you through the steps of important the raw instrument data. Instruments included in the lab include a PTrak particle counting instrument, a CPC instrument, a GPS tracker, a black carbon aethelometer and a NanoScan particle sizing spectrometer. The full suite of instruments and their characteristics of the platform used in this study can be found in the paper https://doi.org/10.1021/acs.est.0c00612.
+
+# Getting Started
+
+Dates are often not stored in ISO 8601 date format, making it necessary to define date/time components specifically for each instrument. In addition, the time scale of each instrument can be different, and it is necessary to ensure a common time base prior to merging the data.
+
+```{r importing_data}
+
+input = list()
+
+source("Code/read_data.R")
+
+input$usertimav = 1 #30, 60, 60*5
+input$dataoptions = c("missing", "ksea")
+
+
+filenamepaths = list.files(getwd(), recursive=T, full.names=T)
+
+#remove data from fixed and colocation campaigns
+filenamepaths = grep("CoLo", filenamepaths, value=T, invert=T)
+filenamepaths = grep("Fixed Sites", filenamepaths, value=T, invert=T)
+
+gpspath = grep("GPS", filenamepaths, value=T, ignore.case=T)
+gpsfile = basename(gpspath)
+
+ptrakpath = grep("PT", filenamepaths, value=T)
+
+ptracknoscreen = grep("scrnd", ptrakpath, invert=T, value=T, ignore.case=T)
+ptracknoscreen = grep("Screened", ptracknoscreen, invert=T, value=T, ignore.case=T)
+ptracknoscreen = grep("screen", ptracknoscreen, invert=T, value=T, ignore.case=T)
+ptracknoscreenfile = basename(ptracknoscreen)
+
+ptrackscreen = c(grep("scrnd", ptrakpath, invert=F, value=T, ignore.case=T),
+                 grep("Screened", ptrakpath, invert=F, value=T, ignore.case=T),
+                 grep("screen",ptrakpath, invert=F, value=T, ignore.case=T) )
+ptrackscreenfile = basename(ptrackscreen)
+
+ae51path = grep("AE51", filenamepaths, value=T, ignore.case=T)
+ae51file = basename(ae51path)
+
+cpcpath = grep("cpc", filenamepaths, value=T, ignore.case=T)
+cpcfile = basename(cpcpath)
+
+scanpath = grep("scan", filenamepaths, value=T, ignore.case=T)
+scanfile = basename(scanpath)
+
+co2path = grep("co2", filenamepaths, value=T, ignore.case=T)
+co2file = basename(co2path)
+
+nanosinglepath = grep("Size", filenamepaths, value=T, ignore.case=T)
+nanosinglepath = grep("VOID", nanosinglepath, invert = TRUE, value=T)
+nanosinglefile = basename(nanosinglepath)
+
+#Initialize all data sets to NULL
+   gps.data = NULL
+   langan.data = NULL
+   ptrak.data = NULL
+   ptrakscreen.data =NULL
+   ae51.data= NULL
+   cpc.data=NULL
+   nanoScan.data = NULL
+   nanoSingle.data = NULL
+   Labview.data=NULL
+   filelog.data =NULL
+   weatherdata = NULL
+   co2.data = NULL
+
+    if(!is.null(gpspath)){
+      gps.data.list <- lapply(1:length(gpspath), FUN = function(fileind) {
+        try(
+            #read gps file and apply a time averaging based on the input parameters
+            #if 
+        read.gps(datafile=gpspath[fileind],
+                 runname = getrunname(gpsfile[fileind]),
+                 location = "mobile",
+                 timeaverage = as.numeric(input$usertimav)/60,
+                 splineval= "missing" %in% input$dataoptions))
+      })
+
+      gps.data = rbindlist(gps.data.list, fill=T)
+      setkey(gps.data, timeint, runname, location)
+    }
+
+      # if(!is.null(input$LanganCO)){
+      #   langan.data.list <- lapply(1:nrow(input$LanganCO), FUN = function(fileind) {
+      #     read.langan(datafile=input$LanganCO[[fileind, "datapath"]],
+      #              runname = getrunname(input$LanganCO[[fileind, "name"]]),
+      #              timeaverage = as.numeric(input$usertimav)/60,
+      #              splineval= "missing" %in% input$dataoptions )
+      #   })
+      # 
+      #  langan.data = rbindlist(langan.data.list, fill=T)
+      #  setkey(langan.data, timeint, runname)
+      # }
+
+   if(!is.null(ptracknoscreen)){
+     ptrak.data.list <- lapply(1:length(ptracknoscreen), FUN = function(fileind) {
+       temp = try(read.ptrak(datafile=ptracknoscreen[fileind],
+                runname = getrunname(ptracknoscreenfile[fileind]),
+                timeaverage = as.numeric(input$usertimav)/60,
+                location = "mobile",
+                screen = F,
+                splineval= "missing" %in% input$dataoptions ))
+       temp
+     })
+
+     ptrak.data = rbindlist(ptrak.data.list, fill=T)
+
+     #average by the time interval of interest
+     ptrak.data = ptrak.data[, lapply(.SD, mean) , 
+                             by = c("timeint","runname", "location", "serial.noscreen")]
+
+     setkey(ptrak.data, timeint, runname, location, serial.noscreen)
+   }
+
+   if(!is.null(ptrackscreen)){
+     ptrak.screen.data.list <- lapply(1:length(ptrackscreen), FUN = function(fileind) {
+       temp = read.ptrak(datafile=ptrackscreen[fileind],
+                  runname = getrunname(ptrackscreenfile[fileind]),
+                  location = "mobile",
+                  timeaverage = as.numeric(input$usertimav)/60,
+                  screen=T,
+                  splineval= "missing" %in% input$dataoptions )
+       temp
+     })
+
+     ptrakscreen.data = rbindlist(ptrak.screen.data.list, fill=T)
+     ptrakscreen.data = ptrakscreen.data[, lapply(.SD, mean) , 
+                                         by = c("timeint","runname", 
+                                                "location", "serial.screen")]
+     setkey(ptrakscreen.data, timeint, runname, location, serial.screen)
+   }
+
+   if(!is.null(co2path)){
+     co2.data.list <- lapply(1:length(co2path), FUN = function(fileind) {
+       
+       serial.co2 = NA
+       if(length(grep("-14",co2file[fileind]))>0)
+         serial.co2 = "co2_14"
+       if(length(grep("-19",co2file[fileind]))>0)
+         serial.co2 = "co2_19"
+       if(is.na(serial.co2))
+         serial.co2 = "unknown"
+       
+        temp = read.co2(datafile=co2path[fileind],
+                  runname = getrunname(co2file[fileind]),
+                  timeaverage = as.numeric(input$usertimav)/60,
+                 location = "mobile",
+                  splineval= "missing" %in% input$dataoptions,
+                  serial = serial.co2)
+        temp
+      
+     })
+
+     co2.data = rbindlist(co2.data.list, fill=T)
+     co2.data = co2.data[, lapply(.SD, mean) , 
+                         by = c("timeint","runname", "location","serial.co2")]
+     setkey(co2.data, timeint, runname, location,serial.co2)
+   }
+
+
+   if(!is.null(ae51path)){
+     ae51.data.list <- lapply(1:length(ae51path), FUN = function(fileind) {
+       read.ae51(datafile=ae51path[fileind],
+                  runname = getrunname(ae51file[fileind]),
+                 location = "mobile",
+                  timeaverage = as.numeric(input$usertimav)/60,
+                 splineval= "missing" %in% input$dataoptions )
+     })
+
+     ae51.data = rbindlist(ae51.data.list, fill=T)
+     
+     ae51.data = ae51.data[, lapply(.SD, mean) , 
+                         by = c("timeint","runname", "location","serial.ae51")]
+     setkey(ae51.data, timeint, runname, location, serial.ae51)
+   }
+
+
+   if(!is.null(cpcpath)){
+     cpc.data.list <- lapply(1:length(cpcpath), FUN = function(fileind) {
+       temp = read.cpc(datafile=cpcpath[fileind],
+                 runname = getrunname(cpcfile[fileind]),
+                location = "mobile",
+                 timeaverage = as.numeric(input$usertimav)/60,
+                 splineval= "missing" %in% input$dataoptions )
+       temp
+           })
+    
+
+     cpc.data = rbindlist(cpc.data.list, fill=T)
+       cpc.data = cpc.data[, lapply(.SD, mean) , 
+                         by = c("timeint","runname", "location","serial.cpc")]
+     setkey(cpc.data, timeint, runname, location, serial.cpc)
+   }
+
+   if(!is.null(scanpath)){
+     nanoScan.data.list <- lapply(1:length(scanpath), FUN = function(fileind) {
+       temp = read.nano.scan(datafile=scanpath[fileind],
+                 runname = getrunname(scanfile[fileind]),
+                 timeaverage = as.numeric(input$usertimav)/60,
+                 location  = "mobile",
+                 splineval= "missing" %in% input$dataoptions)
+         temp
+     })
+
+     nanoScan.data = rbindlist(nanoScan.data.list, fill=T)
+     nanoScan.data[grep("car", runname, invert=T, ignore.case = T), 
+                   runname := paste0(runname, "_Car1")]
+       nanoScan.data = nanoScan.data[, lapply(.SD, mean) , 
+                         by = c("timeint","Status","runname", "location")]
+     
+     setkey(nanoScan.data, timeint, runname, location)
+   }
+
+   
+
+   
+   indexval = c(!is.null(gps.data),
+                !is.null(langan.data),
+                !is.null(ptrak.data),
+                !is.null(ptrakscreen.data),
+                !is.null(ae51.data),
+                !is.null(cpc.data),
+                !is.null(nanoScan.data),
+                !is.null(nanoSingle.data),
+                !is.null(Labview.data),
+                !is.null(filelog.data),
+                !is.null(co2.data)
+                )
+
+   merge.all <- function(x, y) {
+     merge(x, y, all=TRUE)
+   }
+
+   output <- Reduce(merge.all, list(gps.data, langan.data, ptrak.data, ptrakscreen.data,
+                                    ae51.data,cpc.data,
+                                    nanoScan.data, nanoSingle.data,
+                                    Labview.data, filelog.data, co2.data)[indexval])
+   
+   #output[, min5date := floor_date(timeint, "5 min")]
+
+   if("ksea" %in% input$dataoptions){
+     weatherdata <- get_ASOS(date_start=format(min(output$timeint, na.rm=T)-60*60*2, "%Y-%m-%d"),
+                             date_end = format(max(output$timeint, na.rm=T)+60*60*24, "%Y-%m-%d"))
+     setkey(weatherdata, timeint)
+     setkey(output, timeint)
+     #setkey(output, min5)
+
+     output = weatherdata[output]
+
+   }
+
+   if("missing" %in% input$dataoptions)
+   {
+
+     colnamesvals = names(which(sapply(output, is.numeric)))
+
+     output[ ,(colnamesvals) :=
+               lapply(.SD, as.double), .SDcols=colnamesvals]
+
+     output[, (colnamesvals) :=
+            lapply(.SD, FUN = function(x){
+       tempval= rep(NA, length(x))
+       if(is.finite(max(x,na.rm=T))) {
+       tempval = na.approx(x, na.rm=F, maxgap= 60/input$usertimav*5, rule=1)
+       tempval[tempval>=max(x, na.rm=T)]= max(x, na.rm=T)
+       tempval[tempval<=min(x, na.rm=T)]= min(x, na.rm=T)
+       }
+       tempval[is.na(tempval)] = (-9999999)
+       tempval[!is.finite(tempval)] = (-9999999)
+       tempval
+            }),
+       .SDcols = colnamesvals, by=runname]
+
+     output[output==-9999999] = NA
+
+     if("drct" %in% colnames(output))
+     {
+       maxgapval =  1/as.numeric(input$usertimav)*60*80
+   weathervars = c("tmpf","relh","drct","sknt","alti","mslp","vsby")
+
+   output[, (weathervars) :=
+            lapply(.SD, function(x)
+              na.approx(x, na.rm=F, maxgap= maxgapval, rule=1)),
+          , .SDcols = weathervars]
+     }
+   }
+
+   try(
+   output[,pnc_diff := pnc_noscreen - pnc_screen],
+   silent=T)
+
+   try(
+     output[,ratio := pnc_diff / BC],
+     silent=T)
+
+   try({
+
+     if(input$usertimav=="1"){
+       output[,timeint := as.POSIXct(timeint)]
+       # g <- data.table(timeint=seq(min(output$timeint), max(output$timeint), 1))
+       # setkey(g, timeint)
+       # setkey(output, timeint, runname)
+       #
+       # output = output[g]
+
+         #apply a rolling mean by runname (monitoring period)
+       output[, pnc_background :=
+                rollapply(pnc_noscreen, width = 30, FUN = function(x){
+                  quantile(x, 0.05, na.rm=T)
+                }, align='right', partial=F, fill=NA),
+              by=c("runname")]
+       output = output[!is.na(runname), ]
+     }
+   },
+   silent=T
+   )
+   
+nrow(output[is.na(timeint) | is.na(runname) | is.na(Longitude),])
+
+output = output[!is.na(timeint) & !is.na(runname) & !is.na(Longitude)]
+
+#import merged data
+
+#convert columns to numeric
+
+output = output[, lapply(.SD, makenum), by=c("timeint", "runname","Longitude")]
+
+#take mean of duplicates
+output = output[, lapply(.SD, mean), by=c("timeint","runname","Longitude")]
+
+numdays = unique(format(output$timeint, "%Y-%m-%d"))
+
+mindays = as.POSIXct(min(numdays))
+
+maxdays = as.POSIXct(max(numdays))
+
+output[,day := format(timeint, "%Y-%m-%d")]
+
+# fwrite(output, "C:\\Users\\Elena\\OneDrive\\Documents\\UW Postdoc\\MOVUP\\Merged Data\\mergeddata1s_weather_June_2018.csv")
+
+# setnames(output, unlist(output[1,]))
+# output = output[-1,]
+
+obsland_dir = fread("C:\\Users\\elaustin\\OneDrive\\Documents\\UW Postdoc\\MOVUP\\Merged Data\\aircraft landing direction observed.csv")
+
+obsland_dir[, date := as.POSIXct(date)]
+
+output[,day := as.POSIXct(day)]
+
+setkey(obsland_dir, date)
+
+setkey(output, day)
+
+output = obsland_dir[output]
+
+```
