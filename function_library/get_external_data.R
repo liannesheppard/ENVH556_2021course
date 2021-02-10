@@ -1,3 +1,5 @@
+# load dependencies
+pacman::p_load(riem)
 
 get_ASOS <- function(date_start, date_end, station) {
 
