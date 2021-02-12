@@ -145,8 +145,8 @@ In particular, it puts into historical context the tools we are using in this
 lab with the current state of the art.  Clearly, more could be done to
 demonstrate the current state of the art for R-spatial data.
 
-* Roger Bivand has done an incredible amount of work with spatial data in R.
-His book, [Spatial Data Analysis in R](https://asdar-book.org/) was published in
+* Roger Bivand has done an incredible amount of work with spatial data in R. His
+book, [Spatial Data Analysis in R](https://asdar-book.org/) was published in
 2013.  (The link is actually to the scripts and datasets to reproduce the
 examples in his book.)  It is available for download from the UW library and
 there is a copy on the course website. In particular, I recommend Chapter 1 for
@@ -168,9 +168,16 @@ distance calculations.
 
 ### R packages for geostatistics and spatial data
 
-TODO:  Review and revise this section.
-
-Packages for kriging include `geoR`, `automap`, and `gstat`.  `geoR` has been around for some time; `gstat` is newer and uses the `sp` class.  `automap` calls `gstat`.  `geoR` and `gstat` appear to give identical results, at least for a simple dataset example.  To verify this, type `demo(gstat::comp_geoR)` in the console. (2021:  Not currently working)  Because of its apparent current use, we discuss `gstat` in this lab.  There are good examples online and in books (e.g., Bivand's) that show how to do kriging with `gstat`. 
+Packages for kriging include `geoR`, `automap`, and `gstat`.  The package `geoR`
+has been around for some time and the version of this lab develped 2 years ago
+used this package.  The package `gstat` is newer and uses the `sp` class which
+has become a standard for geographic data (though it appears that `sf` may
+eventually replace it).  `automap` calls `gstat`.  `geoR` and `gstat` appear to
+give identical results, at least for a simple dataset example.  To verify this,
+type `demo(gstat::comp_geoR)` in the console after loading both `gstat` and
+`geoR`.  Because of its apparent current use, we discuss `gstat` in this lab.
+There are good examples online and in books (e.g., Bivand's) that show how to do
+kriging with `gstat`.
 
 (Aside:  There is an interesting [stackoverflow
 discussion](https://stackoverflow.com/questions/21970992/compare-variogram-and-variog-function)
@@ -178,7 +185,7 @@ of comparing empirical variograms in `geoR` vs. `sp` and `gstat` that addresses
 coordinate transformations and binning.  It is worth a look if you want to
 understand the details better.)
 
-Note on `rgdal`:  If you are running your lab locally on a Mac, this package
+**Note on `rgdal`**:  If you are running your lab locally on a Mac, this package
 doesn't load properly on newer Macs running Catalina.  You need to install GDAL
 from the terminal.  See this
 [link](https://medium.com/@egiron/how-to-install-gdal-and-qgis-on-macos-catalina-ca690dca4f91)
@@ -198,7 +205,7 @@ cross-validation to evaluate your predictions.  Apparently with the `gstat`
 package you can do smoothing instead of kriging by specifying an "Err"
 variogram instead of a "Nug" nugget effect.
 
-## Brief discussion of variograms
+### Brief discussion of variograms
 
 A semivariance is defined as one half of the average of all the squared
 differences of all points that are a certain distance $h$ apart.  A variogram is
@@ -250,10 +257,10 @@ well as a more updated version that uses `tidyverse` and `ggplot` commands calle
 [Meuse
 Tutorial](https://rstudio-pubs-static.s3.amazonaws.com/134781_28af3676f8b943749ebfa536b3897cac.html).
 
-```{r basics with meuse dataset - summary + EDA, eval = FALSE}
+```{r basics with meuse dataset - summary + EDA}
 # ------------ basics with meuse dataset - summary -----------
 # load the data
-data("meuse")
+data(meuse)
 
 # learn about this dataset
 # currently a data frame
@@ -267,7 +274,7 @@ glimpse(meuse)
 # summary of the data
 summary(meuse) 
 
-# turn it into a spatial dataset and see how the class changes
+# Now turn meuse into a spatial dataset and see how the class changes 
 # use of `coordinates` changes it to a SpatialPointsDataFrame (SPDF)
 coordinates(meuse) <- ~x+y
 class(meuse)
@@ -287,17 +294,22 @@ coordinates(meuse)[1:5,]
 
 ```
 
-### Comments about SpatialPointsDataFrame objects
+#### Comments about SpatialPointsDataFrame objects
 
-By specifying the `coordinates()` above, meuse becomes a SpatialPointsDataFrame (SPDF).  This class is a S4 object where key data and attributes are stored in "slots".  For a SPDF object there are 5 slots:  data, coords.nrs, coords, bbox, and proj4string.  All the data are stored in the `data` slot.  The coordinates are stored in the `coordinates` slot.  The location of the coordinates in the dataframe is stored in `coords.nrs`.  The `bbox` is the bounding box, or the spatial exent of the data.  It corresponds to the "corners" of a rectangular map.  Finally, `proj4string` contains the projection for the coordinates.  Projections are essential to know in order to place maps in space correctly.
+By specifying the `coordinates()` above, meuse becomes a SpatialPointsDataFrame
+(SPDF).  This class is a S4 object where key data and attributes are stored in
+"slots".  For a SPDF object there are 5 slots:  data, coords.nrs, coords, bbox,
+and proj4string.  All the data are stored in the `data` slot.  The coordinates
+are stored in the `coordinates` slot.  The location of the coordinates in the
+dataframe is stored in `coords.nrs`.  The `bbox` is the bounding box, or the
+spatial exent of the data.  It corresponds to the "corners" of a rectangular
+map.  Finally, `proj4string` contains the projection for the coordinates.
+Projections are essential to know in order to place maps in space correctly.
 
-The next chunk shows how to access values in slots.  Note:  For some reason this chunk fails unless we re-define the meuse data.  TODO:  why is this?
+The next chunk shows how to access values in slots.  
 
 ```{r access slots}
 # ---- meuse access slots ----
-
-data(meuse)
-coordinates(meuse) <- ~x+y
 
 # bounding box, coordinates, proj4string all have helper functions:
 bbox(meuse)
@@ -312,7 +324,7 @@ meuse@coords.nrs
 ```
 
 
-### Some meuse plots
+#### Some meuse plots
 
 ```{r meuse plots}
 # ---- meuse plots ----
@@ -336,6 +348,7 @@ meuse %>% as.data.frame %>%
 
 # and we can read in the Meuse River boundary and add it to the plot
 data(meuse.riv)
+# filtering so the bounds of the river aren't too long
 meuse.riv.subset <- as.data.frame(meuse.riv) %>% filter(V2 > 329500 & V2 < 334100)
 
 meuse %>% as.data.frame %>% 
@@ -346,7 +359,9 @@ meuse %>% as.data.frame %>%
 
 ```
 
-### Empirical variograms
+### Estimating variograms
+
+#### Empirical variograms
 
 We use variograms to get an understanding on how our variable of interest varies
 over space.  One of the variables in the `meuse` dataset is the concentration of
@@ -360,7 +375,10 @@ this one shows the number of points that make up each bin.  Note that while the
 possible point pairs: 155 * 154 / 2 = 11,935.  However, the variogram cloud
 dataset only has 6833 data points (and the sum of `np` the number of points in
 each bin is also 6833), so there must be some truncation we aren't aware of.
-TODO:  why fewer than 11935 points?  Is this because the distance isn't the maximum?
+
+TODO:  why fewer than 11935 points?  This is probably because the default
+distance is 1/3 of the maximum distance.  We can change the default distance
+using the `cutoff =` option.  (See example with the snapshot data.)
 
 ```{r meuse empirical variogram}
 # ---- meuse empirical variogram ----
@@ -393,9 +411,15 @@ lines(smooth.spline(vgm.meuse$dist, vgm.meuse$gamma, df = 6), col="red",lwd = 4)
 ```
 
 
-### Modeled variogram
+#### Modeled variogram
 
-One can superimpose various modeled variograms onto empirical variograms. We need a modeled variogram in order to parameterize the structured error in our kriging model.  This is important because we need to have some idea of appropriate variogram parameters because we need to supply the kriging estimation fuctions with initial values of these parameters, specifically the partial sill ($\sigma^2$) and range ($\phi$).  The following chunk offers 3 possible variogram model options and the best-fitting one was selected.   
+One can superimpose various modeled variograms onto empirical variograms. We
+need a modeled variogram in order to parameterize the structured error in our
+kriging model.  This is important because we need to have some idea of
+appropriate variogram parameters because we need to supply the kriging
+estimation fuctions with initial values of these parameters, specifically the
+partial sill ($\sigma^2$) and range ($\phi$).  The following chunk offers 3
+possible variogram model options and the best-fitting one was selected.
 
 
 ```{r meuse modeled variogram}
@@ -404,11 +428,13 @@ One can superimpose various modeled variograms onto empirical variograms. We nee
 # first estimate the variogram object and assign it a name
 v <- variogram(log(zinc)~1, meuse)
 
-# Then fit a variogram model, offering to the function several different model options (exponential, spherical, and Matern):
+# Then fit a variogram model, offering to the function several different model
+# options (exponential, spherical, and Matern):
 v.fit <- fit.variogram(v, vgm(c("Exp", "Sph", "Mat")))
 
 # Find out which variogram model was selected
-# Observe that it was the spherical with a range of 897 m, a partial sill of 0.59, and a nugget of 0.05.
+# Observe that it was the spherical with a range of 897 m, a partial sill of
+# 0.59, and a nugget of 0.05.
 v.fit
 
 # Plot the empirical variogram with the overlaid fit
@@ -442,11 +468,11 @@ gridded(meuse.grid) = ~x+y
 lzn.kr <- krige(log(zinc)~1, meuse, newdata = meuse.grid, model = v.fit)
 
 # plot kriging predictions and SEs
-pl1 <- spplot(lzn.kr[1], main = "ordinary kriging prediction of log-zinc")
+pl1 <- spplot(lzn.kr[1], main = "OK prediction of log-zinc")
 pl1
 
 lzn.kr$se = sqrt(lzn.kr$var1.var)
-pl2 <- spplot(lzn.kr["se"], main = "ordinary kriging prediction error")
+pl2 <- spplot(lzn.kr["se"], main = "OK prediction error")
 pl2
 
 ```
@@ -478,9 +504,9 @@ plot(v.uk, model = m.uk)
 lzn.kr <- krige(log(zinc)~sqrt(dist), meuse, meuse.grid, model = m.uk)
 
 # plot the UK predictions and SEs
-pl3 <- spplot(lzn.kr[1], main = "universal kriging prediction of log-zinc")
+pl3 <- spplot(lzn.kr[1], main = "UK prediction of log-zinc")
 lzn.kr$se = sqrt(lzn.kr$var1.var)
-pl4 <- spplot(lzn.kr["se"], main = "universal kriging prediction error")
+pl4 <- spplot(lzn.kr["se"], main = "UK prediction error")
 
 # Now plot all 4 kriging results on a single plot, which allows easy comparison
 print(pl1, split = c(1,1,2,2), more = T)
@@ -492,6 +518,8 @@ print(pl4, split = c(2,2,2,2))
 
 ### Cross-validating the kriging model
 
+#### Cross-validation using the built-in CV function `krige.cv`
+
 `gstat` uses the function `krige.cv` to do kriging with cross-validation. One
 passes it the number of folds as a scalar and then it randomly divides the data
 into that number of folds.  The default is leave one out (LOO) which is a scalar
@@ -500,8 +528,7 @@ the data with values to indicate the groups each observation belongs in (e.g.
 the cluster variable in the snapshot dataset).
 
 TODO test/expand:  need to identify how the code works with the various options
-and explore the output.  Also would be nice to combine this with our CV code and
-show the same performance statistics we used in lab 4
+and explore the output.  
 
 ```{r meuse cross-validation}
 # ---- meuse cross-validation ----
@@ -519,22 +546,30 @@ meuse.CVLOO <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40)
 bubble(meuse.CVLOO, "residual", main = "log(zinc): LOO CV residuals")
 
 # universal kriging, 5-fold cross-validation 
-meuse.CV5uk <- krige.cv(log(zinc)~sqrt(dist), meuse, model = m.uk, nmax = 40, nfold=5) 
+meuse.CV5uk <-
+  krige.cv( log(zinc) ~ sqrt(dist), meuse,
+    model = m.uk, nmax = 40, nfold = 5 )
 # plot the residuals
-bubble(meuse.CV5, "residual", main = "log(zinc) UK on sqrt(dist): 5-fold CV residuals")
+bubble(meuse.CV5, "residual", 
+      main = "log(zinc) UK on sqrt(dist): 5-fold CV residuals")
 
 # ordinary kriging, LOOCV
-meuse.CVLOO <- krige.cv(log(zinc)~sqrt(dist), meuse, model = m.uk, nmax = 40)
+meuse.CVLOO <- krige.cv(log(zinc)~sqrt(dist), meuse, 
+                        model = m.uk, nmax = 40)
 # plot the residuals
-bubble(meuse.CVLOO, "residual", main = "log(zinc) UK on sqrt(dist): LOO CV residuals")
+bubble(meuse.CVLOO, "residual", 
+       main = "log(zinc) UK on sqrt(dist): LOO CV residuals")
 
 ```
 
 
 #### Kriging using our own cross-validation code
 
-TODO or drop:  THe following chunk integrates kriging with our cross-validation
-function from lab 4
+TODO or drop:  It would be nice to combine this with our CV code and
+show the same performance statistics we used in lab 4.  
+
+TODO:  The following chunk integrates kriging with our cross-validation
+function from lab 4.
 
 
 ## Geostatistical analysis using the Snapshot data
@@ -544,9 +579,13 @@ function from lab 4
 It is important to know the projection used in order to correctly do distance
 calculations.  Using distance calculations based on the Pythagorean theorem
 won't give you correct distances on a sphere.  Thus we can't use latitude and
-longitude directly.  The dataset provided by Laina Mercer had two variables,
-including `lat_m` and `long_m`, which may be in UTM, and which supposedly had been projected to a flat
-surface.  
+longitude directly.  The Mercer dataset we are using for this lab has three location variables:
+
+* `latitude` and `longitude` which is in decimal degrees
+* `lat_m` and `long_m`, which may be in UTM, and which supposedly had
+been projected to a flat surface, and
+* `lambert_x` and `lambert_y` which is a Lambert projection and is in meters.
+It is the USA_Continguous_Lambert_Conformal_Conic.
 
 Here is an example of [projections in R](https://rpubs.com/nabilabd/142092)
 Possible code for lat/long CRS:
@@ -554,7 +593,7 @@ Possible code for lat/long CRS:
 crdref <- CRS('+proj=longlat +datum=WGS84')
 pts <- SpatialPoints(lonlat, proj4string=crdref)
 ```
-Here is code to project into Lambert in R:
+Here is code to project into Lambert coordinates in R:
 ```
 usa_lamb=Proj("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
 ```
@@ -567,7 +606,7 @@ of the projection formulas, see this [New Zealand government
 website](https://www.linz.govt.nz/data/geodetic-system/coordinate-conversion/projection-conversions/lambert-conformal-conic-geographic)
 
 There are also some useful packages and functions for working with spatial data
-and get distances.  Some examples are:
+and to get distances.  Some examples are:
 
 * The `sp::SpatialPoints` function can is used to create objects of the spatial
 points from lat/long data.
@@ -584,13 +623,10 @@ comment](https://stackoverflow.com/questions/31668163/geographic-geospatial-dist
 
 ### Snapshot data set-up
 
-First read in the snapshot data as a SpatialPointsDataFrame object.  Summarize
-the data.  Take note of the range of the data coordinates, the maximum distance,
-and other dataset features (e.g. which covariates are included).
-
-TODO:  Address the projection.  This is still elusive.  
-
-TODO:  `rgdal` isn't loading properly on my laptop.  I thought I fixed this already!  It is working on the SPH server now.
+First read in the snapshot data as a SpatialPointsDataFrame object.  We are only
+using the fall season for this example.  Summarize the data.  Take note of the
+range of the data coordinates, the maximum distance, and other dataset features
+(e.g. which covariates are included).
 
 ```{r read snapshot as a SPDF}
 # ------------ read fall snapshot as SPDF --------
@@ -632,7 +668,7 @@ glimpse(fall)
 
 ```
 
-For later use, we need to convert the grid to a SPDF.  
+For later use, we need to convert the grid to a SPDF:  
 
 ```{r convert LA grid to SPDF}
 # ------------ convert LA grid to SPDF --------
@@ -643,8 +679,8 @@ la_grid <- as.data.frame(la_grid)
 # convert to a SPDF
 coordinates(la_grid) <- ~lambert_x+lambert_y
 
-# Not sure I need to tell R that this is gridded and it is failing b/c
-# coordinate intervals are not constant
+# Not sure we need to tell R that this is gridded and it is failing b/c
+# coordinate intervals are not constant. The code works without this:
 # # gridded(la_grid) <- TRUE
 # examples suggest this shortcut works too:
 #gridded(la_grid) <- ~lambert_x+lambert_y
@@ -658,7 +694,9 @@ glimpse(la_grid)
 
 Now plot the snapshot data using the same plotting code as applied to the
 `meuse` data.  This is without any map outline.
-TODO:  Edit to refine the visual representation with colors, smaller bubbles, etc.
+
+TODO:  Edit to refine the visual representation with colors, smaller bubbles,
+axis labels, etc.
 
 
 ```{r plot fall snapshot}
@@ -729,18 +767,18 @@ g <- ggmap(map, darken = c(0.5, "white")) + theme_void()
 # Show the map
 g + ggtitle("Sample Map of Los Angeles for \n the area covered by the snapshot data")
 
-# TODO:  snapshot data not being added.  Why?
-# add snapshot locations to the map will colors for values
-# Note: need to use a data.frame for this, not a geodata object
+# Add snapshot locations to the map will colors for values
+# Note: need to use a data.frame for this, not a spatial data object
 g + geom_point(aes(x = longitude, y = latitude, col = exp(ln_nox)), 
                data = as.data.frame(fall), alpha = 0.8) + 
     scale_color_gradient(name = "NOx (ppb", low = "yellow", high = "red") + 
     ggtitle("Map of Los Angeles \n with the fall snapshot data") +
     theme(legend.position = c(.98,.02), legend.justification = c(1,0)) 
 
-# TODO:  In testing the points didn't show and I got this warning message:
+# TODO:  In some testing the points didn't show and I got this warning message:
 # Warning message:
 # In checkNA("cex") : reached elapsed time limit
+# Is this a persistent problem?  It seems OK in the knitted output
 
 
 ```
@@ -771,7 +809,7 @@ g + geom_point(aes(x = longitude, y = latitude), data = as.data.frame(la_grid),
 ```
 
 
-### Estimation using the snapshot data:  Universal kriging using the common model
+### Estimation using the snapshot data: Universal Kriging using the common model
 
 Here we fit a UK model using the snapshot data, evaluate their quality using
 cross-validation, and then produce predictions at the grid locations for later
@@ -841,7 +879,9 @@ Observe:  TODO:  ADD comments.
 
 
 **Step 2**:  Cross-validate the UK models to evaluate the quality of the
-predictions.  TODO:  ADD
+predictions.  
+
+TODO:  ADD
 
 
 
@@ -863,7 +903,11 @@ glimpse(kc_la)
 
 ### Plotting the predictions
 
-Display the predictions on a map.  TODO:  The first chunk gives code to the default `gstat` plots, but it is hidden since I didn't find this output that helpful.  The second visible chunk adds our predictions to a Stamen map.  Later plots show refinements to the plotted predictions, with smoothing.
+Display the predictions on a map.  First we need to join the predictions with
+the original grid in order to get the longitude and latitue coordinates.  The
+second visible chunk adds our predictions to a Stamen map.  Later plots show
+refinements to the plotted predictions, with smoothing and restrictions to the
+area shown.
 
 
 
@@ -985,6 +1029,7 @@ g %+% new_grid + aes(x = longitude, y = latitude, z = NOx) +
 ```
 
 Now we add code to plot the predictions on a map using shapefiles.
+
 TODO:  This isn't currently working.  Drop?
 
 ```{r prediction map with shapefiles, eval = FALSE}
@@ -1110,6 +1155,8 @@ TODO:  ADD this.  This is an optional homework problem.
 During class we will review the output above.  Please come prepared to ask questions.
 
 # Homework Exercises 
+
+TODO:  Review and update
 
 1.  Fit a LUR model (using the common model covariates) to the season-specific
 snapshot data.  (One model per season.)  Take the residuals from those models
