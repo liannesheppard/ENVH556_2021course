@@ -41,7 +41,6 @@ if (!is.null(sessionInfo()$otherPkgs)) {
 
 ```
 
-<!-- TODO:  Update packages needed -->
 ```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
 #----------------load.libraries.pacman----
 # Load pacman into memory, installing as needed
@@ -82,7 +81,8 @@ pacman::p_load(tidyverse, knitr, dplyr, gstat, maps, ggmap,
 
 ```
 
-<!-- TODO:  Get the datasets to Brian's directory; possibly figure out why the changes on 3/5/19 -->
+<!-- TODO:  Get the datasets to Brian's directory
+The reason for the changes on 3/5/19 had to do with needing lambert coordinates and maybe using a smaller grid for the predictions -->
 ```{r read.data.from.a.directory, eval=TRUE, echo=FALSE, include=FALSE}
 #-----read.data.from.a.directory--------
 # Download the data file from a local directory
@@ -121,9 +121,9 @@ TODO:  UPdate:  **Important Winter 2021 note**:  This lab is a work in progress
 and it has some unfinished pieces.  I believe that all included analyses have
 been sufficiently tested and debugged, but it is also possible some errors
 remain.  In addition, there are a number of ideas that need further
-investigation.  The intent of the current version of this lab is to help you use
-geographic data in R as productively as possible while recognizing there is much
-more to learn and develop.
+investigation.  The intent of the current version of this lab is to help you
+learn to use geographic data in R as productively as possible while recognizing
+there is much more to learn and develop.
 
 # Getting Started
 
@@ -170,12 +170,19 @@ distance calculations.
 
 TODO:  Review and revise this section.
 
-The package I was aware of (before reading *Geocomputation in R*) include `geoR` and `gstat`.  `geoR` has been around for some time; `gstat` is newer and uses the `sp` class.  The two appear to give identical results, at least for a simple dataset example.  To verify this, type `demo(gstat::comp_geoR)` in the console. (2021:  Not currently working)
+Packages for kriging include `geoR`, `automap`, and `gstat`.  `geoR` has been around for some time; `gstat` is newer and uses the `sp` class.  `automap` calls `gstat`.  `geoR` and `gstat` appear to give identical results, at least for a simple dataset example.  To verify this, type `demo(gstat::comp_geoR)` in the console. (2021:  Not currently working)  Because of its apparent current use, we discuss `gstat` in this lab.  There are good examples online and in books (e.g., Bivand's) that show how to do kriging with `gstat`. 
 
-(Aside:  There is an interesting [stackoverflow discussion](https://stackoverflow.com/questions/21970992/compare-variogram-and-variog-function) of comparing empirical variograms in `geoR` vs. `sp` and `gstat` that addresses coordinate transformations and binning.  It is worth a look if you want to understand the details better.)
+(Aside:  There is an interesting [stackoverflow
+discussion](https://stackoverflow.com/questions/21970992/compare-variogram-and-variog-function)
+of comparing empirical variograms in `geoR` vs. `sp` and `gstat` that addresses
+coordinate transformations and binning.  It is worth a look if you want to
+understand the details better.)
 
-Because of its apparent current use, we discuss `gstat` in this lab.  There are good examples online and in books (e.g., Bivand's) that show how to do kriging with `gstat`. 
-Note on `rgdal`:  If you are running your lab locally on a Mac, this package doesn't load properly on newer Macs running Catalina.  You need to install GDAL from the terminal.  See this [link](https://medium.com/@egiron/how-to-install-gdal-and-qgis-on-macos-catalina-ca690dca4f91) for how to do this.
+Note on `rgdal`:  If you are running your lab locally on a Mac, this package
+doesn't load properly on newer Macs running Catalina.  You need to install GDAL
+from the terminal.  See this
+[link](https://medium.com/@egiron/how-to-install-gdal-and-qgis-on-macos-catalina-ca690dca4f91)
+for how to do this.
 
 ### Some comments on universal kriging and prediction  
 
@@ -228,20 +235,18 @@ The purpose of this section is to show some `gstat` tools using the built-in
 it can be found
 [here](http://www.dpi.inpe.br/gilberto/tutorials/software/R-contrib/sp/html/meuse.html).
 
-First we will go through the `meuse` dataset.  This dataset is from The
-Netherlands.  Its location coordinates are `x` and `y`, and its exposure
-measurements are concentrations of various metals in topsoil.  We will focus on
-`zinc` in this lab.  There are also some potential covariates we could consider
-in a universal kriging model such as elevation and distance from the Meuse
-river.
+First we will go through the `meuse` dataset, a dataset of soil contamination
+from The Netherlands.  Its location coordinates are `x` and `y`, and its
+exposure measurements are concentrations of various metals in topsoil.  We will
+focus on `zinc` in this lab.  There are also some potential covariates we could
+consider in a universal kriging model such as elevation and distance from the
+Meuse river.
 
-This will allow us to look at a SpatialPointsDataFrame object and ADD.  The data are stored in the 
-<!-- TODO:  Edit/delete:  Both are stored in the geodata format.  This allows us to demonstrate the geodata object, the plot default, variograms, modeling using different approaches, kriging predictions, and plotting the results.  Then we explore `ca20` to understand inclusion of covariates into geostatistical analysis. -->
 
 ### Summary & learn about the data
 
-The following code follows the example [here](https://rpubs.com/liem/63374) as
-well as a more updated version that uses tidyverse and ggplot commands called
+The following section follows the example [here](https://rpubs.com/liem/63374) as
+well as a more updated version that uses `tidyverse` and `ggplot` commands called
 [Meuse
 Tutorial](https://rstudio-pubs-static.s3.amazonaws.com/134781_28af3676f8b943749ebfa536b3897cac.html).
 
@@ -329,6 +334,16 @@ meuse %>% as.data.frame %>%
   ggplot(aes(x, y)) + geom_point(aes(size=zinc), color="blue", alpha=3/4) + 
   ggtitle("Zinc Concentration (ppm)") + coord_equal() + theme_bw()
 
+# and we can read in the Meuse River boundary and add it to the plot
+data(meuse.riv)
+meuse.riv.subset <- as.data.frame(meuse.riv) %>% filter(V2 > 329500 & V2 < 334100)
+
+meuse %>% as.data.frame %>% 
+  ggplot(aes(x, y)) + geom_point(aes(size=zinc), color="blue", alpha=1/4) + 
+  ggtitle("Zinc Concentration (ppm)") + coord_equal() + theme_bw() +
+  geom_path(data=meuse.riv.subset, aes(x=V1,y=V2) )
+
+
 ```
 
 ### Empirical variograms
@@ -362,17 +377,15 @@ plot(variogram(log(zinc)~1, meuse), pl=TRUE)
 # save the variogram cloud 
 vgm.meuse <- variogram(log(zinc)~1, meuse, cloud=TRUE)
 
-# # Now plot the cloud and overlay a smooth curve
-# # note that the full scatter is misleading relative to the smooth curve
-# # we could adjust the density to more clearly see where the data are
-# # TODO:  Not sure if this is valid; need to check
-# plot(vgm.meuse$dist, vgm.meuse$gamma)
-# lines(smooth.spline(vgm.meuse$dist, vgm.meuse$gamma, df = 6), col="red",lwd = 4)
+# Now plot the cloud and overlay a smooth curve
+# note that the full scatter is misleading relative to the smooth curve
+# we could adjust the density to more clearly see where the data are
+# according to the gs_intro_20Mar2019.pdf, the distance is Euclidean distance;
+#         gamma is the semi-variance estimate
+# TOOD:  refine plot w/ labels, adjusted density, using ggplot
+plot(vgm.meuse$dist, vgm.meuse$gamma)
+lines(smooth.spline(vgm.meuse$dist, vgm.meuse$gamma, df = 6), col="red",lwd = 4)
 
-# #TODO:  Plotting this way works interactively, but the smooth line is higher
-# on the plot.  Why?  Also this fails to knit properly, so something is amiss
-# plot(vgm.meuse)
-# lines(smooth.spline(vgm.meuse$dist, vgm.meuse$gamma, df = 6), col="red",lwd = 4)
 
 #vgm.meuse <- variogram(log(zinc)~1, meuse)
 #sum(vgm.meuse$np)
@@ -382,9 +395,8 @@ vgm.meuse <- variogram(log(zinc)~1, meuse, cloud=TRUE)
 
 ### Modeled variogram
 
-One can superimpose various modeled variograms onto empirical variograms. We need a modeled variogram in order to parameterize the structured error in our kriging model.  The following chunk offers 3 possible variogram model options and the best-fitting one was selected.   
+One can superimpose various modeled variograms onto empirical variograms. We need a modeled variogram in order to parameterize the structured error in our kriging model.  This is important because we need to have some idea of appropriate variogram parameters because we need to supply the kriging estimation fuctions with initial values of these parameters, specifically the partial sill ($\sigma^2$) and range ($\phi$).  The following chunk offers 3 possible variogram model options and the best-fitting one was selected.   
 
-TODO:  UPDATE OR DROP:  This is important because we need to have some idea of appropriate variogram parameters because we need to supply the kriging estimation fuctions with initial values of these parameters, specifically the partial sill ($\sigma^2$) and range ($\phi$).  One can also allow for a non-zero nugget ($\tau^2$) parameter by using the `nugget = ` option with an estimated value after the "=".  The program defaults to estimating the nugget unless you use the `fit.nugget = TRUE` option.
 
 ```{r meuse modeled variogram}
 # ---- meuse modeled variogram -----
@@ -407,7 +419,7 @@ plot(v, v.fit)
 
 ### Kriging
 
-The following examples follow the code [here](http://127.0.0.1:18522/library/gstat/demo/krige.R).
+Credit:  The following examples follow the code [here](http://127.0.0.1:18522/library/gstat/demo/krige.R).
 
 #### Ordinary Kriging (OK)
 
@@ -417,11 +429,7 @@ it should predict in the `newdata = ` option.  You also need to pass it the
 results of a fitted variogram model in the `model = ` option.  Note that in this
 example we are estimating a common mean using ordinary kriging.
 
-TODO:  The kriging is failing on my laptop.  Presumaby this has to do with the
-rgdal package installation?  Error was unable to find an inherited method for
-function 'krige' ...
-
-```{r meuse ordinary kriging, eval = FALSE}
+```{r meuse ordinary kriging}
 # ---- meuse ordinary kriging ----
 
 # read in the meuse grid to use for predictions
@@ -429,7 +437,9 @@ data(meuse.grid)
 gridded(meuse.grid) = ~x+y
 
 # ordinary kriging of log(zinc)
-lzn.kr <- krige(formula = log(zinc)~1, data = meuse, newdata = meuse.grid, model = v.fit)
+# first two arguments are formula and data; krige doesn't like explicit
+# reference to them (??)
+lzn.kr <- krige(log(zinc)~1, meuse, newdata = meuse.grid, model = v.fit)
 
 # plot kriging predictions and SEs
 pl1 <- spplot(lzn.kr[1], main = "ordinary kriging prediction of log-zinc")
@@ -443,24 +453,29 @@ pl2
 
 #### Universal kriging (UK)
 
-To do universal kriging, we also need covariates for the fixed part of the model.  As discussed in Mercer et al, ArcGIS doesn't (or didn't at the time that paper was written) allow an arbitrary set of covariates to be included in UK.  ArcGIS only allows (or allowed) the mean function to be a function of latitude and longitude, which is far too limiting in many applications.  We demonstrate UK using `gstat` with the snapshot data in the next section.
+To do universal kriging, we also need covariates for the fixed part of the
+model.  As discussed in Mercer et al, ArcGIS doesn't (or didn't at the time that
+paper was written) allow an arbitrary set of covariates to be included in UK.
+ArcGIS only allows (or allowed) the mean function to be a function of latitude
+and longitude, which is far too limiting in many applications.  The next chunk
+demonstrates universal kriging with the `meuse` data.   We demonstrate UK using
+`gstat` with the snapshot data in the next section.
 
-`geoR` has a built-in dataset, ca20, that allows for implementation of UK.  I took out this example from the lab to reduce complexity.  We will implement UK directly using the snapshot data in the next section.
 
-```{r meuse universal kriging, eval = FALSE}
+```{r meuse universal kriging}
 # ---- meuse universal kriging ----
 
 # First we need to fit a new variogram model with the square root of distance
 # from the Meuse River as a covariate.  And estimate its variogram model
-v <- variogram(log(zinc)~sqrt(dist), meuse)
-m <- fit.variogram(v, vgm("Exp","Sph","Mat"))
+v.uk <- variogram(log(zinc)~sqrt(dist), meuse)
+m.uk <- fit.variogram(v.uk, vgm("Exp","Sph","Mat"))
 
 # learn about the best-fitting variogram model and plot it
-m
-plot(v, model = m)
+m.uk
+plot(v.uk, model = m.uk)
 
 # fit the universal kriging model, predicting on the meuse.grid
-lzn.kr <- krige(log(zinc)~sqrt(dist), meuse, meuse.grid, model = m)
+lzn.kr <- krige(log(zinc)~sqrt(dist), meuse, meuse.grid, model = m.uk)
 
 # plot the UK predictions and SEs
 pl3 <- spplot(lzn.kr[1], main = "universal kriging prediction of log-zinc")
@@ -475,130 +490,105 @@ print(pl4, split = c(2,2,2,2))
 
 ```
 
-### TODO:  Cross-validating the kriging model
+### Cross-validating the kriging model
 
-The following hidden code is from the previous geoR version of the lab.  Need to research how to do cross-validation using the `gstat` package.
+`gstat` uses the function `krige.cv` to do kriging with cross-validation. One
+passes it the number of folds as a scalar and then it randomly divides the data
+into that number of folds.  The default is leave one out (LOO) which is a scalar
+of the length of the data.  One can also pass to nfolds a vector of the length
+the data with values to indicate the groups each observation belongs in (e.g.
+the cluster variable in the snapshot dataset).
 
-<!--- 
-### Cross-validation -- leave one out (LOO)
+TODO test/expand:  need to identify how the code works with the various options
+and explore the output.  Also would be nice to combine this with our CV code and
+show the same performance statistics we used in lab 4
 
-`geoR` defaults to doing leave-one-out cross-validation (option `locations.xvalid = all`).  It also has an option for validating on an external dataset when the `data = ` option is set.  The alternative approach in the documentation, using a subset of the data selected with `locations.xvalid`, is not documented and thus it isn't clear how it works.  Thus in a later chunk we will enforce 10-fold cross-validation using a grouping variable and dataset splitting procedure.  (See *s100 kriging + 10-fold CV*.)  This strategy will be useful for the snapshot dataset when we have a pre-defined cluster variable. 
+```{r meuse cross-validation}
+# ---- meuse cross-validation ----
 
-```{r s100 LOO cross-validation, eval = FALSE}
-# ------------ s100 LOO cross-validation ----------------
-# 
-# Do cross-validation using two different models:  
-#   The likelihood fit model and the weighted least squares model.
-# Likelihood fit model
-xv.ml <- xvalid(s100, model=ml)
+# ordinary kriging, 5-fold cross-validation 
+# nmax defaults to all observations used for kriging; this sets it at 40
+# TODO:  investigate the difference
+meuse.CV5 <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5) 
+# plot the residuals
+bubble(meuse.CV5, "residual", main = "log(zinc): 5-fold CV residuals")
 
-# Weighted least squares model
-xv.wls <- xvalid(s100, model=wls)
+# ordinary kriging, LOOCV
+meuse.CVLOO <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40)
+# plot the residuals
+bubble(meuse.CVLOO, "residual", main = "log(zinc): LOO CV residuals")
 
-# summarize the MSE and R2
-mse.ml <- mean ((xv.ml$data - xv.ml$predicted)^2 )
-mse.wls <- mean ((xv.wls$data - xv.wls$predicted)^2 )
-r2.ml <- 1 - mse.ml/mean((xv.ml$data - mean(xv.ml$data))^2)
-r2.wls <- 1 - mse.wls/mean((xv.wls$data - mean(xv.wls$data))^2)
+# universal kriging, 5-fold cross-validation 
+meuse.CV5uk <- krige.cv(log(zinc)~sqrt(dist), meuse, model = m.uk, nmax = 40, nfold=5) 
+# plot the residuals
+bubble(meuse.CV5, "residual", main = "log(zinc) UK on sqrt(dist): 5-fold CV residuals")
 
-# print the results
-rbind(c("ML ", sqrt(mse.ml), r2.ml),
-      c("WLS", sqrt(mse.wls), r2.wls))
-
-# uses `plot.xvalid` to produce a set of plots showing the cross-validation results
-# under the weighted least squares variogram model
-par(mfcol=c(5,2), mar=c(3,3,1,0.5), mgp=c(1.5,0.7,0))
-plot(xv.wls)
-
-# under the maximum likelihood variogram model
-# (Not shown; results look similar)
-#par(mfcol=c(5,2), mar=c(3,3,1,0.5), mgp=c(1.5,0.7,0))
-#plot(xv.ml)
+# ordinary kriging, LOOCV
+meuse.CVLOO <- krige.cv(log(zinc)~sqrt(dist), meuse, model = m.uk, nmax = 40)
+# plot the residuals
+bubble(meuse.CVLOO, "residual", main = "log(zinc) UK on sqrt(dist): LOO CV residuals")
 
 ```
 
-### Ordinary Kriging (OK) with 10-fold cross-validation
 
-Here is some code to enforce 10-fold cross-validation using a grouping variable that we define and select on in the for loop.  We also compare these results to the leave one out CV done above at the end of this chunk.
+#### Kriging using our own cross-validation code
 
-```{r s100 kriging for CV, eval = FALSE}
-# ------------ s100 kriging for 10-fold CV --------------
+TODO or drop:  THe following chunk integrates kriging with our cross-validation
+function from lab 4
 
-# generate a grouping variable for 10-fold cross-validation
-set.seed(250)
-grp <- rep(1:10, length.out = 100)
-grp <- sample(grp, replace = FALSE)
-
-
-# Conventional Kriging, predict at the 10% of left out data
-# Kriging default is OK with constant mean
-# 
-# First create a new dataset for the output
-s100new <- list(coords = s100[[1]], data = s100[[2]], pred = numeric(length(grp)), beta = numeric(10))
-
-# Use a loop to do the 10-fold CV:
-for (i in 1:10){
-    is_group <- grp == i
-    training_coord <- s100[[1]][!is_group,]
-    training_data <- s100[[2]][!is_group]
-    valid_coord <- s100[[1]][is_group,]
-    kc_cv <- krige.conv(coords = training_coord, data = training_data,
-                        locations = valid_coord, 
-                        krige=krige.control(obj.m=wls))
-    s100new$pred[is_group] <- kc_cv$predict
-    s100new$beta[i] <- kc_cv$beta.est
-}
-
-# get the properties of the kriging predictions:
-mse_cv <- mean ((s100new$data - s100new$pred)^2 )
-r2_cv <- 1 - mse_cv/mean((s100new$data - mean(s100new$data))^2)
-
-#print results
-mse_cv
-cat("RMSE from CV:  ", sqrt(mse_cv))
-r2_cv
-
-# compare to leave-one-out CV results
-# TODO:  digits in kable not working WHY?
-res <- rbind(
-      c("LOO (lik)", mse.ml, sqrt(mse.ml), r2.ml),
-      c("LOO (wls)", mse.wls, sqrt(mse.wls), r2.wls),
-      c("10-fold wls", mse_cv, sqrt(mse_cv), r2_cv))
-kable(res, format = "markdown", col.names = c("  ", "MSE", "RMSE", "R2"), caption = "Compare LOO and 10-fold CV results", digits = 2)
-
-```
-
--->
 
 ## Geostatistical analysis using the Snapshot data
 
 ### Comments about geographic coordinates and conversions
 
-It is important to know the projection used in order to correctly do distance calculations.  Using distance calculations based on the Pythagorean theorem won't give you correct distances on a sphere.  Thus we can't use latitude and longitude directly.  The dataset provided by Laina Mercer had two variables, `lat_m` and `long_m` that had been projected to a flat surface.  
+It is important to know the projection used in order to correctly do distance
+calculations.  Using distance calculations based on the Pythagorean theorem
+won't give you correct distances on a sphere.  Thus we can't use latitude and
+longitude directly.  The dataset provided by Laina Mercer had two variables,
+including `lat_m` and `long_m`, which may be in UTM, and which supposedly had been projected to a flat
+surface.  
 
-TODO:  EDIT:  At this writing I have not found the documentation for this.  So the dataset we are using in this lab has [Lambert coordinates](https://en.wikipedia.org/wiki/Lambert_conformal_conic_projection) added (USA Contiguous Lambert Conformal Conic (srid 102004)) from the MESA Air database.  These give approximately the same meters as the coordinates Mercer used.  To see a documentation of the projection formulas, see this [New Zealand government website](https://www.linz.govt.nz/data/geodetic-system/coordinate-conversion/projection-conversions/lambert-conformal-conic-geographic)
-
-There are also some useful packages and functions for working with spatial data and get distances.  Some examples are:
-
-* The `sp::SpatialPoints` function can is used to create objects of the spatial points from lat/long data. 
-
-* The `rgeos::gWithinDistance` function is used to find if locations are the same, or within a specified distance. 
-
-* The `rgeos::gDistance` function is used to find the Cartesian minimum distance between two locations. This function can be used to create a distance matrix.
-
-* The `geosphere` package has  a bunch of distance formulas for two points with latitude and longitude coordinates.  See this [stackoverflow comment](https://stackoverflow.com/questions/31668163/geographic-geospatial-distance-between-2-lists-of-lat-lon-points-coordinates).
-
-### Snapshot data set-up
-
-First read in the snapshot data as a SpatialPointsDataFrame object.  Summarize the data.  Take note of the range of the data coordinates, the maximum distance, and other dataset features (e.g. which covariates are included).  
-
-TODO:  Address the projection.  This is still elusive.  
 Here is an example of [projections in R](https://rpubs.com/nabilabd/142092)
-Possible code for lat/long use:
+Possible code for lat/long CRS:
 ```
 crdref <- CRS('+proj=longlat +datum=WGS84')
 pts <- SpatialPoints(lonlat, proj4string=crdref)
 ```
+Here is code to project into Lambert in R:
+```
+usa_lamb=Proj("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
+```
+
+We are going to use the [Lambert
+coordinates](https://en.wikipedia.org/wiki/Lambert_conformal_conic_projection)
+also in this dataset because these are in meters and projected for a flat
+surface so distance calculations can be done directly.  To see a documentation
+of the projection formulas, see this [New Zealand government
+website](https://www.linz.govt.nz/data/geodetic-system/coordinate-conversion/projection-conversions/lambert-conformal-conic-geographic)
+
+There are also some useful packages and functions for working with spatial data
+and get distances.  Some examples are:
+
+* The `sp::SpatialPoints` function can is used to create objects of the spatial
+points from lat/long data.
+
+* The `rgeos::gWithinDistance` function is used to find if locations are the
+same, or within a specified distance.
+
+* The `rgeos::gDistance` function is used to find the Cartesian minimum distance
+between two locations. This function can be used to create a distance matrix.
+
+* The `geosphere` package has  a bunch of distance formulas for two points with
+latitude and longitude coordinates.  See this [stackoverflow
+comment](https://stackoverflow.com/questions/31668163/geographic-geospatial-distance-between-2-lists-of-lat-lon-points-coordinates).
+
+### Snapshot data set-up
+
+First read in the snapshot data as a SpatialPointsDataFrame object.  Summarize
+the data.  Take note of the range of the data coordinates, the maximum distance,
+and other dataset features (e.g. which covariates are included).
+
+TODO:  Address the projection.  This is still elusive.  
 
 TODO:  `rgdal` isn't loading properly on my laptop.  I thought I fixed this already!  It is working on the SPH server now.
 
@@ -610,53 +600,54 @@ fall <- snapshot %>%
     select(ID, latitude, longitude, lat_m, long_m, lambert_x, lambert_y, ln_nox, D2A1, A1_50, A23_400, Pop_5000, D2C, Int_3000, D2Comm, cluster, group_loc, FieldID) %>%
   as.data.frame
 
-# now convert this to a SPDF and connect with its projection
-# I've listed the options as I understand for two of the 3 coordinates
-coordinates(fall) <- ~long_m+lat_m
-proj4string(fall) <-CRS("+proj=utm +zone=10 +datum=WGS84")
+# now convert this to a SPDF.  Use Lambert projections which may not need a CRS
+# as they are already in meters and don't need a conversion for distance
+# calculations.  The CRS for Lambert is USA_Continuous_Lambert_Conformal_Conic.
+coordinates(fall) <- ~lambert_x+lambert_y
 
-#coordinates(fall) <- ~longitude+latitude
-#proj4string(fall) <- CRS("+proj=longlat +ellps=WGS84")
+# # probably don't need a projection or CRS for lambert because these are
+# already in meters; keeping just in case:
+# proj4string(fall) <- CRS("+proj=laea")
 
-# TODO:  Figure out the projection for the lambert coordinates if using them
-#proj <- projInfo("proj")
-#coordinates(fall) <- ~lambert_x+lambert_y
-# the following two may not do the right assignment
-#prj <- projInfo("proj")
-#proj4string(fall) <- prj[proj$name == "laea", ]
-# this is more consistent with how to assign, but no datum option 
-#proj4string(fall) <- CRS("+proj=laea")
+
+# # If we connect with its projection, here are some options as I understand for
+# # two of the 3 coordinates.  (Note:  Not clear how long_m and lat_m are defined.
+# # I'm guessing they are UTMs but not stored in the database that way.)
+# # UTM
+# coordinates(fall) <- ~long_m+lat_m
+# proj4string(fall) <-CRS("+proj=utm +zone=10 +datum=WGS84")
+# # standard latitude and longitude in decimal degrees
+# #coordinates(fall) <- ~longitude+latitude
+# #proj4string(fall) <- CRS("+proj=longlat +ellps=WGS84")
 
 # summarize and get the names
 #names(fall)
 #str(fall)
 glimpse(fall)
 
+# # maximum distance in the dataset; thought I would use this to set the cutoff in
+# # the variogram, but it didn't work so I hard-coded it.
+# maxdist <- dist(fall@bbox)
+
+
 ```
 
-For later use, we need to convert the grid to geodata.  In the 2019 version of
-the lab with `geoR`, the full grid wasn't working, so we used a subset.  TODO:
-Figure out if `gstat` can use the entire grid.  Also note the grid doesn't have
-the UTM coordinates.
+For later use, we need to convert the grid to a SPDF.  
 
-TODO:  The following chunk fails on my laptop.  It says coordinate intervals are
-not constant.  Using the points2grid from the SpatialPixelsDataFrame.
-
-```{r convert LA grid to SPDF, eval = FALSE}
+```{r convert LA grid to SPDF}
 # ------------ convert LA grid to SPDF --------
 
 # la_grid is a tibble; convert to a data frame (needed?)
 la_grid <- as.data.frame(la_grid)
 
 # convert to a SPDF
-# TODO:  note snapshot has lat_m and long_m but the grid doesn't.  Need to find out from Amanda what these are and if I can conver these
-coordinates(la_grid) <- ~longitude+latitude
-gridded(la_grid) <- TRUE
-# examples suggest this shortcut works too:
-#gridded(la_grid) <- ~longitude+latitude
+coordinates(la_grid) <- ~lambert_x+lambert_y
 
-# Not sure if we need to define the CRS in the grid
-#proj4string(la_grid) <- CRS("+proj=longlat +ellps=WGS84")
+# Not sure I need to tell R that this is gridded and it is failing b/c
+# coordinate intervals are not constant
+# # gridded(la_grid) <- TRUE
+# examples suggest this shortcut works too:
+#gridded(la_grid) <- ~lambert_x+lambert_y
 
 # summarize and get the names
 #names(la_grid)
@@ -667,6 +658,7 @@ glimpse(la_grid)
 
 Now plot the snapshot data using the same plotting code as applied to the
 `meuse` data.  This is without any map outline.
+TODO:  Edit to refine the visual representation with colors, smaller bubbles, etc.
 
 
 ```{r plot fall snapshot}
@@ -683,7 +675,7 @@ spplot(fall, "ln_nox", colorkey = TRUE, main = "ln(NOx) Concentrations (ln(ppb)"
 # first convert it to a data frame:
 fall %>% as.data.frame %>%
   ggplot(aes(longitude, latitude)) + geom_point(aes(size = ln_nox), color =
-                                                  "blue", alpha = 3 / 4) +
+                                                  "blue", alpha = 1 / 4) +
   ggtitle("ln(NOx) Concentrations (ln(ppb)") + coord_equal() + theme_bw()
 
 
@@ -746,9 +738,15 @@ g + geom_point(aes(x = longitude, y = latitude, col = exp(ln_nox)),
     ggtitle("Map of Los Angeles \n with the fall snapshot data") +
     theme(legend.position = c(.98,.02), legend.justification = c(1,0)) 
 
+# TODO:  In testing the points didn't show and I got this warning message:
+# Warning message:
+# In checkNA("cex") : reached elapsed time limit
+
+
 ```
 
-Note, in comparing the above map to the one displayed in Figure 2b of Mercer, a few observations are in order:
+Note, in comparing the above map to the one displayed in Figure 2b of Mercer, a
+few observations are in order:
 
 * The gradient points in Mercer are spread out much more than in our map.  This
 was done on purpose in the displays in Mercer et al to enable the viewer to see
@@ -762,7 +760,7 @@ Now add the grid to the map.  This plot isn't particularly informative, other
 than making it obvious to us that the area covered by the grid is not completely
 aligned with the area covered by the map.
 
-```{r plot the grid on the map, eval = TRUE}
+```{r plot the grid on the map}
 # ------------ plot the grid on the map ---------------
 # Note: we read the grid csv data above
 # The map range is set above so no points are removed.
@@ -791,14 +789,17 @@ these data is a sensible choice.)
 # ---- fall estimate variogram ----
 
 # first estimate the variogram object and assign it a name
-vf <- variogram(ln_nox~1, fall)
+# the default maximum distance (cutoff) is too short so set it to align w/
+# values shown in Mercer
+vf <- variogram(ln_nox~1, fall, cutoff = 31000)
 
 # Then fit a variogram model, offering to the function several different model options (exponential, spherical, and Matern):
 # TODO:  Note that none of the variogram models appears to converge.  Investigate
 vf.fit <- fit.variogram(vf, vgm(c("Exp", "Sph", "Mat")))
 
 # Find out which variogram model was selected
-# Observe that it was the spherical with a range of 30,704 m, a partial sill of 0.1256, and a nugget of 0.0195.
+# Observe that it was the spherical with a range of 25,790 m, a partial sill of
+# 0.1091, and a nugget of 0.0188.
 vf.fit
 
 # Plot the empirical variogram with the overlaid fit
@@ -806,16 +807,30 @@ plot(vf, vf.fit)
 
 # now repeat for the UK model
 # first estimate the variogram object and assign it a name
-vfc <- variogram(ln_nox~D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm, fall)
+vfc <-
+  variogram(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
+            fall,
+            cutoff = 31000)
 
-# Then fit a variogram model, offering to the function several different model options (exponential, spherical, and Matern):
+# Then fit a variogram model, offering to the function several different model
+# options (exponential, spherical, and Matern):
 vfc.fit <- fit.variogram(vfc, vgm(c("Exp", "Sph", "Mat")))
 
 # Find out which variogram model was selected
-# Observe that it was the spherical with a range of 413,829 m, a partial sill of 0.22, and a nugget of 0.018.
-vfc.fit
+# Observe that it was the spherical with a range of 47,050 m, a partial sill of
+# 0.0302, and a nugget of 0.01704.
+vfc.fit <- fit.variogram(vfc, vgm(c("Exp", "Sph", "Mat")))
 
 # Plot the empirical variogram with the overlaid fit
+plot(vfc, vfc.fit)
+
+# Mercer used an exponential variogram, so refit the variogram using that:
+vfc.fit <- fit.variogram(vfc, vgm("Exp"))
+# Observe that the exponential has a range of 79,356 m, a partial sill of
+# 0.0749, and a nugget of 0.01798.
+vfc.fit 
+# Plot the empirical variogram with the overlaid fit.  Observe the exponential
+# and spherical fits are almost indistinguishable.
 plot(vfc, vfc.fit)
 
 
@@ -828,179 +843,60 @@ Observe:  TODO:  ADD comments.
 **Step 2**:  Cross-validate the UK models to evaluate the quality of the
 predictions.  TODO:  ADD
 
-<!-- 
-This is the "manual" 10-fold version we showed with the s100 data
-above.  We use the WLS estimates as the object to input into the kriging
-prediction model.  Because we are doing UK here, we need to define the trend
-models for both the input and output (prediction) datasets.  There may be ways
-to simplify this code, but the following works!  (It isn't well documented so
-there was some guessing and checking involved in developing this example.)
-
-```{r snapshot kriging for CV, eval = FALSE}
-# ------- snapshot kriging for 10-fold CV --------------
-
-# use the cluster variable for 10-fold cross-validation
-grp <- fall$cluster
-
-# Conventional Kriging, predict at the 10% of left out data
-# Kriging default is OK with constant mean
-#
-# Create a new dataset for the output
-fall_geonew <- list(coords = fall_geo[[1]], 
-                    data = fall_geo[[2]], 
-                    pred = numeric(length(grp)), 
-                    beta = data.frame(beta0 = numeric(10),
-                                          D2A1 = numeric(10),
-                                          A1_50 = numeric(10),
-                                          A23_400 = numeric(10),
-                                          Pop_5000 = numeric(10),
-                                          D2C = numeric(10),
-                                          Int_3000 = numeric(10),
-                                          D2Comm = numeric(10))
-                    )
-
-# Use a loop to do the 10-fold CV:
-for (i in 1:10){
-    is_group <- grp == i
-    training_coord <- fall_geo[[1]][!is_group,]
-    training_data <-  fall_geo[[2]][!is_group]
-    train_geo <- as.geodata(fall[!is_group,], 
-                            coords.col = 6:7, 
-                            data.col = 8, 
-                            covar.col = 9:15, 
-                            covar.names = names(fall)[9:15])
-    valid_geo <- as.geodata(fall[is_group,], 
-                            coords.col = 6:7, 
-                            data.col = 8, 
-                            covar.col = 9:15, 
-                            covar.names = names(fall)[9:15])
-    valid_coord <- valid_geo[[1]]
-    train_trend <- trend.spatial(trend = ~ D2A1 + A1_50 + 
-                                    A23_400 + Pop_5000 + 
-                                    D2C + Int_3000 + D2Comm, 
-                                train_geo)
-    test_trend <- trend.spatial(trend = ~ D2A1 + A1_50 + 
-                                A23_400 + Pop_5000 + 
-                                D2C + Int_3000 + D2Comm, 
-                                valid_geo)
-
-    kc_cv <- krige.conv(coords = training_coord, 
-                            data = training_data,
-                            locations = valid_coord, 
-                            krige=krige.control(type = "ok",
-                                        obj.m=wls_ests, 
-                                        trend.d= train_trend, 
-                                        trend.l= test_trend))
-    fall_geonew$pred[is_group] <- kc_cv$predict
-    fall_geonew$beta[i,] <- kc_cv$beta.est
-}
-
-# get the properties of the kriging predictions:
-mse_cv <- mean ((fall_geonew$data - fall_geonew$pred)^2 )
-r2_cv <- 1 - mse_cv/mean((fall_geonew$data - mean(fall_geonew$data))^2)
-
-#print results
-mse_cv
-cat("RMSE from CV:  ", sqrt(mse_cv), "\n")
-r2_cv
-
-# show CV results
-# TODO:  digits in kable not working WHY?
-res <- c("10-fold wls", mse_cv, sqrt(mse_cv), r2_cv)
-#kable(res, format = "markdown", col.names = c("  ", "MSE", "RMSE", "R2"), caption = "Compare LOO and 10-fold CV results", digits = 2)
-
-```
--->
-
-
-# START HERE
 
 
 **Step 3**:  Estimate the kriging predictions.  
 
-Note:  `geoR` kriging is failing when we pass it the entire grid of >18,000 points.  It doesn't seem to fail if we use a subset of this grid with 11,000 or fewer points.  TODO:  Future work if we don't convert to `gstat`. We should find out why this is happening and correct it.
-
-```{r krige in LA, eval = FALSE}
+```{r krige in LA}
 # ------------ krige in LA ------------
-# first define the two trends
-fall_trend <- trend.spatial(trend = ~ D2A1 + A1_50 + A23_400 + 
-                                Pop_5000 + D2C + Int_3000 + D2Comm, 
-                            fall_geo)
 
-# fails under the full grid; works with a grid of 11K or smaller
-#grid_trend <- trend.spatial(trend = ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm, la_geo)
+kc_la <-
+  krige(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
+        fall,
+        la_grid,
+        model = vfc.fit)
 
-test_trend <- trend.spatial(trend = ~ D2A1 + A1_50 + A23_400 + 
-                                Pop_5000 + D2C + Int_3000 + D2Comm, 
-                            test_geo)
-
-kc_la <- krige.conv(fall_geo, 
-                    locations=test_grid[,4:5],
-                    krige=krige.control(type = "ok", 
-                                        obj.m=wls_ests, 
-                                        trend.d= fall_trend, 
-                                        trend.l= test_trend))
-
+# check out the results; predictions are in `var1.pred`
+glimpse(kc_la)
 
 ```
-
-
 
 ### Plotting the predictions
 
-Display the predictions on a map.  The first chunk gives code to the default `geoR` plots, but it is hidden since I didn't find this output that helpful.  The second visible chunk adds our predictions to a Stamen map.  Later plots show refinements to the plotted predictions, with smoothing.
+Display the predictions on a map.  TODO:  The first chunk gives code to the default `gstat` plots, but it is hidden since I didn't find this output that helpful.  The second visible chunk adds our predictions to a Stamen map.  Later plots show refinements to the plotted predictions, with smoothing.
 
 
-```{r fall predictions, echo = FALSE, eval = FALSE}
-# ------------ fall predictions ----------
 
-quant <- quantile(kc_la$predict, seq(0.1, 0.9, 0.1))
-# Consider: Revisit breaks. (force minimum to be non-negative -- matters??)
-breaks <- c(max(min(kc_la$predict),0),quant[c(2,4,6,8)],max(kc_la$predict))
-# Consider:  fix up color range with a better range
-col.range <- c("yellow","orange","red","purple","blue","black")
-
-# Consider:  address $ categories in titles
-par(mfrow=c(1,2))
-plot(fall[, 3:2],
-     col = col.range[breaks],
-     ylab = "Latitude",
-     xlab = "Longitude")
-     title(main = "Original data in 5 categories \nbased on values", line = 2)
-plot(test_grid[, 3:2],
-     col = col.range[breaks],
-     ylab = "Latitude",
-     xlab = "Longitude",
-     cex = 0.15)
-     title(main = "Grid predictions in 5 categories \nbased on values", line = 2)
-     
-```
-
-```{r plot the grid predictions on the map, eval = FALSE}
+```{r plot the grid predictions on the map}
 # ------------ plot the grid predictions on the map ---------------
-# Note: need to merge the predictions onto the grid.  
-# Assume the datasets are in the same order
-test_grid$pred <- kc_la$predict
-test_grid$pred_nox <- exp(test_grid$pred)
+
+# first need to merge the predictions into the la_grid in order to use.
+# also create predicted NOx on the native scale
+new_grid <-
+  inner_join(as.data.frame(la_grid),
+             as.data.frame(kc_la),
+             by = c("lambert_x", "lambert_y")) %>% mutate(NOx = exp(var1.pred))
+
+glimpse(new_grid)
 
 my_theme <- theme(
     legend.position = c(.98, .02),
     legend.justification = c(1, 0),
     legend.box.background = element_rect(colour = "white", size = 3),
     legend.background = element_rect(fill = "white")
-    ) 
+    )
 
-g + geom_point(aes(x = longitude, y = latitude, col = pred_nox), 
-               data = test_grid, alpha = 0.5) + 
-    ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") + 
-    scale_color_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +  
+g + geom_point(aes(x = longitude, y = latitude, col = NOx),
+               data = as.data.frame(new_grid), alpha = 0.5) +
+    ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") +
+    scale_color_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +
     my_theme
 
 ```
 
 This refinement is the same gridded predictions, but now drops all points over 
 the water. 
-```{r plot gridded predictions not on the water, eval = FALSE}
+```{r plot gridded predictions not on the water}
 # ------------ plot gridded predictions not on the water ---------------
 # Note: The shape of the plotted prediction area does not quite match the land
 # area because the LA shape used to limit the plotting to LA does not match the
@@ -1013,15 +909,15 @@ the water.
 # It would be better to find the correct projection string. If you would like 
 # to look into this, see this page: https://rpubs.com/alobo/getmapCRS ... 
 # or make your map from a shapefile, with a known projection, as  described in 
-# a later section of this document. 
+# a different section of this document. 
 
-# identifies locations over the water and excludes them in test_grid_in_la
+# identifies locations over the water and excludes them in new_grid
 #   leverages previous chunk results
 
-# Make a SpatialPointsDataFrame from test_grid
+# Make a SpatialPointsDataFrame from new_grid
 proj_str <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
-spdf_test_grid <- SpatialPointsDataFrame(
-    coords = test_grid[, c("longitude", "latitude")], data = test_grid, 
+spdf_new_grid <- SpatialPointsDataFrame(
+    coords = new_grid[, c("longitude", "latitude")], data = new_grid, 
     proj4string = CRS(proj_str))
 
 # Make some geospatial objects for LA
@@ -1033,34 +929,38 @@ la_county_p = Polygon(coords = la_county[, c("longitude", "latitude")])
 la_county_ps = Polygons(list(la_county_p), 1)
 la_county_sps = SpatialPolygons(list(la_county_ps), proj4string = CRS(proj_str))
 
-# Subset test grid to only inlcude those points in LA
-spdf_test_grid_in_la <- spdf_test_grid[!is.na(over(spdf_test_grid, la_county_sps)), ]
-test_grid_in_la <- as.data.frame(spdf_test_grid_in_la)
+# Subset new_grid to only include those points in LA
+# TODO:  turn this into a nice tidyverse pipeline!
+spdf_new_grid_in_la <- spdf_new_grid[!is.na(over(spdf_new_grid, la_county_sps)), ]
+new_grid_in_la <- as.data.frame(spdf_new_grid_in_la)
 
 # Make the map
-g + geom_point(aes(x = longitude, y = latitude, col = pred_nox), 
-               data = test_grid_in_la, alpha = 0.5) + 
-    ggtitle("Map of Los Angeles \n with fall UK predictions overlaid, \n omitting points over the water") + 
-    scale_color_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +  
-    my_theme
+g + geom_point(aes(x = longitude, y = latitude, col = NOx),
+               data = new_grid_in_la,
+               alpha = 0.5) +
+  ggtitle("Map of Los Angeles \n with fall UK predictions overlaid, \n omitting points over the water") +
+  scale_color_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +
+  my_theme
 
 ```
 
-Now show an example plotting smooth gridded predicitons on the map with polygons.
+Now we show an example plotting smooth gridded predictions on the map with polygons.
 ```{r plot smooth grid predictions on the map with with polygons, eval = FALSE}
 # ------------ plot smooth grid predictions on the map with polygons -------
 
 # Interpolate to a regularly spaced grid and store as a list
-test_grid_interp <- with(test_grid, interp(longitude, latitude, pred_nox))
+# TODO:  this step is failing due to missing values and Infs not allowed so the
+# rest of the chunk fails also
+new_grid_interp <- with(new_grid, interp(longitude, latitude, NOx))
 
 # Expand grid into a data frame
-test_grid_dens_expand<-
-    with(test_grid_interp, expand.grid(x = x, y = y)) %>%
-    mutate(z = as.vector(test_grid_interp$z),
+new_grid_dens_expand<-
+    with(new_grid_interp, expand.grid(x = x, y = y)) %>%
+    mutate(z = as.vector(new_grid_interp$z),
            z = ifelse(is.na(z), 0, z))
 
 g + stat_contour(aes(x = x, y = y, z = z, fill = ..level..), alpha = 0.07, 
-                 data = test_grid_dens_expand, geom = "polygon", bins = 50) + 
+                 data = new_grid_dens_expand, geom = "polygon", bins = 50) + 
     scale_fill_gradient(name = "NOx (ppb)", low = "yellow", high = "red", 
                         breaks = seq(0, 125, 25), limits = c(0, 125)) +  
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid, \n smoothed predictions (with interpolation due to missing grid points)") + 
@@ -1068,13 +968,15 @@ g + stat_contour(aes(x = x, y = y, z = z, fill = ..level..), alpha = 0.07,
 
 ```
 
-Now show an example plotting smooth gridded predicitons on the map with tiles using stat_summary_2d. 
-```{r plot smooth grid predictions on the map with tiles 2, eval = FALSE}
+Now show an example plotting smooth gridded predicitons on the map with tiles
+using stat_summary_2d:
+
+```{r plot smooth grid predictions on the map with tiles 2}
 # ------------ plot smooth grid predictions on the map with tiles 2 -------
 
-# Note: we replace "+" with "%+%" to override the data prevously mapped (i.e., replace
+# Note: we replace "+" with "%+%" to override the data previously mapped (i.e., replace
 #   the current data frame, due to S3 method precedence issues)
-g %+% test_grid + aes(x = longitude, y = latitude, z = pred_nox) +
+g %+% new_grid + aes(x = longitude, y = latitude, z = NOx) +
     stat_summary_2d(fun = mean, alpha = 0.7, geom = "tile", bins = 30) +
     scale_fill_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid, \n using tiles with stat_summary_2d function") + 
@@ -1083,6 +985,7 @@ g %+% test_grid + aes(x = longitude, y = latitude, z = pred_nox) +
 ```
 
 Now we add code to plot the predictions on a map using shapefiles.
+TODO:  This isn't currently working.  Drop?
 
 ```{r prediction map with shapefiles, eval = FALSE}
 #----- prediction map with shapefiles --------
@@ -1155,16 +1058,16 @@ ca_hwy_df <- as.data.frame(ca_hwy_spdf_subset)
 
 # Convert expanded test grid data frame to a SpatialPointsDataFrame
 
-test_grid_dens_expand_spdf <- test_grid_dens_expand
-coordinates(test_grid_dens_expand_spdf) <- ~ x + y
-proj4string(test_grid_dens_expand_spdf) <- CRS(ca_hwy_proj)
+new_grid_dens_expand_spdf <- new_grid_dens_expand
+coordinates(new_grid_dens_expand_spdf) <- ~ x + y
+proj4string(new_grid_dens_expand_spdf) <- CRS(ca_hwy_proj)
 
 # Subset expanded test grid data frame to only include points in LA for plotting
 
-test_grid_dens_expand_spdf_subset <-
-    test_grid_dens_expand_spdf[!is.na(over(test_grid_dens_expand_spdf, ca_urb_sp)),]
-test_grid_dens_expand_df <-
-    as.data.frame(test_grid_dens_expand_spdf_subset)
+new_grid_dens_expand_spdf_subset <-
+    new_grid_dens_expand_spdf[!is.na(over(new_grid_dens_expand_spdf, ca_urb_sp)),]
+new_grid_dens_expand_df <-
+    as.data.frame(new_grid_dens_expand_spdf_subset)
     
 # Plot the LA border (ca_urb_df), LA highways (ca_hwy_df), and predictions
 
@@ -1176,7 +1079,7 @@ ca_map <- ggplot() +
               aes(x = long, y = lat, group = group),
               color = 'blue', size = 0.4) + 
     stat_contour(aes(x = x, y = y, z = z, fill = ..level..), alpha = 0.05, 
-                 data = test_grid_dens_expand_df, geom = "polygon", bins = 50) + 
+                 data = new_grid_dens_expand_df, geom = "polygon", bins = 50) + 
     scale_fill_gradient(name = "NOx (ppb)", low = "yellow", high = "red", 
                         breaks = seq(0, 125, 25), limits = c(0, 125)) +  
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid, \n smoothed predictions over a shapefile") + 
@@ -1188,15 +1091,19 @@ print(map_projected)
 
 #### Ordinary kriging using the residuals from a LUR
 
-The idea is to use a traditional linear model to fit the common model, save the residuals from this model, and then import this model into `gstat` and fit an OK model.
+The idea is to use a traditional linear model to fit the common model, save the
+residuals from this model, and then import this model into `gstat` and fit an OK
+model.
 
 TODO:  ADD this.  This is a homework problem.
 
 #### Variograms to compare with Mercer
 
-The idea is to try to produce the variograms like Mercer.  Need to use the breaks function to allow for very fine scale distances to capture the gradient structure.
+The idea is to try to produce the variograms like Mercer.  Need to use the
+breaks function to allow for very fine scale distances to capture the gradient
+structure.
 
-TODO:  ADD this.  This is a homework problem.
+TODO:  ADD this.  This is an optional homework problem.
 
 # Practice Session
 
@@ -1204,27 +1111,62 @@ During class we will review the output above.  Please come prepared to ask quest
 
 # Homework Exercises 
 
-1.  Fit a LUR model (using the common model covariates) to the season-specific snapshot data.  (One model per season.)  Take the residuals from those models and evaluate them:
-    a.  Estimate an emprical binned variogram to the residuals using default bins.  Plot this and discuss.
-    b.  Try a different set of bins for the variogram, making sure you create a few bins at the shorter distances (within the range of 0 to approximately 650 meters).  Plot this and discuss.
-    c.  Discuss what you have learned from plotting the variograms.  Is there evidence of spatial structure in the data?  Do you get different insights from each variogram?
+1.  Fit a LUR model (using the common model covariates) to the season-specific
+snapshot data.  (One model per season.)  Take the residuals from those models
+and evaluate them:
+    a.  Estimate an empirical binned variogram to the residuals using default
+    bins.  Plot this and discuss.
+    b.  **Optional**:  Try a different set of bins for the variogram, making
+    sure you create a few bins at the shorter distances (within the range of 0
+    to approximately 650 meters).  Plot this and discuss.
+    c.  Discuss what you have learned from plotting the variograms.  Is there
+    evidence of spatial structure in the data?  Do you get different insights
+    from each variogram?
     
-2.  **Optional extra credit**:  Using 10-fold cross-validation with the cluster variable to define the CV groups, estimate predictions from a 2-step model using the common model covariates.  For this model you need to separately create cross-validated predictions from the LUR model and from the OK model of the LUR residuals (of the full season-specfic dataset), and sum these to compare with the observed ln_nox data.
+2.  **Optional extra credit**:  Using 10-fold cross-validation with the cluster
+variable to define the CV groups, estimate predictions from a 2-step model using
+the common model covariates.  For this model you need to separately create
+cross-validated predictions from the LUR model and from the OK model of the LUR
+residuals (of the full season-specfic dataset), and sum these to compare with
+the observed ln_nox data.
 
-3.	Write a basic summary of your understanding of how universal kriging differs from land use regression.  What additional insights do you get from the Mercer et al paper now that you have done some analyses using the snapshot data?  
+3.	Write a basic summary of your understanding of how universal kriging differs
+from land use regression.  What additional insights do you get from the Mercer
+et al paper now that you have done some analyses using the snapshot data?
 
-4.	Discuss your thoughts on the most useful summaries to show from an exposure prediction analysis.   
+4.	Discuss your thoughts on the most useful summaries to show from an exposure
+prediction analysis.
 
 
-# Code Appendix
+# Appendix
+
+## Session information
 
 ```{r session.info}
-#-----------session.info: beginning of Code Appendix -------------
+#-----session information-----
 
+# print R session information
 sessionInfo()
+
 ```
 
-```{r appendix.code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
+## Embedded code
+
+```{r code.appendix, ref.label = knitr::all_labels(), echo = TRUE, eval = FALSE, , include=TRUE}
+#-----code appendix-----
+```
+
+## Functions defined 
+
+```{r functions, eval = TRUE}
+#-----functions-----
+
+# Show the names of all functions defined in the .Rmd
+# (e.g. loaded in the environment)
+lsf.str()
+
+# Show the definitions of all functions loaded into the current environment  
+lapply(c(lsf.str()), getAnywhere)
 
 ```
 
