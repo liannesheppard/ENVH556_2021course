@@ -104,5 +104,5 @@ me_pure <- function(n_subj = 10000) {
 #set.seed(100)
 
 # use lapply to return this as a list
-#mesim_pure <- lapply(1:1000, function(x) me_pure())
+#mesim_pure <- lapply(seq_len(1000), function(x) me_pure())
 

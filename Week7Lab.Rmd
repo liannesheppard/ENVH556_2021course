@@ -63,10 +63,8 @@ exposure on the health measure.  The parameter β is our target of inference, so
 over the multiple (e.g. 1,000) simulations we will store the estimates of this
 target of inference and then summarize these estimates to draw conclusions about
 the role of different exposure models on this target.  The function we will use
-for this exercise is `mesim_pure` found in the file named *MEprograms_pure.R*.
+for this exercise is `mesim_pure` found in the file named *mesim_pure.R*.
 Some sample code for running this program is below.
-
-<!--[Lianne, this file is named "mesim_pure.R" not "MEprograms_pure.R" as above, correct?] -->
 
 As an **optional** additional exercise we will then generalize this to consider
 two groups of locations:  monitoring (or sampling) locations and subject
@@ -106,12 +104,14 @@ world we never know whether our assumed model holds.
 
 ## Overview
 
-We have written two functions to demonstrate measurement error scenarios:
+We have written two functions to demonstrate measurement error scenarios:  
+
 1.	`mesim_pure`:  The simpler version to allow some basic understanding of pure
 Berkson and classical measurement error.  It generates true exposure and health
 outcome data in a group of subjects, along with modifications of the true
 exposure to give mismeasured exposures, both pure Berkson and pure classical.
-You will find this on the class web page with name: mesim_pure.R.
+You will find this on the class web page with name: mesim_pure.R.  
+
 2.	`mesim_like`:  The more complex version is based on the work done by Szpiro
 et al.  It generates the exposure and health data, computes predictions and
 estimates the quantities of interest that can be summarized, as described in
@@ -128,6 +128,12 @@ seed or starting value for the pseudo-random number generator.  In R we use the
 
 
 ## Outline of the steps to simulate and analyze the data for the pure Berkson and classical measurement error settings 
+
+We use **simulation** to get the statistical properties of our results:  To
+simulate this we replicate steps *1. Data Generation* and *2. Data Analysis*
+`n_iter` number of times.  In practice the value for `n_iter` should be high,
+1,000 or more.  For testing it is good practice to use a MUCH smaller number of
+replicates, such as `n_iter=10`.
 
 1.  **Data generation**:  Generate the exposure and outcome data on subjects for
     one "cohort".  (Note:  In a simulation study we can assume the true exposure 
@@ -167,13 +173,16 @@ seed or starting value for the pseudo-random number generator.  In R we use the
     b. Then consider health effect estimates using the 3 Berkson error exposures
     c. Then consider health effect estimates using the 3 classical error exposures
     
-3.  We use **simulation** to get the statistical properties of our results:  To
-    simulate this we replicate steps 1. and 2. `n_iter` number of times.  Our
-    default value for `n_iter` is 1,000.  For testing it is good practice to use 
-    a MUCH smaller number of replicates, such as `n_iter=10`.
-
-4.  **Summarize the results** of the exposures and health effect estimates after
+    
+3.  **Summarize the results** of the exposures and health effect estimates after
     the program completes
+    
+    
+The following chunk takes you through the data-generation and data analysis
+steps using simulation.  In the following chunk we help you get started with
+summarizing the results.  We also demonstrate the use of the package tictoc for
+timing the duration of the simulation and provide optional code (commented out)
+for using parallel processing.
 
 ```{r measurement.error.simulation_pure}
 #-----measurement error simulation for pure Berkson & classical-----
@@ -206,7 +215,9 @@ n_iter <- 10
 tic("single core pure ME processing time")
 
 # Step II:  Iterate
-result_pure_sp <- lapply(1:n_iter, function(x) me_pure()) %>% 
+# lapply runs the function me_pure n_iter times
+# seq_len tells R to index this from 1 to n_iter and is better practice than 1:n_iter
+result_pure_sp <- lapply(seq_len(n_iter), function(x) me_pure()) %>% 
   
   # bind dataframes for each iteration together (Step III)
   bind_rows(.id = "replicate")
@@ -250,10 +261,10 @@ summarize.  Also refer to the Table and Figures in Szpiro et al 2011.
 ```{r summarize.pure.ME.results}
 #-----summarize pure ME results-----
 
-# Summarize the results: find mean and sd of "b1" for all 7 predictors Note:
-# Students need to expand this summary to also get the E(se(beta1)), mean R2,
-# and average variance of each exposure (ideally reported on the SD scale).
-# Students should also think about graphical displays such as density plots.
+# Summarize the results: find mean and sd of "b1" for all 7 predictors along
+# with the E(se(beta1)), mean R2, and average variance of each exposure (ideally
+# reported on the SD scale but reported on the variance scale below). Students
+# should also think about graphical displays such as density plots.
 
 # Note: if you're using the multicore results, change `result_pure_sp` to 
 # `result_pure_mp` 
@@ -265,20 +276,23 @@ res_pure <- result_pure_sp %>%
               sd_b1 = sd(b1),
               `E(se_b1)` = sqrt(mean(seb1^2)),
               `E(R2)` = mean(R2),
-              `E(exp_var)` = mean(exp_var) 
+              `E(exp_var)` = mean(exp_var),
+              .groups = "drop" 
               ) %>%
     arrange(`E(exp_var)`) 
     
 # Display results 
-# TODO: remove N from the table; how to put it in the caption [Lianne, is
-# something like this what you had in mind? if so, you can remove the newline
-# break if desired and change digits. Alternatively, replace "unique(res$N)"
-# with "n_iter"]
-kable(res_pure %>% select(-N), 
-      digits = 3,
-      caption = paste0("Health effect estimate properties. ", 
-                       "\nN = ", unique(res_pure$N), " iterations.") 
-      )
+# Note: This presentation removes N from the table and puts it in the caption.
+# This is good practice since we don't want columns in our tables with constant
+# values.
+
+kable(
+  res_pure %>% select(-N),
+  digits = 3,
+  caption = paste0( 
+    "Health effect estimate properties and exposure variation based on simulations with ",
+                    unique(res_pure$N), " iterations." )
+)
 
 ```
 
@@ -320,11 +334,7 @@ kable(res_pure %>% select(-N),
        specified exposure model (full) and the mis-specified exposure model
        (reduced).
     
-3.  We use **simulation** to get the statistical properties of our results:  To
-    simulate this we replicate steps 1. and 2. `n_iter` number of times.  Our
-    default value for `n_iter` is 1,000.  For testing it is good practice to use 
-    a MUCH smaller number of replicates, such as `n_iter=10`.
-4.  **Summarize the results** of the exposures and health effect estimates after
+3.  **Summarize the results** of the exposures and health effect estimates after
     the program completes
 
 ```{r ME.simulation.berkson.like}
@@ -353,7 +363,7 @@ n_iter <- 10
 tic("single-core Berkson-like ME timing")
 
 # Step II:  Iterate
-result_like_sp <- lapply(1:n_iter, function(x) me_like()) %>% 
+result_like_sp <- lapply(seq_len(n_iter), function(x) me_like()) %>% 
   
   # bind list elements (Step III)
   bind_rows(.id = "replicate")
@@ -404,7 +414,8 @@ res_like <- result_like_sp %>%
             `E(b1)` = mean(b1),
             `SD(b1)` = sd(b1),
             `E(se_b1)` = sqrt(mean(seb1^2)),
-            `E(R2)` = mean(R2_y)
+            `E(R2)` = mean(R2_y),
+            .groups = "drop"
             ) %>% 
   arrange(predictor) 
 
@@ -412,8 +423,9 @@ res_like <- result_like_sp %>%
 # [Lianne, I added the same sort of modifications here as above if you want to keep]
 kable(res_like %>% select(-N), 
       digits = 3,
-      caption = paste0("Health effect estimate properties. ", 
-                       "\nN = ", unique(res_like$N), " iterations.") 
+      caption = paste0(
+              "Exposure R2 and health effect estimate properties based on simulations with ", 
+                       unique(res_like$N), " iterations.") 
       )
 
 ```

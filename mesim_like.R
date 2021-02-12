@@ -73,16 +73,16 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
     subj <- create_dataset(n_subj, sd1_s, sd_eta, alpha_0, alpha) %>% 
         mutate(y = beta[1] + beta[2] * x + rnorm(n_subj, sd = sd_eps))
     
-    # now create the 1st monitoring dataset drawn from the same distribution as the
-    # subject data
+    # now create the 1st monitoring dataset drawn from the same distribution as
+    # the subject data
     samp1 <- create_dataset(n_samp, sd1_s, sd_eta, alpha_0, alpha)
     
-    # now create the 2nd monitoring dataset drawn from a different distribution not
-    # the same as the subject data distribution
+    # now create the 2nd monitoring dataset drawn from a different distribution
+    # not the same as the subject data distribution
     samp2 <- create_dataset(n_samp, sd2_s, sd_eta, alpha_0, alpha)
     
-    # now develop exposure predictions using the first monitor datset and predict
-    #  on the subjects
+    # now develop exposure predictions using the first monitor datset and
+    # predict on the subjects
     # Fully specified exposure model
     lm_1full <- lm(x ~ s_1 + s_2 + s_3, data = samp1)
     
@@ -101,8 +101,8 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
                       r2 = glance(lm_1red)$r.squared)
     
     
-    # Now develop exposure predictions using the second monitor datset and predict
-    # on the subjects
+    # Now develop exposure predictions using the second monitor dataset and
+    # predict on the subjects
     # Fully specified exposure model
     lm_2full <- lm(x ~ s_1 + s_2 + s_3, data = samp2)
     
