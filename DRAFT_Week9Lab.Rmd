@@ -56,6 +56,28 @@ data_dir <- file.path(project_path, "Datasets", "mobile_monitoring")
 
 ```
 
+<!-- THINGS TO ADD/MODIFY/REFRAME IN LAB:
+
+# Time alignment before combining dataset
+(all instruments are one 1-sec interval currently...)
+
+# Spatial Smoothing
+average by distance covered
+
+# Removing the Influence of Local Exhaust Plumes
+rolling 25th percentile method used by Choi et al. (2012)
+outlier resistant statistics such as the median
+
+# Characterizing Background
+Another task in mobile monitoring studies is to characterize "background"
+concentrations.
+
+# Lab replicates concepts in:
+[Brantley et al., 2014](https://amt.copernicus.org/articles/7/2169/2014/)
+[full text](https://amt.copernicus.org/articles/7/2169/2014/amt-7-2169-2014.pdf)
+
+-->
+
 # Introduction and Purpose
 
 The purpose of this lab is to practice working with time series data, develop
@@ -246,7 +268,7 @@ lapply(all_data, function(i){
           # sum missing
           n_miss = sum(is.na(i)), 
           
-          # precent missing
+          # percent missing
           perc_miss = round(n_miss/length(i) * 100, 1)
           )
    }) %>% 
@@ -319,13 +341,13 @@ the other instruments (there is no GPS data at the beginning of the dataframe).
 This may be due to the fact that the instruments were turned on for "warm-up"
 before the measurement campaign started.
 
-Let's drop data missing the GPS for convenience, but is this the best thing to
+Let's drop data missing the GPS variables for convenience, but is this the best thing to
 under all circumstances and for all variables?
 
 ```{r drop.missing}
 #-----drop missing-----
 
-all_data <- drop_na(all_data)   #, latitude, longitude
+all_data <- drop_na(all_data, latitude, longitude)
 
 ```
 
@@ -339,7 +361,7 @@ package `tsbox` has many useful functions for converting between these
 timeseries formats.
 
 We've focused most of our effort on `tidyverse` tools this term, so let's focus
-on the `tsibble`, `feasts`, `slider`, and `fable` package functions.
+on the `tsibble`, `feasts`, and `slider` package functions.
 
 ```{r try.tsibble}
 #-----try tsibble----
@@ -370,11 +392,11 @@ ts_data
 
 Let's also fill the gaps in time. In other words, the index column `datetime`
 needs to be unique and complete. Adding these new time rows introduces NAs to
-the data, so you'll then have a choice abot it and how to fill that data in.
-`tidyr::fill()` can help with this task, and the choice may be more or less more
-or less important depending on the timescale you're working on. Given the small
-amount of missing and for the one second timescale, it's not unreasonable to
-introduce a few rows with NAs here.
+the data, so you'll then have a choice about it and how to fill that data in.
+`tidyr::fill()` can help with this task, and the choice may be more or less
+important depending on the timescale you're working on. Given the small amount
+of missing and the one second timescale, it's not unreasonable to introduce a
+few rows with NAs here.
 
 ```{r fill.ts}
 #-----fill ts-----
@@ -405,16 +427,16 @@ ts_data %>% ACF(co2_conc, lag_max = 60) %>% autoplot()
 ```
 
 
-# New Time Scales
+# Temporal Smoothing with New Time Scales 
 
 A common task with timeseries data is averaging to different timescales. From
 the autocorrelation plot above, we can see at a lag of 60 seconds, the $CO_2$
-concentrations are less correlated. So let's convert our 1-second data to the
+concentrations are less correlated. So let's convert our 1-second data to some
 longer timescales. One package that helps with averaging tasks is `slider`.
 
 For the first average we'll use the timescale period (minutes) to calculate
 1-minute averages. Though with other data, this could also be months, weeks,
-years, etc. This equates to a "block average". For the second average
+years, etc. This is a "block average". For the second average
 (2-minutes) we'll demonstrate a moving ("sliding" or "rolling") average, where a
 number of neighbors before and after a value of interest are used to compute an
 average.
@@ -469,7 +491,7 @@ that the size of the dataframe decreases.
 ts_new <- ts_data %>% 
   
   # get the "floor" of each datetime row (unfortunately `tsibble` doesn't let us
-  # use "datetime" for the new variable name)
+  # use "datetime" for this new variable name)
   index_by(datetime_new = floor_date(datetime, unit = "5mins")) %>%
   
   # summarise the mean of rows across all dataframe columns
@@ -487,7 +509,7 @@ ts_new
 
 ## Plot Different Timescales
 
-Let's inspect their timeseries:
+Let's inspect the timeseries of our different averages:
 
 ```{r plot.different.time.averages}
 #-----plot different time averages-----
@@ -526,9 +548,9 @@ concentrations.
 
 Here is a helper function for the `bbox` argument of `get_stamenmap()`. It takes
 a dataframe, finds the latitude and longitude columns, makes calculations to add
-a little "extra" space to the plotting area and outputs an object used to define
-the extent of the mapping region. You might find it helpful in the future. It
-requires `stringr`and `tidyr`.
+a little "extra" space to the plotting area, and outputs an object used to
+define the extent of the mapping region. You might find it helpful in the
+future. It requires `stringr`and `tidyr`.
 
 ```{r define.make_bbox.function}
 #-----define make_bbox function------
@@ -554,8 +576,8 @@ make_bbox <- function(.data, width_extra = 0.0001, height_extra = 0.00005){
 
 ```
 
-(I've split up getting the map objects from mapping so you can run the mapping
-chunk interactively without re-downloading the stamen map.)
+(I've split up getting the map objects from mapping them so you can run the
+mapping chunk interactively without re-downloading the stamen map.)
 
 ```{r get.map.objects}
 #-----get map objects-----
@@ -563,10 +585,10 @@ chunk interactively without re-downloading the stamen map.)
 # define the bounding box for the map using make_bbox 
 bbox <- make_bbox(ts_data)
 
-# make a map of the base layer of stamen tiles (without messages)
+# make a map of the base layer of stamen tiles (without downloading messages)
 map <- get_stamenmap(bbox, zoom = 14, maptype = "terrain") %>% suppressMessages()
 
-# make the map image from the tiles
+# make the map image from the stamen map tiles
 basemap <- ggmap(map, darken = c(0.5, "white")) + theme_void()
 
 ```
@@ -583,7 +605,8 @@ map_times <- ts_data %>%
   # filter to rows with :00, :15, :30, and :45 minute times
   filter(str_detect(time, pattern = ":00:00|:15:00|:30:00|:45:00")) %>% 
   
-  # make a map_time variable dropping the seconds
+  # make a map_time variable, dropping the seconds (the `$` indicates the
+  # character pattern should be at the end of the string)
   mutate(map_time = str_remove(time, pattern = ":00$"))
 
 ```
@@ -621,10 +644,12 @@ map_co2
 
 
 ## Map P-Trak Ratios
+<!-- THIS IS NOT IN BRANTLEY, BUT IS IT SOMETHING TO KEEP? IT LIKELY NEEDS 
+MODIFICATION AS I WAS JUST FIGURING OUT?DRAFTING SOME CODE -->
 
 As the $CO_2$ map shows, the data we've collected represent concentrations over 4 hours, meaning some of the variability we're observing could be a mix of spatial (i.e. the variability we see in the map) and temporal (i.e. the variability observed in timeseries plots) processes.
 
-Taking the ratio of pollutants...
+Next, we'll use the P-Trak data to explore the idea of pollutant ratios...
 
 ```{r map.ratios}
 #-----map ratios----
@@ -654,14 +679,11 @@ map_ratios
 
 ```
 
-# Removing Background
 
-Another strategy to aid in unmixing space-time processes in mobile monitoring
-data is to remove the "background" atmospheric processes.
+## Remove a Percentile of the Data 
+<!-- IS THIS PLUME DETECTION OR BACKGROUND CHARACTERIZATION?? -->
 
-## Remove a Percentile of the Data
-
-One method to do that is to subtract a percentile of the data 
+One method to do that is to subtract a percentile of the data... 
 
 ```{r remove.moving.percentile}
 #-----remove moving percentile-----
@@ -685,6 +707,8 @@ ts_data
 
 
 ## Loess Smoother
+<!-- ALSO NOT IN BRANTLEY, BUT SUGGESTED BY LIANNE. IT SEEMS LIKE I'M DOING
+SOMETHING WRONG OR MISSING SOMETHING...-->
 
 Another way to remove trends in tmeseries data is to fit a smoother to the data and subtract the fitted values from the observations. 
 
@@ -694,7 +718,7 @@ Another way to remove trends in tmeseries data is to fit a smoother to the data 
 # specify loess model
 mdl <- loess(co2_conc ~ seq_along(time), data = ts_data, span = 0.1)
 
-# add predictions and residuals to ts_data
+# add predictions and adjusted concentrations to ts_data
 ts_data <- ts_data %>% 
   bind_cols(loess = predict(mdl, ts_data)) %>% 
   mutate(co2_adj_loess = co2_conc-loess)
@@ -729,9 +753,9 @@ ggplot(ts_data) +
 # Practice
 
 1. Choose a new pollutant. Investigate the autocorrelation: 
-  a. plot the 1-second autocorrelation plot
-  b. choose a new timescale
-  c. check the autocorrelation with the new timescale
+  a) plot the 1-second autocorrelation plot
+  b) choose a new timescale
+  c) check the autocorrelation with the new timescale
 
 
 # Code Appendix
