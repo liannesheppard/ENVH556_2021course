@@ -84,7 +84,7 @@ me_pure_data <- function(n_subj = 10000, seed = NULL) {
 me_pure <- function(d = pure_data){
     
     # list predictors in d, looking for x, berkson and classical variable names
-    predictors <- str_subset(names(df), "x|Berk_|class_")
+    predictors <- str_subset(names(d), "x|Berk_|class_")
     
     # Define a tibble of 4 parameters x 7 models
     ret <- lapply(predictors, function(i) {
