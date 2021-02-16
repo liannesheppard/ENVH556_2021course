@@ -624,13 +624,16 @@ using the fall season for this example.  Summarize the data.  Take note of the
 range of the data coordinates, the maximum distance, and other dataset features
 (e.g. which covariates are included).
 
-```{r read snapshot as a SPDF}
-# ------------ read fall snapshot as SPDF --------
+```{r read fall snapshot as SPDF}
+# ----read fall snapshot as SPDF-----
+
 # focus only on the common model covariates
 fall <- snapshot %>%
-    filter(seasonfac == "2Fall") %>%
-    select(ID, latitude, longitude, lat_m, long_m, lambert_x, lambert_y, ln_nox, D2A1, A1_50, A23_400, Pop_5000, D2C, Int_3000, D2Comm, cluster, group_loc, FieldID) %>%
-  as.data.frame
+  filter(seasonfac == "2Fall") %>%
+  select(ID, latitude, longitude, lat_m, long_m, lambert_x, lambert_y, ln_nox, 
+         D2A1, A1_50, A23_400, Pop_5000, D2C, Int_3000, D2Comm, cluster, 
+         group_loc, FieldID) %>% 
+  as.data.frame()
 
 # now convert this to a SPDF.  Use Lambert projections which may not need a CRS
 # as they are already in meters and don't need a conversion for distance
@@ -696,7 +699,7 @@ axis labels, etc.
 
 
 ```{r plot fall snapshot}
-# ------------ plot fall snapshot -----
+# ----plot fall snapshot -----
 
 # Follows plotting options shown above; some commented out
 # chops up the range of the data based on the native scale
@@ -707,11 +710,20 @@ spplot(fall, "ln_nox", colorkey = TRUE, main = "ln(NOx) Concentrations (ln(ppb)"
 
 # we can also produce a similar plot of the data with ggplot, though we need to
 # first convert it to a data frame:
-fall %>% as.data.frame %>%
-  ggplot(aes(longitude, latitude)) + geom_point(aes(size = ln_nox), color =
-                                                  "blue", alpha = 1 / 4) +
+fall %>% as.data.frame() %>%
+  ggplot(aes(longitude, latitude)) + 
+  geom_point(aes(size = ln_nox), color ="blue", alpha = 1 / 4) +
   ggtitle("ln(NOx) Concentrations (ln(ppb)") + coord_equal() + theme_bw()
 
+# [Lianne, here is an option, not sure it is better. The ln_nox really scruntches up the scale]
+fall %>% as.data.frame() %>%
+  ggplot(aes(longitude, latitude)) + 
+  geom_point(aes(color = exp(ln_nox)), alpha = 0.4) +
+  scale_color_continuous(type = "viridis") +
+  labs(title = "NOx Concentrations (ppb)", 
+       color = "NOx (ppb)") + 
+  coord_equal() + 
+  theme_bw()
 
 ```
 
