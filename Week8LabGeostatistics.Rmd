@@ -107,9 +107,6 @@ if (file.exists(grid.path)) {
 
 ```
 
-TODO:  Note:  This lab is a work in process.  Some questions and gaps are highlighed with "TODO"
-
-
 # Introduction and Purpose
 
 The purpose of this lab is to learn about geostatistical models and further
@@ -528,7 +525,9 @@ the data with values to indicate the groups each observation belongs in (e.g.
 the cluster variable in the snapshot dataset).
 
 TODO test/expand:  need to identify how the code works with the various options
-and explore the output.  
+and explore the output.  Update to align with the didactic goals of the lab
+which is to show geostatistics tools and to leverage our understanding of
+cross-validation for prediction performance.
 
 ```{r meuse cross-validation}
 # ---- meuse cross-validation ----
@@ -565,11 +564,8 @@ bubble(meuse.CVLOO, "residual",
 
 #### Kriging using our own cross-validation code
 
-TODO or drop:  It would be nice to combine this with our CV code and
-show the same performance statistics we used in lab 4.  
-
-TODO:  The following chunk integrates kriging with our cross-validation
-function from lab 4.
+TODO:  The following chunk integrates kriging with our cross-validation function
+from lab 4 and shows the same performance statistics.
 
 
 ## Geostatistical analysis using the Snapshot data
@@ -775,12 +771,6 @@ g + geom_point(aes(x = longitude, y = latitude, col = exp(ln_nox)),
     ggtitle("Map of Los Angeles \n with the fall snapshot data") +
     theme(legend.position = c(.98,.02), legend.justification = c(1,0)) 
 
-# TODO:  In some testing the points didn't show and I got this warning message:
-# Warning message:
-# In checkNA("cex") : reached elapsed time limit
-# Is this a persistent problem?  It seems OK in the knitted output
-
-
 ```
 
 Note, in comparing the above map to the one displayed in Figure 2b of Mercer, a
@@ -831,8 +821,10 @@ these data is a sensible choice.)
 # values shown in Mercer
 vf <- variogram(ln_nox~1, fall, cutoff = 31000)
 
-# Then fit a variogram model, offering to the function several different model options (exponential, spherical, and Matern):
-# TODO:  Note that none of the variogram models appears to converge.  Investigate
+# Then fit a variogram model, offering to the function several different model
+# options (exponential, spherical, and Matern):
+# TODO:  Note that none of the variogram models appears to converge.
+# Investigate.  Still true? Was it the cutoff was too short?
 vf.fit <- fit.variogram(vf, vgm(c("Exp", "Sph", "Mat")))
 
 # Find out which variogram model was selected
@@ -865,7 +857,8 @@ plot(vfc, vfc.fit)
 # Mercer used an exponential variogram, so refit the variogram using that:
 vfc.fit <- fit.variogram(vfc, vgm("Exp"))
 # Observe that the exponential has a range of 79,356 m, a partial sill of
-# 0.0749, and a nugget of 0.01798.
+# 0.0749, and a nugget of 0.01798.  This differs from what was reported by
+# Mercer.
 vfc.fit 
 # Plot the empirical variogram with the overlaid fit.  Observe the exponential
 # and spherical fits are almost indistinguishable.
