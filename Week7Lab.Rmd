@@ -291,6 +291,44 @@ kable(
 ```
 
 
+```{r plot.pure.ME.data}
+#-----plot pure ME data-----
+
+# [Lianne, please edit as needed]
+
+# create temporary datafame for ggplot
+temp <- pure_data %>% 
+  
+  # make dataset longer
+  pivot_longer(cols = c(contains("Berk_"), contains("class_")), 
+               names_to = "error_type", 
+               values_to = "error_outcome")
+
+# make plot
+ggplot(data = temp, aes(x = y, y = error_outcome)) + 
+  
+  # different plots by error type
+  facet_wrap(~error_type) +
+  
+  # points
+  geom_point(shape = "o", alpha = 0.4) +
+  
+  # y =x line
+  geom_abline(lty = "dashed", color = "gray") +
+  
+  # labels
+  labs(x = "Outcome", 
+       y = "Outcome with error"
+       ) + 
+  
+  # theme
+  theme_bw()
+
+
+```
+
+
+
 ## Outline of the steps to simulate and analyze the data for the Berkson**-like** and classical**-like** measurement error setting 
 
 1.  **Data generation**:  Generate the exposure and outcome data on subjects for
