@@ -748,26 +748,33 @@ building level.
 Note 2:  Maps require access to the internet to load. 
 
 ```{r LA Stamen map}
-# ---------- LA Stamen map --------------
+# ----LA Stamen map-----
+
 # uses ggmap; initial version of code kindly provided by Brian High
-# get the basic dimensions of the data
-height <- max(la_grid$latitude) - min(la_grid$latitude)
-width <- max(la_grid$longitude) - min(la_grid$longitude)
 
-# Define the boundaries of our map -- we want it somewhat bigger than our data
-# dimensions
-bbox <- c(
-            min(la_grid$longitude) - 0.1*width,
-            min(la_grid$latitude) - 0.1*height,
-            max(la_grid$longitude) + 0.1*width,
-            max(la_grid$latitude) + 0.1*height
-    )
+# helper function for bbox (you can modify and use this for your own work)
+make_bbox <- function(.data, width_extra = 0.0001, height_extra = 0.00005){
+  
+  # find lat and long column names
+  long <- str_subset(string = names(.data), pattern = "Long|long")
+  lat <- str_subset(string = names(.data), pattern = "Lat|lat")
+  
+  # drop rows with NA (first converting to a dataframe if not already)
+  temp <- .data %>% as_tibble() %>% drop_na(all_of(c(long, lat)))
+  
+  # create a named vector with the corners of the plotting region
+  out <- c(left = min(temp[[long]]) + width_extra*min(temp[[long]]),
+           bottom = min(temp[[lat]]) - height_extra*min(temp[[lat]]),
+           right = max(temp[[long]]) - width_extra*min(temp[[long]]),
+           top = max(temp[[lat]]) + height_extra*min(temp[[lat]]) )
+}
 
-names(bbox) <- c('left', 'bottom', 'right', 'top')
+# define the bounding box for the map using make_bbox 
+bbox <- make_bbox(la_grid)
 
-# Make a map base layer of "Stamen" tiles
-map <- suppressMessages(get_stamenmap(bbox, zoom = 11,
-                                     maptype = "toner-background"))
+# Make a map base layer of "Stamen" tiles (suppressing messages)
+map <- get_stamenmap(bbox, zoom = 11, maptype = "toner-background") %>% 
+  suppressMessages()
 
 # Make the map image from the tiles 
 g <- ggmap(map, darken = c(0.5, "white")) + theme_void() 
