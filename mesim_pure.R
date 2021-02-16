@@ -3,7 +3,7 @@
 #   me_pure
 
 # Load the broom package for the tidy() function
-pacman::p_load(broom)
+pacman::p_load(broom, stringr)
 
 
 # getMSE function:
@@ -20,8 +20,8 @@ getMSE <- function(obs,pred) {
     return(result)
 }
 
-# me_pure function
-me_pure <- function(n_subj = 10000) {
+# make dataframe to simulate pure measurement error
+me_pure_data <- function(n_subj = 10000, seed = NULL) {
     # definition of terms:
     #   n for sample size (n_subj), referring to subject 
     #   z for exposure model covariates
@@ -53,41 +53,54 @@ me_pure <- function(n_subj = 10000) {
     sd_e <- c(4, 4, 4)
     sd_eps <- 25
     
-    # first create the subject dataset, using n_subj as supplied in the
+    
+    # set seed
+    set.seed(seed)
+    
+    # create the subject dataset, using n_subj as supplied in the
     # function's parameter list:
-    s_1 <- rnorm(n_subj, sd = sd_s[1])
-    s_2 <- rnorm(n_subj, sd = sd_s[2])
-    s_3 <- rnorm(n_subj, sd = sd_s[3])
+    tibble( 
+        s_1 = rnorm(n_subj, sd = sd_s[1]),
+        s_2 = rnorm(n_subj, sd = sd_s[2]),
+        s_3 = rnorm(n_subj, sd = sd_s[3]),
+        
+        x = alpha_0 + alpha[1] * s_1 + alpha[2] * s_2 + alpha[3] * s_3 +
+            rnorm(n_subj, sd = sd_eta),
+        y = beta[1] + beta[2] * x + rnorm(n_subj, sd = sd_eps),
+        
+        Berk_1 = alpha_0 + alpha[1] * s_1,
+        Berk_2 = alpha_0 + alpha[1] * s_1 + alpha[2] * s_2,
+        Berk_3 = alpha_0 + alpha[1] * s_1 + alpha[2] * s_2 + alpha[3] * s_3,
+        
+        class_1 = x       + rnorm(n_subj, sd = sd_e[1]),
+        class_2 = class_1 + rnorm(n_subj, sd = sd_e[2]),
+        class_3 = class_2 + rnorm(n_subj, sd = sd_e[3])
+    )
     
-    x <- alpha_0 + alpha[1] * s_1 + alpha[2] * s_2 + alpha[3] * s_3 +
-        rnorm(n_subj, sd = sd_eta)
-    y <- beta[1] + beta[2] * x + rnorm(n_subj, sd = sd_eps)
+}
+
+
+# me_pure function
+me_pure <- function(d = pure_data){
     
-    Berk_1 <- alpha_0 + alpha[1] * s_1
-    Berk_2 <- alpha_0 + alpha[1] * s_1 + alpha[2] * s_2
-    Berk_3 <- alpha_0 + alpha[1] * s_1 + alpha[2] * s_2 + alpha[3] * s_3
-    
-    class_1 <- x       + rnorm(n_subj, sd = sd_e[1])
-    class_2 <- class_1 + rnorm(n_subj, sd = sd_e[2])
-    class_3 <- class_2 + rnorm(n_subj, sd = sd_e[3])
-    
-    predictors <- c("x",
-                    "Berk_1",
-                    "Berk_2",
-                    "Berk_3",
-                    "class_1",
-                    "class_2",
-                    "class_3")
+    # list predictors in d, looking for x, berkson and classical variable names
+    predictors <- str_subset(names(df), "x|Berk_|class_")
     
     # Define a tibble of 4 parameters x 7 models
-    # note use of "get()" to refer to the variable as a variable, not its name
     ret <- lapply(predictors, function(i) {
-        lmfit <- lm(y ~ get(i))
-        tibble(b1 = tidy(lmfit)$estimate[2], 
-               seb1 = tidy(lmfit)$std.error[2], 
-               R2 = as.numeric(getMSE(y, lmfit$fitted.values)[2]), 
-               exp_var = var(get(i)) 
-               )
+        
+        # specify formula
+        frmla <- as.formula(paste("y ~", i))
+        
+        # fit linear model
+        lmfit <- lm(frmla, data = d)
+        
+        #compile parameters of interest
+        tibble(b1 = tidy(lmfit)$estimate[2],
+               seb1 = tidy(lmfit)$std.error[2],
+               R2 = as.numeric(getMSE(d$y, lmfit$fitted.values)[2]),
+               exp_var = var(d[[i]])
+        )
     }) %>% 
         
         # Set names for list items
@@ -99,10 +112,4 @@ me_pure <- function(n_subj = 10000) {
     # Return the dataframe
     return(ret)
 }
-
-# The following belongs outside of the function file once we finish coding:
-#set.seed(100)
-
-# use lapply to return this as a list
-#mesim_pure <- lapply(seq_len(1000), function(x) me_pure())
 
