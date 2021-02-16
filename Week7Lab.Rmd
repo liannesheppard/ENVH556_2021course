@@ -41,7 +41,7 @@ pacman::p_load(knitr, dplyr, tidyr, tictoc, broom, parallel, Hmisc)
 ```
 
 
-TODO:  Also allow one full dataset to be output.
+<!--TODO:  Also allow one full dataset to be output. -->
 
 # Introduction and Purpose
 
@@ -180,20 +180,12 @@ replicates, such as `n_iter=10`.
     
 The following chunk takes you through the data-generation and data analysis
 steps using simulation.  In the following chunk we help you get started with
-summarizing the results.  We also demonstrate the use of the package tictoc for
+summarizing the results.  We also demonstrate the use of the `tictoc` package for
 timing the duration of the simulation and provide optional code (commented out)
 for using parallel processing.
 
 ```{r measurement.error.simulation_pure}
 #-----measurement error simulation for pure Berkson & classical-----
-
-#[Lianne, I've edited this section heavily, as well as the .R source file. I
-# believe they are easier to follow now without the nested list structure.
-# There was a difference between the single and multi-core versions before my
-# edits, and I believe it was due to the seed argument in the multicore version.
-# If that is set to FALSE, the first replicates match, but then differ slightly
-# in other replicates. The documentation isn't clear to me, but mclapply
-# continues to do something with the seed in subsequent iterations.]
 
 # Steps to accomplish the above:  
 #   I. define function that creates the data for one iteration of n_iter
@@ -226,7 +218,7 @@ toc()
 
 # # Bonus topic:  parallel processing
 # # The above application uses single-core processing.  Multi-core (or parallel)
-# # processing can greatly speed up long programs.  We use the system.time()
+# # processing can greatly speed up long programs.  We use the tictoc
 # # function to determine how long a procedure works.  We use multi-core versions
 # # of functions to allow the parallel processing as in the following steps:
 # # Multi-core processing - Note: mclapply() does not work in Windows
@@ -247,6 +239,8 @@ toc()
 #   toc()
 # }
 
+# Note: There are slight differences between the single and multi-core versions
+# which is due to internal seed-setting in the multi-core version.
 
 # Step IV. (In the next chunk) Summarize the results
 
@@ -340,9 +334,6 @@ kable(
 ```{r ME.simulation.berkson.like}
 #-----ME simulation for Berkson-like & classical-like measurement error-----
 
-#[Lianne, I've edited this section heavily too, as well as the .R source file. Check to make sure it looks OK, if not, we can always go back to the old files.]
-
-
 # Steps to accomplish the above:  
 #   I. define function that creates the data for one iteration of n_iter
 #   II. repeat over n_iter iterations.  We will use lapply(); the replicate
@@ -420,7 +411,6 @@ res_like <- result_like_sp %>%
   arrange(predictor) 
 
 # Display results
-# [Lianne, I added the same sort of modifications here as above if you want to keep]
 kable(res_like %>% select(-N), 
       digits = 3,
       caption = paste0(
