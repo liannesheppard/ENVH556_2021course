@@ -197,8 +197,8 @@ for using parallel processing.
 # Step I: Read in the function in the mesim_pure.R code
 source("mesim_pure.R")
 
-# Set the seed
-set.seed(100)
+# create the pure measurement error dataframe (setting the seed if desired)
+pure_data <- me_pure_data(n_subj = 10000, seed = 556)
 
 # define the number of simulation iterations to use
 n_iter <- 10
@@ -209,7 +209,7 @@ tic("single core pure ME processing time")
 # Step II:  Iterate
 # lapply runs the function me_pure n_iter times
 # seq_len tells R to index this from 1 to n_iter and is better practice than 1:n_iter
-result_pure_sp <- lapply(seq_len(n_iter), function(x) me_pure()) %>% 
+result_pure_sp <- lapply(seq_len(n_iter), function(x) me_pure(pure_data)) %>% 
   
   # bind dataframes for each iteration together (Step III)
   bind_rows(.id = "replicate")
@@ -228,7 +228,7 @@ toc()
 #   tic("multi-core pure ME processing time")  
 #   
 #   # Step II:  Iterate
-#   result_pure_mp <- mclapply(1:n_iter, function(x) me_pure(),
+#   result_pure_mp <- mclapply(1:n_iter, function(x) me_pure(pure_data),
 #                              mc.cores = 8,
 #                              mc.set.seed = TRUE,
 #                              mc.preschedule = TRUE) %>% 
