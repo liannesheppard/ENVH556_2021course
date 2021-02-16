@@ -260,9 +260,9 @@ Tutorial](https://rstudio-pubs-static.s3.amazonaws.com/134781_28af3676f8b943749e
 data(meuse)
 
 # learn about this dataset
-# currently a data frame
+# currently it is just a raw data.frame
 class(meuse)
-names(meuse)
+head(meuse)
 
 # glimpse and str are both useful to learn the structure.  I like glimpse from the `dplyr` package, particularly once this becomes converted to a spatial dataset
 str(meuse)
@@ -271,23 +271,24 @@ glimpse(meuse)
 # summary of the data
 summary(meuse) 
 
-# Now turn meuse into a spatial dataset and see how the class changes 
-# use of `coordinates` changes it to a SpatialPointsDataFrame (SPDF)
-coordinates(meuse) <- ~x+y
+# So far, R does not know that this is spatial data.
+# Now turn meuse into a spatial dataset
+# We specify that the XY coordinates are in columns `x` and `y`
+meuse <- st_as_sf(meuse, coords=c('x','y'))
+# It is now both an sf object and a data.frame
 class(meuse)
 
-# see the impact on str and glimpse
-# note that both describe 5 slots with names @data, @coords.nrs, @coords, @bbox,
-# @proj4string
-str(meuse)
-glimpse(meuse)
-
-# see the impact on summary.  It gives us a little more information but only
-# summarizes the non-location variables, dropping x and y from the summary now
-summary(meuse)
-
-# Note that we can use the function `coordinates` to retrieve the coordinates
-coordinates(meuse)[1:5,]
+# Although the xy columns are now recognized as the coordinates,
+# they still have no explicit spatial meaning without a projection
+st_crs(meuse)
+# Look up the projection of the meuse coordinates here.
+# This is dataset-specific
+# https://rdrr.io/cran/sp/man/meuse.html
+# The proj4 string is a standardized way to describe a projection
+# Get the proj4string here:
+# https://epsg.io/28992
+# Set the projection
+st_crs(meuse) <- '+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +towgs84=565.417,50.3319,465.552,-0.398957,0.343988,-1.8774,4.0725 +units=m +no_defs'
 
 ```
 
@@ -305,17 +306,29 @@ Projections are essential to know in order to place maps in space correctly.
 
 The next chunk shows how to access values in slots.  
 
-```{r access slots}
-# ---- meuse access slots ----
+```{r extract meuse data}
+# ---- extract meuse data ----
 
-# bounding box, coordinates, proj4string all have helper functions:
-bbox(meuse)
-coordinates(meuse) %>% glimpse
-proj4string(meuse)
+# Confirm the coordinates are properly projected now:
+st_crs(meuse)
 
-# and all the slots can be accessed directly
-meuse@data %>% glimpse
-meuse@coords.nrs
+# View a summary description of our projected data frame
+meuse
+
+# bounding box
+st_bbox(meuse)
+
+# projection
+st_crs(meuse)
+
+# The original data.frame columns (except for X and Y, which are now `geometry`),
+# can still be accessed in the usual way
+head(meuse)
+meuse$zinc
+colnames(meuse)
+
+# To extract original XY coordinates
+st_coordinates(meuse) %>% head()
 
 
 ```
@@ -326,35 +339,67 @@ meuse@coords.nrs
 ```{r meuse plots}
 # ---- meuse plots ----
 
-# Now use some default plots from the `sp` package to plot the data
-# chops up the range of the data based on the native scale
-spplot(meuse, "zinc", colorkey = TRUE, main = "Zinc Concentrations (ppm)")
-
-# same plot, but chops up the range of the data on the log scale
-spplot(meuse, "zinc", do.log = TRUE, colorkey = TRUE, 
-       main = "Zinc Concentrations (ppm)")
-
-# now produce a bubble plot
-bubble(meuse, "zinc", col="blue", main = "Zinc Concentrations (ppm)")
-
-# we can also produce a similar plot of the data with ggplot, though we need to
-# first convert it to a data frame:
-meuse %>% as.data.frame %>% 
-  ggplot(aes(x, y)) + geom_point(aes(size=zinc), color="blue", alpha=3/4) + 
-  ggtitle("Zinc Concentration (ppm)") + coord_equal() + theme_bw()
-
-# and we can read in the Meuse River boundary and add it to the plot
+# Read in the Meuse River polygon
 data(meuse.riv)
-# filtering so the bounds of the river aren't too long
-meuse.riv.subset <- as.data.frame(meuse.riv) %>% filter(V2 > 329500 & V2 < 334100)
+head(meuse.riv,3)
+tail(meuse.riv,3)
+# Note that row 1 is the same as the last row (this closes the polygon)
+str(meuse.riv)
+# The meuse.riv object is still just a matrix of raw XY values.
+# The following code specifies the columns containing the coordinates,
+# specifies the projection of the coordinates as the same as meuse projection,
+# and explicitly combines the points into a polygon
+meuse.riv <- st_as_sf(data.frame(meuse.riv),coords=1:2,crs=st_crs(meuse)) %>%
+  st_combine() %>%
+  st_cast('POLYGON')
 
-meuse %>% as.data.frame %>% 
-  ggplot(aes(x, y)) + geom_point(aes(size=zinc), color="blue", alpha=1/4) + 
-  ggtitle("Zinc Concentration (ppm)") + coord_equal() + theme_bw() +
-  geom_path(data=meuse.riv.subset, aes(x=V1,y=V2) )
+# ggplot2 readily accepts sf objects for plotting via geom_sf()
+# Let's make a map
+ggplot(data=meuse) + geom_sf(data=meuse.riv) + geom_sf(aes(size=zinc))
 
+# The river is too long compared to the study area
+# For prettier plotting, crop the river polygon to within 500m buffer of data
+# This works because our projecton is in meter units
+# This code buffers the points of the measurements by 500 m,
+# obtains the smallest possible rectangle around those points,
+# (bounding box), and crops the river polygon to that rectangle
+meuse.riv <- st_crop(meuse.riv,st_bbox(st_buffer(meuse,500)))
+
+# Much better!
+ggplot(data=meuse) + geom_sf() + geom_sf(data=meuse.riv)
+
+# Color the zinc data based on the native scale
+# Plotting the river before the points ensures points are on top of river
+# Scale_color_gradients with rainbow(rev=TRUE) creates a heatmap
+
+ggplot(data=meuse) +
+  geom_sf(data=meuse.riv) +
+  geom_sf(data=meuse, aes(color=zinc)) +
+  scale_color_gradientn(colors=rainbow(4,rev=TRUE)) +
+  ggtitle("Zinc Concentration (ppm)") +
+  theme_bw()
+
+# Color the zinc data based on the log scale
+
+ggplot(data=meuse) +
+  geom_sf(data=meuse.riv) +
+  geom_sf(data=meuse, aes(color=log(zinc))) +
+  scale_color_gradientn(colors=rainbow(4,rev=TRUE)) +
+  ggtitle("Zinc Concentration in log(ppm)") +
+  theme_bw()
+
+# Make a bubble plot
+# The alpha value adds transparency to plotting shapes
+
+ggplot(data=meuse) +
+  geom_sf(data=meuse.riv) +
+  geom_sf(data=meuse, aes(size=zinc), color='blue', alpha=1/2) +
+  ggtitle("Zinc Concentration (ppm)") +
+  theme_bw()
 
 ```
+
+Note that geom_sf plots in lat-long units by default, even though our data is stored in a different projection. (With the projection defined, it would be trivial to convert our points to a different projection if we wanted as well). We can check that map projections are working properly and explore the study area on [Google Maps](https://www.google.com/maps?q=50.97,5.74)
 
 ### Estimating variograms
 
@@ -457,7 +502,9 @@ example we are estimating a common mean using ordinary kriging.
 
 # read in the meuse grid to use for predictions
 data(meuse.grid)
-gridded(meuse.grid) = ~x+y
+# convert to sf points
+meuse.grid <- st_as_sf(meuse.grid,coords=c('x','y'),crs=st_crs(meuse))
+#gridded(meuse.grid) = ~x+y
 
 # ordinary kriging of log(zinc)
 # first two arguments are formula and data; krige doesn't like explicit
@@ -465,11 +512,11 @@ gridded(meuse.grid) = ~x+y
 lzn.kr <- krige(log(zinc)~1, meuse, newdata = meuse.grid, model = v.fit)
 
 # plot kriging predictions and SEs
-pl1 <- spplot(lzn.kr[1], main = "OK prediction of log-zinc")
+pl1 <- plot(lzn.kr[c('var1.pred','var1.var')], main = "OK prediction of log-zinc")
 pl1
 
 lzn.kr$se = sqrt(lzn.kr$var1.var)
-pl2 <- spplot(lzn.kr["se"], main = "OK prediction error")
+pl2 <- plot(lzn.kr["se"], main = "OK prediction error")
 pl2
 
 ```
@@ -501,9 +548,9 @@ plot(v.uk, model = m.uk)
 lzn.kr <- krige(log(zinc)~sqrt(dist), meuse, meuse.grid, model = m.uk)
 
 # plot the UK predictions and SEs
-pl3 <- spplot(lzn.kr[1], main = "UK prediction of log-zinc")
+pl3 <- plot(lzn.kr[c('var1.pred','var1.var')], main = "UK prediction of log-zinc")
 lzn.kr$se = sqrt(lzn.kr$var1.var)
-pl4 <- spplot(lzn.kr["se"], main = "UK prediction error")
+pl4 <- plot(lzn.kr["se"], main = "UK prediction error")
 
 # Now plot all 4 kriging results on a single plot, which allows easy comparison
 print(pl1, split = c(1,1,2,2), more = T)
