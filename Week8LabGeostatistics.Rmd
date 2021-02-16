@@ -72,7 +72,7 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 # sp: spatial data methods -- will eventually be superseded by `sf`
 # rgdal:  projections, coordinate systems
 # downloader
-pacman::p_load(tidyverse, knitr, dplyr, gstat, maps, ggmap, 
+pacman::p_load(tidyverse, knitr, dplyr, gstat, maps, ggmap, stars,
                funModeling, Hmisc, scales, akima, sp, rgdal, downloader, sf)
 # Note: this lab will only knit if the latest version of ggmap is installed.  
 #   The following line does this, but needs to be run at the console before
