@@ -144,7 +144,6 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
         # create tibble with variables of interest
         tibble(b1 = tidy(lmfit)$estimate[2], 
                seb1 = tidy(lmfit)$std.error[2],
-               R2_y = as.numeric(getMSE(subj$y, lmfit$fitted.values)[2]),
                exp_var = var(subj[[i]]), 
                a3hat = predictor[[i]][["a3hat"]], 
                a3var = predictor[[i]][["a3var"]], 

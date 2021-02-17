@@ -289,6 +289,7 @@ kable(
 
 ```
 
+## Plots of one dataset showing the best fit lines for true vs. mismeasured exposures
 
 ```{r plot.pure.ME.data, message=FALSE}
 #-----plot pure ME data-----
@@ -325,11 +326,16 @@ ggplot(data = temp, aes(x = error_exposure, y = y)) +
   
   # labels
   labs(x = "Exposure with Various Types of Pure Measurement Error", 
-       y = "Outcome"
+       y = "Outcome y"
        ) + 
   
   # theme
-  theme_bw()
+  theme_bw() +
+  
+  # legend
+  scale_color_discrete(name = "Exposure\nType",
+                          breaks = c("gray","red"),
+                       labels = c("True","Mismeasured"))
 
 ```
 
@@ -448,13 +454,13 @@ res_like <- result_like_sp %>%
   group_by(predictor) %>% 
   summarise(N = n(),
             `R2_W` = mean(r2),
+            `E(exp_var)` = mean(exp_var),
             `E(a3)` = mean(a3hat),
             `E(se(a3))` = sqrt(mean(a3var)),
-            `E(exp_var)` = mean(exp_var),
             `E(b1)` = mean(b1),
             `SD(b1)` = sd(b1),
             `E(se_b1)` = sqrt(mean(seb1^2)),
-            `E(R2)` = mean(R2_y),
+            `RMSE_b1` = sqrt(var(b1)+(mean(b1-2)^2)),
             .groups = "drop"
             ) %>% 
   arrange(predictor) 
