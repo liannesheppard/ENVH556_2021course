@@ -355,14 +355,14 @@ meuse.riv <- st_as_sf(data.frame(meuse.riv),coords=1:2,crs=st_crs(meuse)) %>%
 
 # ggplot2 readily accepts sf objects for plotting via geom_sf()
 # Let's make a map
-ggplot(data=meuse) + geom_sf(data=meuse.riv) + geom_sf(aes(size=zinc))
+ggplot(data=meuse) + geom_sf() + geom_sf(data=meuse.riv)
 
 # The river is too long compared to the study area
 # For prettier plotting, crop the river polygon to within 500m buffer of data
-# This works because our projecton is in meter units
+# This works because our projection is in meter units
 # This code buffers the points of the measurements by 500 m,
-# obtains the smallest possible rectangle around those points,
-# (bounding box), and crops the river polygon to that rectangle
+# obtains the smallest possible rectanglar bounding box around those buffers,
+# and crops the river polygon to that rectangle
 meuse.riv <- st_crop(meuse.riv,st_bbox(st_buffer(meuse,500)))
 
 # Much better!
