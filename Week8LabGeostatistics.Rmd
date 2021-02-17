@@ -844,6 +844,7 @@ vf <- variogram(ln_nox~1, fall, cutoff = 31000)
 # options (exponential, spherical, and Matern):
 # TODO:  Note that none of the variogram models appears to converge.
 # Investigate.  Still true? Was it the cutoff was too short?
+# [CZ: this is working for me as-is]
 vf.fit <- fit.variogram(vf, vgm(c("Exp", "Sph", "Mat")))
 
 # Find out which variogram model was selected
@@ -935,6 +936,7 @@ new_grid <-
 
 glimpse(new_grid)
 
+# create theme
 my_theme <- theme(
     legend.position = c(.98, .02),
     legend.justification = c(1, 0),
@@ -942,6 +944,7 @@ my_theme <- theme(
     legend.background = element_rect(fill = "white")
     )
 
+# make plot
 g + geom_point(aes(x = longitude, y = latitude, col = NOx),
                data = as.data.frame(new_grid), alpha = 0.5) +
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") +
@@ -986,10 +989,11 @@ la_county_ps = Polygons(list(la_county_p), 1)
 la_county_sps = SpatialPolygons(list(la_county_ps), proj4string = CRS(proj_str))
 
 # Subset new_grid to only include those points in LA
-# TODO:  turn this into a nice tidyverse pipeline!
-spdf_new_grid_in_la <- spdf_new_grid[!is.na(over(spdf_new_grid, la_county_sps)), ]
-new_grid_in_la <- as.data.frame(spdf_new_grid_in_la)
-
+new_grid_in_la <- spdf_new_grid %>% 
+  as_tibble() %>% 
+  mutate(idx = over(spdf_new_grid, la_county_sps) ) %>% 
+  drop_na(idx)
+  
 # Make the map
 g + geom_point(aes(x = longitude, y = latitude, col = NOx),
                data = new_grid_in_la,
