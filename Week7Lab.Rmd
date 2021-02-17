@@ -194,11 +194,11 @@ for using parallel processing.
 #   III. transform the list structure to one easier to analyze
 #   IV. Summarize the results
 
-# Step I: Read in the function in the mesim_pure.R code
+# Step I: Read in the functions in the mesim_pure.R code
 source("mesim_pure.R")
 
-# create the pure measurement error dataframe (setting the seed if desired)
-pure_data <- me_pure_data(n_subj = 10000, seed = 556)
+# Set the seed
+set.seed(556)
 
 # define the number of simulation iterations to use
 n_iter <- 10
@@ -209,7 +209,7 @@ tic("single core pure ME processing time")
 # Step II:  Iterate
 # lapply runs the function me_pure n_iter times
 # seq_len tells R to index this from 1 to n_iter and is better practice than 1:n_iter
-result_pure_sp <- lapply(seq_len(n_iter), function(x) me_pure(pure_data)) %>% 
+result_pure_sp <- lapply(seq_len(n_iter), function(x) me_pure(n_subj = 10000)) %>% 
   
   # bind dataframes for each iteration together (Step III)
   bind_rows(.id = "replicate")
@@ -291,21 +291,25 @@ kable(
 ```
 
 
-```{r plot.pure.ME.data}
+```{r plot.pure.ME.data, message=FALSE}
 #-----plot pure ME data-----
 
-# [Lianne, please edit as needed]
+# create one example of the pure measurement error dataframe
+pure_data <- me_pure_data(n_subj = 10000)
+
+coefs_true <- lm(y~x, pure_data)$coefficients
 
 # create temporary datafame for ggplot
 temp <- pure_data %>% 
-  
+
+#TODO:  Chris, we need x to get the best fit line under the true exposure, either    
   # make dataset longer
   pivot_longer(cols = c(contains("Berk_"), contains("class_")), 
                names_to = "error_type", 
-               values_to = "error_outcome")
+               values_to = "error_exposure")
 
 # make plot
-ggplot(data = temp, aes(x = y, y = error_outcome)) + 
+ggplot(data = temp, aes(x = error_exposure, y = y)) + 
   
   # different plots by error type
   facet_wrap(~error_type) +
@@ -313,12 +317,15 @@ ggplot(data = temp, aes(x = y, y = error_outcome)) +
   # points
   geom_point(shape = "o", alpha = 0.4) +
   
-  # y =x line
-  geom_abline(lty = "dashed", color = "gray") +
+  # Best fit line given true exposure x
+  geom_abline(intercept = coefs_true[1], slope = coefs_true[2], lty = "dashed", color = "gray") +
+  
+  # best fit line given mismeasured exposure
+  geom_smooth(method = lm, se = FALSE, lty = "solid", color = "red") +
   
   # labels
-  labs(x = "Outcome", 
-       y = "Outcome with error"
+  labs(x = "Exposure with Various Types of Pure Measurement Error", 
+       y = "Outcome"
        ) + 
   
   # theme
@@ -423,6 +430,11 @@ toc()
 
 The next chunk is to summarize the results using basic descriptive tools and
 plots.  We only show a simple version of part of the summary needed.
+
+In the example used in this lab, Version 1 is for the third covariate having the
+same variation at the subject and monitor locations while Version 2 is where
+there is much less variation at the monitor locations than at the subject
+locations.
 
 ```{r summarize.like.ME.results}
 #-----summarize like ME results-----
