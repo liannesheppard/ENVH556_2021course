@@ -41,8 +41,6 @@ pacman::p_load(knitr, dplyr, tidyr, tictoc, broom, parallel, Hmisc)
 ```
 
 
-<!--TODO:  Also allow one full dataset to be output. -->
-
 # Introduction and Purpose
 
 The purpose of this lab is to **better understand pure classical and Berkson
@@ -99,6 +97,7 @@ properties.  The simultaneous strength and weakness of simulation studies is
 that the true data-generating model is known.  Thus we can evaluate exactly how
 a statistics performs under a given set of assumptions.  Of course, in the real
 world we never know whether our assumed model holds.
+
 
 # Getting Started
 
@@ -297,12 +296,12 @@ kable(
 # create one example of the pure measurement error dataframe
 pure_data <- me_pure_data(n_subj = 10000)
 
-coefs_true <- lm(y~x, pure_data)$coefficients
+# get the "true" coefficients of the relationship between exposure and outcome
+coefs_true <- lm(y ~ x, pure_data)$coefficients
 
 # create temporary datafame for ggplot
 temp <- pure_data %>% 
 
-#TODO:  Chris, we need x to get the best fit line under the true exposure, either    
   # make dataset longer
   pivot_longer(cols = c(contains("Berk_"), contains("class_")), 
                names_to = "error_type", 
@@ -318,7 +317,8 @@ ggplot(data = temp, aes(x = error_exposure, y = y)) +
   geom_point(shape = "o", alpha = 0.4) +
   
   # Best fit line given true exposure x
-  geom_abline(intercept = coefs_true[1], slope = coefs_true[2], lty = "dashed", color = "gray") +
+  geom_abline(intercept = coefs_true[1], slope = coefs_true[2], 
+              lty = "dashed", color = "gray") +
   
   # best fit line given mismeasured exposure
   geom_smooth(method = lm, se = FALSE, lty = "solid", color = "red") +
@@ -330,7 +330,6 @@ ggplot(data = temp, aes(x = error_exposure, y = y)) +
   
   # theme
   theme_bw()
-
 
 ```
 
