@@ -55,9 +55,6 @@ me_pure_data <- function(n_subj = 10000) {
     sd_eps <- 25
     
     
-    # # set seed
-    # set.seed(seed)
-    
     # create the subject dataset, using n_subj as supplied in the
     # function's parameter list:
     tibble( 
@@ -84,6 +81,7 @@ me_pure_data <- function(n_subj = 10000) {
 # me_pure function
 me_pure <- function(n_subj = 10000){
     
+    # create dataframe with simulated measurement error
     d <- me_pure_data(n_subj)
     
     # list predictors in d, looking for x, berkson and classical variable names
