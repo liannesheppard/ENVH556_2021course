@@ -673,7 +673,10 @@ For later use, we need to convert the grid to a SPDF:
 #-----convert LA grid to SPDF-----
 
 # la_grid is a tibble; convert to a data frame (needed?)
-la_grid <- as.data.frame(la_grid)
+la_grid <- la_grid %>% 
+  
+  # drop -Inf values in D2A1 variable
+  filter(D2A1 != -Inf)
 
 # convert to a SPDF
 coordinates(la_grid) <- ~lambert_x+lambert_y
@@ -932,6 +935,7 @@ new_grid <- inner_join(as.data.frame(la_grid),
                        as.data.frame(kc_la),
                        by = c("lambert_x", "lambert_y")) %>% 
   mutate(NOx = exp(var1.pred))
+  #filter(NOx != Inf)
 
 glimpse(new_grid)
 
@@ -944,7 +948,6 @@ my_theme <- theme(
     )
 
 # make plot
-# [CZ: I don't know why there are gray points coming through - there are zer NAs...]
 g + geom_point(aes(x = longitude, y = latitude, color = NOx),
                data = new_grid, alpha = 0.5) +
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") +
@@ -956,7 +959,8 @@ g + geom_point(aes(x = longitude, y = latitude, color = NOx),
 This refinement is the same gridded predictions, but now drops all points over 
 the water. 
 ```{r plot gridded predictions not on the water}
-# ------------ plot gridded predictions not on the water ---------------
+#-----plot gridded predictions not on the water-----
+
 # Note: The shape of the plotted prediction area does not quite match the land
 # area because the LA shape used to limit the plotting to LA does not match the
 # shape in the stamen tiles. This is probably because we are not using the 
@@ -975,18 +979,23 @@ the water.
 
 # Make a SpatialPointsDataFrame from new_grid
 proj_str <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
 spdf_new_grid <- SpatialPointsDataFrame(
-    coords = new_grid[, c("longitude", "latitude")], data = new_grid, 
-    proj4string = CRS(proj_str))
+  coords = new_grid[, c("longitude", "latitude")], 
+  data = new_grid, 
+  proj4string = CRS(proj_str) 
+  )
 
 # Make some geospatial objects for LA
 la_county <-  map_data("county") %>% 
     filter(region == 'california', subregion == 'los angeles') %>% 
     rename("longitude"="long", "latitude"="lat") %>% 
     mutate(longitude = longitude - 0.02, latitude = latitude - 0.02)
+
 la_county_p = Polygon(coords = la_county[, c("longitude", "latitude")])
 la_county_ps = Polygons(list(la_county_p), 1)
 la_county_sps = SpatialPolygons(list(la_county_ps), proj4string = CRS(proj_str))
+
 
 # Subset new_grid to only include those points in LA
 new_grid_in_la <- spdf_new_grid %>% 
@@ -1005,12 +1014,13 @@ g + geom_point(aes(x = longitude, y = latitude, col = NOx),
 ```
 
 Now we show an example plotting smooth gridded predictions on the map with polygons.
-```{r plot smooth grid predictions on the map with with polygons, eval = FALSE}
-# ------------ plot smooth grid predictions on the map with polygons -------
+```{r plot smooth grid predictions on the map with polygons}
+# ----plot smooth grid predictions on the map with polygons-----
 
 # Interpolate to a regularly spaced grid and store as a list
 # TODO:  this step is failing due to missing values and Infs not allowed so the
 # rest of the chunk fails also
+# [CZ: I filtered out the Inf values of la_grid, so this works now. It doesn't fix the fact that the la_grid file has -Infs]
 new_grid_interp <- with(new_grid, interp(longitude, latitude, NOx))
 
 # Expand grid into a data frame
@@ -1028,11 +1038,11 @@ g + stat_contour(aes(x = x, y = y, z = z, fill = ..level..), alpha = 0.07,
 
 ```
 
-Now show an example plotting smooth gridded predicitons on the map with tiles
+Now show an example plotting smooth gridded predictons on the map with tiles
 using stat_summary_2d:
 
 ```{r plot smooth grid predictions on the map with tiles 2}
-# ------------ plot smooth grid predictions on the map with tiles 2 -------
+#-----plot smooth grid predictions on the map with tiles 2-----
 
 # Note: we replace "+" with "%+%" to override the data previously mapped (i.e., replace
 #   the current data frame, due to S3 method precedence issues)
