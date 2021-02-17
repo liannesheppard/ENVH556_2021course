@@ -549,7 +549,7 @@ meuse.CV5uk <-
   krige.cv( log(zinc) ~ sqrt(dist), meuse,
     model = m.uk, nmax = 40, nfold = 5 )
 # plot the residuals
-bubble(meuse.CV5, "residual", 
+bubble(meuse.CV5uk, "residual", 
       main = "log(zinc) UK on sqrt(dist): 5-fold CV residuals")
 
 # ordinary kriging, LOOCV
