@@ -625,7 +625,7 @@ range of the data coordinates, the maximum distance, and other dataset features
 (e.g. which covariates are included).
 
 ```{r read fall snapshot as SPDF}
-# ----read fall snapshot as SPDF-----
+#-----read fall snapshot as SPDF-----
 
 # focus only on the common model covariates
 fall <- snapshot %>%
@@ -670,7 +670,7 @@ glimpse(fall)
 For later use, we need to convert the grid to a SPDF:  
 
 ```{r convert LA grid to SPDF}
-# ------------ convert LA grid to SPDF --------
+#-----convert LA grid to SPDF-----
 
 # la_grid is a tibble; convert to a data frame (needed?)
 la_grid <- as.data.frame(la_grid)
@@ -699,7 +699,7 @@ axis labels, etc.
 
 
 ```{r plot fall snapshot}
-# ----plot fall snapshot -----
+#-----plot fall snapshot-----
 
 # Follows plotting options shown above; some commented out
 # chops up the range of the data based on the native scale
@@ -808,7 +808,8 @@ than making it obvious to us that the area covered by the grid is not completely
 aligned with the area covered by the map.
 
 ```{r plot the grid on the map}
-# ------------ plot the grid on the map ---------------
+# ----plot the grid on the map-----
+
 # Note: we read the grid csv data above
 # The map range is set above so no points are removed.
 g + geom_point(aes(x = longitude, y = latitude), data = as.data.frame(la_grid), 
@@ -833,7 +834,7 @@ educationa/practice purposes only.  Scientifically we don't think an OK model of
 these data is a sensible choice.)
 
 ```{r fall estimate variogram}
-# ---- fall estimate variogram ----
+#-----fall estimate variogram-----
 
 # first estimate the variogram object and assign it a name
 # the default maximum distance (cutoff) is too short so set it to align w/
@@ -859,7 +860,7 @@ plot(vf, vf.fit)
 # first estimate the variogram object and assign it a name
 vfc <-
   variogram(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
-            fall,
+            data = fall,
             cutoff = 31000)
 
 # Then fit a variogram model, offering to the function several different model
@@ -884,8 +885,6 @@ vfc.fit
 # and spherical fits are almost indistinguishable.
 plot(vfc, vfc.fit)
 
-
-
 ```
 
 Observe:  TODO:  ADD comments.
@@ -901,7 +900,7 @@ TODO:  ADD
 **Step 3**:  Estimate the kriging predictions.  
 
 ```{r krige in LA}
-# ------------ krige in LA ------------
+#-----krige in LA-----
 
 kc_la <-
   krige(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
@@ -925,14 +924,14 @@ area shown.
 
 
 ```{r plot the grid predictions on the map}
-# ------------ plot the grid predictions on the map ---------------
+#-----plot the grid predictions on the map-----
 
 # first need to merge the predictions into the la_grid in order to use.
 # also create predicted NOx on the native scale
-new_grid <-
-  inner_join(as.data.frame(la_grid),
-             as.data.frame(kc_la),
-             by = c("lambert_x", "lambert_y")) %>% mutate(NOx = exp(var1.pred))
+new_grid <- inner_join(as.data.frame(la_grid),
+                       as.data.frame(kc_la),
+                       by = c("lambert_x", "lambert_y")) %>% 
+  mutate(NOx = exp(var1.pred))
 
 glimpse(new_grid)
 
@@ -945,8 +944,9 @@ my_theme <- theme(
     )
 
 # make plot
-g + geom_point(aes(x = longitude, y = latitude, col = NOx),
-               data = as.data.frame(new_grid), alpha = 0.5) +
+# [CZ: I don't know why there are gray points coming through - there are zer NAs...]
+g + geom_point(aes(x = longitude, y = latitude, color = NOx),
+               data = new_grid, alpha = 0.5) +
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") +
     scale_color_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +
     my_theme
