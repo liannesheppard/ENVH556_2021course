@@ -579,32 +579,54 @@ cross-validation for prediction performance.
 ```{r meuse cross-validation}
 # ---- meuse cross-validation ----
 
+# Define a wrapper function krige.cv.sf that does not drop the projection
+# of the sf object. This repairs an apparent bug in krige.cv()
+krige.cv.sf <- function(formula, locations, model = NULL, ..., beta = NULL, 
+	nmax = Inf, nmin = 0, maxdist = Inf, nfold = nrow(locations), 
+	verbose = interactive(), debug.level = 0){
+  # Repeating the exact arguments from krige.cv source code
+  krige.cv1 <- krige.cv(formula, locations, model = NULL, ..., beta = NULL, 
+	nmax = Inf, nmin = 0, maxdist = Inf, nfold = nrow(locations), 
+	verbose = interactive(), debug.level = 0)
+  # force projection to that of the function input
+  st_crs(krige.cv1) <- st_crs(locations)
+  return(krige.cv1)
+}
+
+# Define function to create a bubble plot for kriging residuals
+bubble.krige.cv.sf <- function(cv.out, plot_title){
+  ggplot(data=cv.out) +
+  geom_sf(aes(size=abs(residual), color=factor(residual<0)), alpha=1/2) +
+  scale_color_discrete(name='residual > 0') +
+  scale_size_continuous(name='|residual|') +
+  ggtitle(plot_title) +
+  theme_bw()
+}
+
 # ordinary kriging, 5-fold cross-validation 
 # nmax defaults to all observations used for kriging; this sets it at 40
 # TODO:  investigate the difference
-meuse.CV5 <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5) 
+meuse.CV5 <- krige.cv.sf(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5)
 # plot the residuals
-bubble(meuse.CV5, "residual", main = "log(zinc): 5-fold CV residuals")
+bubble.krige.cv.sf(meuse.CV5,"log(zinc): 5-fold CV residuals")
 
 # ordinary kriging, LOOCV
-meuse.CVLOO <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40)
+meuse.CVLOO <- krige.cv.sf(log(zinc)~1, meuse, model = v.fit, nmax = 40)
 # plot the residuals
-bubble(meuse.CVLOO, "residual", main = "log(zinc): LOO CV residuals")
+bubble.krige.cv.sf(meuse.CVLOO, "log(zinc): LOO CV residuals")
 
 # universal kriging, 5-fold cross-validation 
 meuse.CV5uk <-
-  krige.cv( log(zinc) ~ sqrt(dist), meuse,
+  krige.cv.sf( log(zinc) ~ sqrt(dist), meuse,
     model = m.uk, nmax = 40, nfold = 5 )
 # plot the residuals
-bubble(meuse.CV5, "residual", 
-      main = "log(zinc) UK on sqrt(dist): 5-fold CV residuals")
+bubble.krige.cv.sf(meuse.CV5uk,"log(zinc) UK on sqrt(dist): 5-fold CV residuals")
 
-# ordinary kriging, LOOCV
-meuse.CVLOO <- krige.cv(log(zinc)~sqrt(dist), meuse, 
+# universal kriging, LOOCV
+meuse.CVLOOuk <- krige.cv.sf(log(zinc)~sqrt(dist), meuse, 
                         model = m.uk, nmax = 40)
 # plot the residuals
-bubble(meuse.CVLOO, "residual", 
-       main = "log(zinc) UK on sqrt(dist): LOO CV residuals")
+bubble.krige.cv.sf(meuse.CVLOOuk,"log(zinc) UK on sqrt(dist): LOO CV residuals")
 
 ```
 
