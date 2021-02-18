@@ -349,6 +349,78 @@ ggplot(data = temp, aes(x = error_exposure, y = y)) +
 ```
 
 
+<!-- 
+
+Lianne, here is an alternative to the chunk above. I thought about what I was
+doing wrong and the the solution to get one legend symbol is to make both of the
+lines the same type (before one was an abline and one was a geom_smooth). ggplot
+saw those the same way it would see a geom_point() and geom_line(), putting both
+symbols in the legend. The difference with the version below is that the dashed
+line does not span the whole plot area as ablines do, but just the range of the
+data. So you'll just have to choose what your preference/priority is.
+
+With the new type of line, depending on how many points you'd like to plot, I'd
+adjust the dashed line color since it can be hard to see. If you'd like 10000
+points "gray" seems fine, with 250 points, "black" might be better?
+
+If you want to keep the chunk below just delete "ALTERNATE" in the chunk header
+and the whole chunk above.
+
+-->
+
+```{r plot.pure.ME.data.ALTERNATE, message=FALSE}
+#-----plot pure ME data ALTERNATE-----
+
+# create one example of the pure measurement error dataframe
+pure_data <- me_pure_data(n_subj = 10000)
+#pure_data <- me_pure_data(n_subj = 250)
+
+# create temporary datafame for ggplot
+temp <- pure_data %>% 
+  
+  # make dataset longer
+  pivot_longer(cols = c(contains("Berk_"), contains("class_")), 
+               names_to = "error_type", 
+               values_to = "error_exposure")
+
+# make plot
+ggplot(data = temp, aes(x = error_exposure, y = y)) + 
+  
+  # different plots by error type
+  facet_wrap(~error_type) +
+  
+  # points
+  geom_point(shape = "o", alpha = 0.6) +
+  
+  # best fit line given true exposure x
+  geom_smooth(method = lm, se = FALSE, data = temp, 
+              aes(x = x, y = y, linetype = "dashed", color = "gray") ) +
+  
+  # best fit line given mismeasured exposure
+  geom_smooth(method = lm, se = FALSE, aes(linetype = "solid", color = "red")) +
+  
+  # specify legend values manually
+  scale_color_manual(name = "Exposure Type",
+                     values = c("gray", "red"),
+                     labels = c("True", "Mismeasured"),
+                     guide = "legend") +
+
+  scale_linetype_manual(name = "Exposure Type",
+                        values = c("dashed", "solid"),
+                        labels = c("True", "Mismeasured"),
+                        guide = "legend") +
+  
+  # labels
+  labs(x = "Exposure with Various Types of Pure Measurement Error", 
+       y = "Outcome y") +
+  
+  # theme
+  theme_bw() + 
+  theme(legend.position = "bottom")
+
+```
+
+
 ## Outline of the steps to simulate and analyze the data for the Berkson**-like** and classical**-like** measurement error setting 
 
 1.  **Data generation**:  Generate the exposure and outcome data on subjects for
