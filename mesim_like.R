@@ -136,18 +136,6 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
         add_predictions(lm_2full,"xhat_2full") %>% 
         add_predictions(lm_2red,"xhat_2red")
     
-    # Chris:  something is messed up here.  We need to loop over the 5 exposure
-    # models (now named exposure_vars), and then compute statistics for each
-    # one, some of which come from the previous exposure model, which are in the
-    # predictor list.  Did I fix this correctly??  I don't understand how to put
-    # it together at the end and it is failing, so more is needed.  I expect the
-    # setNames and bind_rows need correction.
-    #
-    # [Lianne, I think maybe we just want the names of the predictor list to be
-    # the exposure vars? I've made this change, so it it is expressive, but we
-    # could alternately just use `names(predictor)` in the lapply and `setNames`
-    # functions]
-    
     # collect key exposure model statistics 
     predictor <- list(x = c(a3hat = NA, a3var = NA, r2 = NA, r2_MSE = NA),
                       xhat_1full = one_full,
@@ -175,11 +163,11 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
                )
     }) %>% 
         
-        # Set names for list items and the items contained in each item
-        setNames(exposure_vars) %>% 
+    # Set names for list items and the items contained in each item
+    setNames(exposure_vars) %>% 
         
-        # bind list elements
-        bind_rows(.id = "exposure_vars")
+    # bind list elements
+    bind_rows(.id = "exposure_vars")
     
     
     # Return the list
