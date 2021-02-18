@@ -142,6 +142,11 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
     # predictor list.  Did I fix this correctly??  I don't understand how to put
     # it together at the end and it is failing, so more is needed.  I expect the
     # setNames and bind_rows need correction.
+    #
+    # [Lianne, I think maybe we just want the names of the predictor list to be
+    # the exposure vars? I've made this change, so it it is expressive, but we
+    # could alternately just use `names(predictor)` in the lapply and `setNames`
+    # functions]
     
     # collect key exposure model statistics 
     predictor <- list(x = c(a3hat = NA, a3var = NA, r2 = NA, r2_MSE = NA),
@@ -151,11 +156,12 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
                       xhat_2red = two_red)
     
     # create the same ordered list of exposure variables
-    exposure_vars <- list(x, xhat_1full, xhat_1red, xhat_2full,
-                           xhat_2red)
+    #exposure_vars <- list(x, xhat_1full, xhat_1red, xhat_2full,
+    #                       xhat_2red)
+    exposure_vars <- names(predictor)
     
     # create a list of parameters from disease model fits x 5 exposures
-    return_list <- lapply(names(exposure_vars), function(i) {
+    return_list <- lapply(exposure_vars, function(i) {
         
         # fit model for outcome, y and and exposure variable (x or x hat) 
         lmfit <- lm(subj$y ~ subj[[i]])
@@ -172,7 +178,7 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
     }) %>% 
         
         # Set names for list items and the items contained in each item
-        setNames(names(exposure_vars)) %>% 
+        setNames(exposure_vars) %>% 
         
         # bind list elements
         bind_rows(.id = "expsoure_vars")
