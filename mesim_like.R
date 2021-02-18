@@ -181,7 +181,7 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
         setNames(exposure_vars) %>% 
         
         # bind list elements
-        bind_rows(.id = "expsoure_vars")
+        bind_rows(.id = "exposure_vars")
     
     
     # Return the list
