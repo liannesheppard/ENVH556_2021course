@@ -268,7 +268,9 @@ res_pure <- result_pure_sp %>%
               `E(b1)` = mean(b1),
               sd_b1 = sd(b1),
               `E(se_b1)` = sqrt(mean(seb1^2)),
-              `E(R2)` = mean(R2),
+              `RMSE_b1` = sqrt(var(b1)+(mean(b1-2)^2)),
+              `E(R2_exp(reg))` = mean(R2_W_reg),
+              `E(R2_exp(MSE))` = mean(R2_W_MSE),
               `E(exp_var)` = mean(exp_var),
               .groups = "drop" 
               ) %>%
@@ -296,7 +298,7 @@ kable(
 
 # create one example of the pure measurement error dataframe
 #pure_data <- me_pure_data(n_subj = 10000)
-pure_data <- me_pure_data(n_subj = 100)
+pure_data <- me_pure_data(n_subj = 250)
 
 # get the "true" coefficients of the relationship between exposure and outcome
 coefs_true <- lm(y ~ x, pure_data)$coefficients
@@ -459,7 +461,8 @@ locations.
 res_like <- result_like_sp %>% 
   group_by(predictor) %>% 
   summarise(N = n(),
-            `R2_W` = mean(r2),
+            `R2_W_reg` = mean(R2_W_reg),
+            `R2_W_MSE` = mean(R2_W_MSE),
             `E(exp_var)` = mean(exp_var),
             `E(a3)` = mean(a3hat),
             `E(se(a3))` = sqrt(mean(a3var)),

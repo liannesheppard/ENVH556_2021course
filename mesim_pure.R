@@ -99,7 +99,8 @@ me_pure <- function(n_subj = 10000){
         #compile parameters of interest
         tibble(b1 = tidy(lmfit)$estimate[2],
                seb1 = tidy(lmfit)$std.error[2],
-               R2 = as.numeric(getMSE(d$y, lmfit$fitted.values)[2]),
+               R2_W_reg = cor(d[[i]],d$x)^2, 
+               R2_W_MSE = as.numeric(getMSE(d$x, d[[i]])[2]),
                exp_var = var(d[[i]])
         )
     }) %>% 
