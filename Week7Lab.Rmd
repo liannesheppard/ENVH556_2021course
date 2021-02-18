@@ -412,7 +412,7 @@ n_iter <- 10
 tic("single-core Berkson-like ME timing")
 
 # Step II:  Iterate
-result_like_sp <- lapply(seq_len(n_iter), function(x) me_like()) %>% 
+result_like_sp <- lapply(seq_len(n_iter), function(x) me_like(n_subj = 10000)) %>% 
   
   # bind list elements (Step III)
   bind_rows(.id = "replicate")
@@ -459,7 +459,7 @@ locations.
 # `result_pure_mp`
 
 res_like <- result_like_sp %>% 
-  group_by(predictor) %>% 
+  group_by(exposure_vars) %>% 
   summarise(N = n(),
             `R2_W_reg` = mean(R2_W_reg),
             `R2_W_MSE` = mean(R2_W_MSE),
@@ -472,7 +472,7 @@ res_like <- result_like_sp %>%
             `RMSE_b1` = sqrt(var(b1)+(mean(b1-2)^2)),
             .groups = "drop"
             ) %>% 
-  arrange(predictor) 
+  arrange(exposure_vars) 
 
 # Display results
 kable(res_like %>% select(-N), 
