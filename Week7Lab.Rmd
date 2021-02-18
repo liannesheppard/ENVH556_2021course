@@ -455,7 +455,7 @@ locations.
 # This repeats similar results as developed for the pure ME case.
 # Note:  Students need to analyze the other features and develop plots
 
-# Note: if you're using the multicore results, change `result_pure_sp` to 
+# Note: if you're using the multicore results, change `result_like_sp` to 
 # `result_pure_mp`
 
 res_like <- result_like_sp %>% 
