@@ -1,4 +1,4 @@
-# Pure measurement error functions for simulation:
+# "Like" measurement error functions for simulation:
 #   getMSE
 #   me_like
 
@@ -43,7 +43,7 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
     #   n_subj=10,000 (default) is the no. subjects
     #   n_samp=100 (default) is the no. monitors/monitor locations/exposure samples
     #   s3_sd is the SD for the s3 variable in the sample 
-    #       and allowed to be 1 or 0.3  (All other SDs for the s's are 1)
+    #       and defaults to be 1 or 0.3  (All other SDs for the s's are 1)
     #       s3_sd1=1   (default)
     #       s3_sd2=0.3 (default)
     # the following terms are set inside the program:
@@ -144,7 +144,6 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
         # create tibble with variables of interest
         tibble(b1 = tidy(lmfit)$estimate[2], 
                seb1 = tidy(lmfit)$std.error[2],
-               R2_y = as.numeric(getMSE(subj$y, lmfit$fitted.values)[2]),
                exp_var = var(subj[[i]]), 
                a3hat = predictor[[i]][["a3hat"]], 
                a3var = predictor[[i]][["a3var"]], 

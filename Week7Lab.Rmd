@@ -41,8 +41,6 @@ pacman::p_load(knitr, dplyr, tidyr, tictoc, broom, parallel, Hmisc)
 ```
 
 
-<!--TODO:  Also allow one full dataset to be output. -->
-
 # Introduction and Purpose
 
 The purpose of this lab is to **better understand pure classical and Berkson
@@ -99,6 +97,7 @@ properties.  The simultaneous strength and weakness of simulation studies is
 that the true data-generating model is known.  Thus we can evaluate exactly how
 a statistics performs under a given set of assumptions.  Of course, in the real
 world we never know whether our assumed model holds.
+
 
 # Getting Started
 
@@ -194,11 +193,11 @@ for using parallel processing.
 #   III. transform the list structure to one easier to analyze
 #   IV. Summarize the results
 
-# Step I: Read in the function in the mesim_pure.R code
+# Step I: Read in the functions in the mesim_pure.R code
 source("mesim_pure.R")
 
-# create the pure measurement error dataframe (setting the seed if desired)
-pure_data <- me_pure_data(n_subj = 10000, seed = 556)
+# Set the seed
+set.seed(556)
 
 # define the number of simulation iterations to use
 n_iter <- 10
@@ -209,7 +208,7 @@ tic("single core pure ME processing time")
 # Step II:  Iterate
 # lapply runs the function me_pure n_iter times
 # seq_len tells R to index this from 1 to n_iter and is better practice than 1:n_iter
-result_pure_sp <- lapply(seq_len(n_iter), function(x) me_pure(pure_data)) %>% 
+result_pure_sp <- lapply(seq_len(n_iter), function(x) me_pure(n_subj = 10000)) %>% 
   
   # bind dataframes for each iteration together (Step III)
   bind_rows(.id = "replicate")
@@ -290,22 +289,28 @@ kable(
 
 ```
 
+## Plots of one dataset showing the best fit lines for true vs. mismeasured exposures
 
-```{r plot.pure.ME.data}
+```{r plot.pure.ME.data, message=FALSE}
 #-----plot pure ME data-----
 
-# [Lianne, please edit as needed]
+# create one example of the pure measurement error dataframe
+#pure_data <- me_pure_data(n_subj = 10000)
+pure_data <- me_pure_data(n_subj = 100)
+
+# get the "true" coefficients of the relationship between exposure and outcome
+coefs_true <- lm(y ~ x, pure_data)$coefficients
 
 # create temporary datafame for ggplot
 temp <- pure_data %>% 
-  
+
   # make dataset longer
   pivot_longer(cols = c(contains("Berk_"), contains("class_")), 
                names_to = "error_type", 
-               values_to = "error_outcome")
+               values_to = "error_exposure")
 
 # make plot
-ggplot(data = temp, aes(x = y, y = error_outcome)) + 
+ggplot(data = temp, aes(x = error_exposure, y = y)) + 
   
   # different plots by error type
   facet_wrap(~error_type) +
@@ -313,20 +318,33 @@ ggplot(data = temp, aes(x = y, y = error_outcome)) +
   # points
   geom_point(shape = "o", alpha = 0.4) +
   
-  # y =x line
-  geom_abline(lty = "dashed", color = "gray") +
+  # Best fit line given true exposure x
+  geom_abline(aes(intercept = coefs_true[1], slope = coefs_true[2], 
+              linetype = "dashed", color = "gray")) +
   
+  # best fit line given mismeasured exposure
+  geom_smooth(method = lm, se = FALSE, aes(linetype = "solid", color = "red"), alpha = 1) +
+  
+  # specify legend values manually
+  scale_color_manual(name = "Exposure Type",
+                       values = c("gray", "red"),
+                       labels = c("True", "Mismeasured"),
+                       guide = "legend") +
+  
+  scale_linetype_manual(name = "Exposure Type",
+                       values = c("dashed", "solid"),
+                       labels = c("True", "Mismeasured"),
+                       guide = "legend") +
+
   # labels
-  labs(x = "Outcome", 
-       y = "Outcome with error"
-       ) + 
+  labs(x = "Exposure with Various Types of Pure Measurement Error", 
+       y = "Outcome y") +
   
   # theme
-  theme_bw()
-
-
+  theme_bw() + 
+  theme(legend.position = "bottom")
+  
 ```
-
 
 
 ## Outline of the steps to simulate and analyze the data for the Berkson**-like** and classical**-like** measurement error setting 
@@ -424,6 +442,11 @@ toc()
 The next chunk is to summarize the results using basic descriptive tools and
 plots.  We only show a simple version of part of the summary needed.
 
+In the example used in this lab, Version 1 is for the third covariate having the
+same variation at the subject and monitor locations while Version 2 is where
+there is much less variation at the monitor locations than at the subject
+locations.
+
 ```{r summarize.like.ME.results}
 #-----summarize like ME results-----
 
@@ -437,13 +460,13 @@ res_like <- result_like_sp %>%
   group_by(predictor) %>% 
   summarise(N = n(),
             `R2_W` = mean(r2),
+            `E(exp_var)` = mean(exp_var),
             `E(a3)` = mean(a3hat),
             `E(se(a3))` = sqrt(mean(a3var)),
-            `E(exp_var)` = mean(exp_var),
             `E(b1)` = mean(b1),
             `SD(b1)` = sd(b1),
             `E(se_b1)` = sqrt(mean(seb1^2)),
-            `E(R2)` = mean(R2_y),
+            `RMSE_b1` = sqrt(var(b1)+(mean(b1-2)^2)),
             .groups = "drop"
             ) %>% 
   arrange(predictor) 

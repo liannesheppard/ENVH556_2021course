@@ -1,5 +1,6 @@
 # Pure measurement error functions for simulation:
 #   getMSE
+#   me_pure_data
 #   me_pure
 
 # Load the broom package for the tidy() function
@@ -21,7 +22,7 @@ getMSE <- function(obs,pred) {
 }
 
 # make dataframe to simulate pure measurement error
-me_pure_data <- function(n_subj = 10000, seed = NULL) {
+me_pure_data <- function(n_subj = 10000) {
     # definition of terms:
     #   n for sample size (n_subj), referring to subject 
     #   z for exposure model covariates
@@ -54,9 +55,6 @@ me_pure_data <- function(n_subj = 10000, seed = NULL) {
     sd_eps <- 25
     
     
-    # set seed
-    set.seed(seed)
-    
     # create the subject dataset, using n_subj as supplied in the
     # function's parameter list:
     tibble( 
@@ -81,7 +79,10 @@ me_pure_data <- function(n_subj = 10000, seed = NULL) {
 
 
 # me_pure function
-me_pure <- function(d = pure_data){
+me_pure <- function(n_subj = 10000){
+    
+    # create dataframe with simulated measurement error
+    d <- me_pure_data(n_subj)
     
     # list predictors in d, looking for x, berkson and classical variable names
     predictors <- str_subset(names(d), "x|Berk_|class_")

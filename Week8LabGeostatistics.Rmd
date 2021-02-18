@@ -693,14 +693,13 @@ using the fall season for this example.  Summarize the data.  Take note of the
 range of the data coordinates, the maximum distance, and other dataset features
 (e.g. which covariates are included).
 
-```{r read snapshot as a SPDF}
+```{r read fall snapshot as a SPDF}
 # save coordinate systems as variables
 # WGS84 latitude-longitude
 latlong_proj <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
 # Lambert Conic projection (meters)
 lambert_proj <- "+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
 
-# ------------ read fall snapshot as SPDF --------
 # focus only on the common model covariates
 # Not importing redundant spatial columns like lat_m, long_m, lambert_x, lambert_y,
 # Because we can easily reproject the data however we like later
@@ -730,14 +729,16 @@ maxdist <- fall %>% st_transform(lambert_proj) %>% st_bbox() %>% dist() %>% max(
 For later use, we need to convert the grid to sf points:  
 
 ```{r convert LA grid to SPDF}
-# ------------ convert LA grid to SPDF --------
+#-----convert LA grid to SPDF-----
 
 class(la_grid)
 
 # la_grid is a tibble; convert to a data frame (needed?)
 # (We could just import them as data.frame at the beginning with read.csv())
 # Remove redundant lambert columns, we only need one coordinate system
+# also drop -Inf values in D2A1 variable
 la_grid <- la_grid %>%
+  filter(D2A1 != -Inf) %>%
   as.data.frame() %>%
   select(-lambert_x,-lambert_y) %>%
   st_as_sf(coords=c('longitude','latitude'), crs=latlong_proj)
@@ -761,7 +762,7 @@ axis labels, etc.
 
 
 ```{r plot fall snapshot}
-# ------------ plot fall snapshot -----
+#-----plot fall snapshot-----
 
 # Follows plotting options shown above; some commented out
 
@@ -772,12 +773,24 @@ ggplot(data=fall) +
   ggtitle("ln(NOx) Concentrations (ln(ppb)") +
   theme_bw()
 
-# bubble plot -- doesn't look great here
+# now produce a bubble plot -- doesn't look great here
+#bubble(fall, "ln_nox", col="blue", main = "ln(NOx) Concentrations (ln(ppb)")
+
+# we can also produce a similar plot of the data with ggplot
 ggplot(data=fall) +
-  geom_sf(aes(size=ln_nox), color='blue', alpha=1/2) +
+  geom_sf(data=fall,aes(size=ln_nox), color='blue', alpha=1/2) +
   ggtitle("ln(NOx) Concentrations (ln(ppb)") +
   theme_bw()
 
+# [Lianne, here is an option, not sure it is better. The ln_nox really scruntches up the scale]
+  # (Leaving this code from Chris in here for now, fairly similar to above -- DLS)
+  #ggplot(data=fall) + 
+  #geom_sf(aes(color = exp(ln_nox)), alpha = 0.4) +
+  #scale_color_continuous(type = "viridis") +
+  #labs(title = "NOx Concentrations (ppb)", 
+  #     color = "NOx (ppb)") + 
+  #coord_equal() + 
+  #theme_bw()
 ```
 
 ### Mapping the data
@@ -801,7 +814,8 @@ building level.
 Note 2:  Maps require access to the internet to load. 
 
 ```{r LA Stamen map}
-# ---------- LA Stamen map --------------
+# ----LA Stamen map-----
+
 # uses ggmap; initial version of code kindly provided by Brian High
 
 # Obtain bounding box (left, bottom, right, top extremes of object) for la_grid
@@ -814,6 +828,29 @@ map_bbox <- la_grid %>%
   st_transform(latlong_proj) %>%
   st_bbox() %>%
   as.vector()
+
+# helper function for bbox (you can modify and use this for your own work)
+# DLS note--leaving this in here for now, but maybe not needed, or maybe could
+# adapt the above code into bbox function instead.
+# make_bbox <- function(.data, width_extra = 0.0001, height_extra = 0.00005){
+#   
+#   # find lat and long column names
+#   long <- str_subset(string = names(.data), pattern = "Long|long")
+#   lat <- str_subset(string = names(.data), pattern = "Lat|lat")
+#   
+#   # drop rows with NA (first converting to a dataframe if not already)
+#   temp <- .data %>% as_tibble() %>% drop_na(all_of(c(long, lat)))
+#   
+#   # create a named vector with the corners of the plotting region
+#   out <- c(left = min(temp[[long]]) + width_extra*min(temp[[long]]),
+#            bottom = min(temp[[lat]]) - height_extra*min(temp[[lat]]),
+#            right = max(temp[[long]]) - width_extra*min(temp[[long]]),
+#            top = max(temp[[lat]]) + height_extra*min(temp[[lat]]) )
+# }
+
+# define the bounding box for the map using make_bbox 
+# bbox <- make_bbox(la_grid)
+
 
 # Download a basemap of "Stamen" tiles
 map <- suppressMessages(get_stamenmap(map_bbox, zoom = 11,
@@ -863,7 +900,8 @@ than making it obvious to us that the area covered by the grid is not completely
 aligned with the area covered by the map.
 
 ```{r plot the grid on the map}
-# ------------ plot the grid on the map ---------------
+# ----plot the grid on the map-----
+
 # Note: we read the grid csv data above
 # The map range is set above so no points are removed.
 
@@ -890,7 +928,7 @@ educationa/practice purposes only.  Scientifically we don't think an OK model of
 these data is a sensible choice.)
 
 ```{r fall estimate variogram}
-# ---- fall estimate variogram ----
+#-----fall estimate variogram-----
 
 # first estimate the variogram object and assign it a name
 # the default maximum distance (cutoff) is too short so set it to align w/
@@ -901,6 +939,7 @@ vf <- variogram(ln_nox~1, fall, cutoff = 31000)
 # options (exponential, spherical, and Matern):
 # TODO:  Note that none of the variogram models appears to converge.
 # Investigate.  Still true? Was it the cutoff was too short?
+# [CZ: this is working for me as-is]
 vf.fit <- fit.variogram(vf, vgm(c("Exp", "Sph", "Mat")))
 
 # Find out which variogram model was selected
@@ -915,7 +954,7 @@ plot(vf, vf.fit)
 # first estimate the variogram object and assign it a name
 vfc <-
   variogram(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
-            fall,
+            data = fall,
             cutoff = 31000)
 
 # Then fit a variogram model, offering to the function several different model
@@ -940,8 +979,6 @@ vfc.fit
 # and spherical fits are almost indistinguishable.
 plot(vfc, vfc.fit)
 
-
-
 ```
 
 Observe:  TODO:  ADD comments.
@@ -957,7 +994,7 @@ TODO:  ADD
 **Step 3**:  Estimate the kriging predictions.  
 
 ```{r krige in LA}
-# ------------ krige in LA ------------
+#-----krige in LA-----
 
 kc_la <-
   krige(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
@@ -981,17 +1018,19 @@ area shown.
 
 
 ```{r plot the grid predictions on the map}
-# ------------ plot the grid predictions on the map ---------------
+#-----plot the grid predictions on the map-----
 
 # first need to merge the predictions into the la_grid in order to use.
 # also create predicted NOx on the native scale
-new_grid <-
-  inner_join(as.data.frame(la_grid),
-             as.data.frame(kc_la),
-             by = c("lambert_x", "lambert_y")) %>% mutate(NOx = exp(var1.pred))
+new_grid <- inner_join(as.data.frame(la_grid),
+                       as.data.frame(kc_la),
+                       by = c("lambert_x", "lambert_y")) %>% 
+  mutate(NOx = exp(var1.pred))
+  #filter(NOx != Inf)
 
 glimpse(new_grid)
 
+# create theme
 my_theme <- theme(
     legend.position = c(.98, .02),
     legend.justification = c(1, 0),
@@ -999,8 +1038,9 @@ my_theme <- theme(
     legend.background = element_rect(fill = "white")
     )
 
-g + geom_point(aes(x = longitude, y = latitude, col = NOx),
-               data = as.data.frame(new_grid), alpha = 0.5) +
+# make plot
+g + geom_point(aes(x = longitude, y = latitude, color = NOx),
+               data = new_grid, alpha = 0.5) +
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") +
     scale_color_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +
     my_theme
@@ -1010,7 +1050,8 @@ g + geom_point(aes(x = longitude, y = latitude, col = NOx),
 This refinement is the same gridded predictions, but now drops all points over 
 the water. 
 ```{r plot gridded predictions not on the water}
-# ------------ plot gridded predictions not on the water ---------------
+#-----plot gridded predictions not on the water-----
+
 # Note: The shape of the plotted prediction area does not quite match the land
 # area because the LA shape used to limit the plotting to LA does not match the
 # shape in the stamen tiles. This is probably because we are not using the 
@@ -1029,24 +1070,30 @@ the water.
 
 # Make a SpatialPointsDataFrame from new_grid
 proj_str <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
 spdf_new_grid <- SpatialPointsDataFrame(
-    coords = new_grid[, c("longitude", "latitude")], data = new_grid, 
-    proj4string = CRS(proj_str))
+  coords = new_grid[, c("longitude", "latitude")], 
+  data = new_grid, 
+  proj4string = CRS(proj_str) 
+  )
 
 # Make some geospatial objects for LA
 la_county <-  map_data("county") %>% 
     filter(region == 'california', subregion == 'los angeles') %>% 
     rename("longitude"="long", "latitude"="lat") %>% 
     mutate(longitude = longitude - 0.02, latitude = latitude - 0.02)
+
 la_county_p = Polygon(coords = la_county[, c("longitude", "latitude")])
 la_county_ps = Polygons(list(la_county_p), 1)
 la_county_sps = SpatialPolygons(list(la_county_ps), proj4string = CRS(proj_str))
 
-# Subset new_grid to only include those points in LA
-# TODO:  turn this into a nice tidyverse pipeline!
-spdf_new_grid_in_la <- spdf_new_grid[!is.na(over(spdf_new_grid, la_county_sps)), ]
-new_grid_in_la <- as.data.frame(spdf_new_grid_in_la)
 
+# Subset new_grid to only include those points in LA
+new_grid_in_la <- spdf_new_grid %>% 
+  as_tibble() %>% 
+  mutate(idx = over(spdf_new_grid, la_county_sps) ) %>% 
+  drop_na(idx)
+  
 # Make the map
 g + geom_point(aes(x = longitude, y = latitude, col = NOx),
                data = new_grid_in_la,
@@ -1058,12 +1105,13 @@ g + geom_point(aes(x = longitude, y = latitude, col = NOx),
 ```
 
 Now we show an example plotting smooth gridded predictions on the map with polygons.
-```{r plot smooth grid predictions on the map with with polygons, eval = FALSE}
-# ------------ plot smooth grid predictions on the map with polygons -------
+```{r plot smooth grid predictions on the map with polygons}
+# ----plot smooth grid predictions on the map with polygons-----
 
 # Interpolate to a regularly spaced grid and store as a list
 # TODO:  this step is failing due to missing values and Infs not allowed so the
 # rest of the chunk fails also
+# [CZ: I filtered out the Inf values of la_grid, so this works now. It doesn't fix the fact that the la_grid file has -Infs]
 new_grid_interp <- with(new_grid, interp(longitude, latitude, NOx))
 
 # Expand grid into a data frame
@@ -1081,11 +1129,11 @@ g + stat_contour(aes(x = x, y = y, z = z, fill = ..level..), alpha = 0.07,
 
 ```
 
-Now show an example plotting smooth gridded predicitons on the map with tiles
+Now show an example plotting smooth gridded predictons on the map with tiles
 using stat_summary_2d:
 
 ```{r plot smooth grid predictions on the map with tiles 2}
-# ------------ plot smooth grid predictions on the map with tiles 2 -------
+#-----plot smooth grid predictions on the map with tiles 2-----
 
 # Note: we replace "+" with "%+%" to override the data previously mapped (i.e., replace
 #   the current data frame, due to S3 method precedence issues)
