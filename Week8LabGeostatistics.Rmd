@@ -933,7 +933,8 @@ these data is a sensible choice.)
 # first estimate the variogram object and assign it a name
 # the default maximum distance (cutoff) is too short so set it to align w/
 # values shown in Mercer
-vf <- variogram(ln_nox~1, fall, cutoff = 31000)
+# Use lambert projection (meters) for variogram
+vf <- variogram(ln_nox~1, st_transform(fall,lambert_proj), cutoff = 31000)
 
 # Then fit a variogram model, offering to the function several different model
 # options (exponential, spherical, and Matern):
@@ -954,7 +955,7 @@ plot(vf, vf.fit)
 # first estimate the variogram object and assign it a name
 vfc <-
   variogram(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
-            data = fall,
+            data = st_transform(fall,lambert_proj),
             cutoff = 31000)
 
 # Then fit a variogram model, offering to the function several different model
@@ -998,12 +999,12 @@ TODO:  ADD
 
 kc_la <-
   krige(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
-        fall,
-        la_grid,
+        st_transform(fall,lambert_proj),
+        st_transform(la_grid,lambert_proj),
         model = vfc.fit)
 
 # check out the results; predictions are in `var1.pred`
-glimpse(kc_la)
+kc_la
 
 ```
 
@@ -1020,15 +1021,29 @@ area shown.
 ```{r plot the grid predictions on the map}
 #-----plot the grid predictions on the map-----
 
-# first need to merge the predictions into the la_grid in order to use.
-# also create predicted NOx on the native scale
-new_grid <- inner_join(as.data.frame(la_grid),
-                       as.data.frame(kc_la),
-                       by = c("lambert_x", "lambert_y")) %>% 
-  mutate(NOx = exp(var1.pred))
-  #filter(NOx != Inf)
+# reproject predictons from labmert to to lat-long before plotting
+kc_la <- st_transform(kc_la,latlong_proj)
 
-glimpse(new_grid)
+# first need to merge the predictions into the la_grid in order to use.
+# We can verify that the coordinates are *almost* exactly the same
+all.equal(st_coordinates(kc_la), st_coordinates(la_grid))
+# But not *exactly* identical.
+# Likely due to floating point / rounding issues during kriging
+identical(st_coordinates(kc_la), st_coordinates(la_grid))
+
+# So when we do a strict spatial join, all the predictions are NA.
+st_join(la_grid, kc_la)
+
+# To circumvent this issue, let's join by nearest feature (point)
+new_grid <- st_join(la_grid, kc_la, join=st_nearest_feature)
+# Another way to join -- specifying very small tolerance -- takes longer
+#new_grid <- st_join(la_grid, kc_la, join=st_equals_exact, par=1e-10)
+
+# also create predicted NOx on the native scale
+new_grid <- new_grid %>% mutate(NOx = exp(var1.pred))
+
+# Take a look
+new_grid
 
 # create theme
 my_theme <- theme(
@@ -1038,18 +1053,30 @@ my_theme <- theme(
     legend.background = element_rect(fill = "white")
     )
 
-# make plot
-g + geom_point(aes(x = longitude, y = latitude, color = NOx),
-               data = new_grid, alpha = 0.5) +
+
+# make plot.  Note the relationship between NOx and highways
+g + geom_point(data=new_grid,aes(x = st_coordinates(new_grid)[,'X'],
+                           y = st_coordinates(new_grid)[,'Y'],
+                           col = NOx), alpha = 0.2) + 
+    scale_color_gradientn(name = "NOx (ppb)", colors=rainbow(4,rev=TRUE)) + 
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") +
-    scale_color_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +
-    my_theme
+  my_theme
+# 
+# if (!file.exists('Datasets/ne_10m_land.zip')){
+#   download.file('https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_land.zip',
+#                 'Datasets/ne_10m_land.zip')
+# }
+# if (!file.exists('Datasets/ne_10m_land/ne_10m_land.shp')){
+#   unzip('Datasets/ne_10m_land.zip',exdir='Datasets/ne_10m_land')
+# }
+# land <- st_read('Datasets/ne_10m_land/ne_10m_land.shp')
+# land <- land[land$featurecla=='Land',]
+# land <- st_crop(land,st_bbox(la_grid))
+# trial <- st_overlaps(la_grid,land)
 
 ```
 
-This refinement is the same gridded predictions, but now drops all points over 
-the water. 
-```{r plot gridded predictions not on the water}
+#```{r plot gridded predictions not on the water}
 #-----plot gridded predictions not on the water-----
 
 # Note: The shape of the plotted prediction area does not quite match the land
@@ -1102,7 +1129,7 @@ g + geom_point(aes(x = longitude, y = latitude, col = NOx),
   scale_color_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +
   my_theme
 
-```
+#```
 
 Now we show an example plotting smooth gridded predictions on the map with polygons.
 ```{r plot smooth grid predictions on the map with polygons}
@@ -1112,7 +1139,9 @@ Now we show an example plotting smooth gridded predictions on the map with polyg
 # TODO:  this step is failing due to missing values and Infs not allowed so the
 # rest of the chunk fails also
 # [CZ: I filtered out the Inf values of la_grid, so this works now. It doesn't fix the fact that the la_grid file has -Infs]
-new_grid_interp <- with(new_grid, interp(longitude, latitude, NOx))
+# DLS -- Needed to back-transform the sf object to SpatialPointsDataFrame here (for interp)
+
+new_grid_interp <- new_grid %>% as_Spatial() %>% interp(z='NOx')
 
 # Expand grid into a data frame
 new_grid_dens_expand<-
@@ -1137,6 +1166,8 @@ using stat_summary_2d:
 
 # Note: we replace "+" with "%+%" to override the data previously mapped (i.e., replace
 #   the current data frame, due to S3 method precedence issues)
+
+## DLS - not sure what this is trying to plot, so left alone for now
 g %+% new_grid + aes(x = longitude, y = latitude, z = NOx) +
     stat_summary_2d(fun = mean, alpha = 0.7, geom = "tile", bins = 30) +
     scale_fill_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +
@@ -1151,6 +1182,9 @@ TODO:  This isn't currently working.  Drop?
 
 ```{r prediction map with shapefiles, eval = FALSE}
 #----- prediction map with shapefiles --------
+
+
+## DLS -- Link no longer works
 
 # Define URL for shapefile data library top-level folder
 
