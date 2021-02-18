@@ -155,9 +155,7 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
                       xhat_2full = two_full,
                       xhat_2red = two_red)
     
-    # create the same ordered list of exposure variables
-    #exposure_vars <- list(x, xhat_1full, xhat_1red, xhat_2full,
-    #                       xhat_2red)
+    # descriptively name these for future use
     exposure_vars <- names(predictor)
     
     # create a list of parameters from disease model fits x 5 exposures
