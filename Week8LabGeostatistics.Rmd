@@ -694,66 +694,62 @@ range of the data coordinates, the maximum distance, and other dataset features
 (e.g. which covariates are included).
 
 ```{r read snapshot as a SPDF}
+# save coordinate systems as variables
+# WGS84 latitude-longitude
+latlong_proj <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+# Lambert Conic projection (meters)
+lambert_proj <- "+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
+
 # ------------ read fall snapshot as SPDF --------
 # focus only on the common model covariates
+# Not importing redundant spatial columns like lat_m, long_m, lambert_x, lambert_y,
+# Because we can easily reproject the data however we like later
 fall <- snapshot %>%
     filter(seasonfac == "2Fall") %>%
-    select(ID, latitude, longitude, lat_m, long_m, lambert_x, lambert_y, ln_nox, D2A1, A1_50, A23_400, Pop_5000, D2C, Int_3000, D2Comm, cluster, group_loc, FieldID) %>%
+    select(ID, latitude, longitude, ln_nox, D2A1, A1_50, A23_400, Pop_5000, D2C, Int_3000, D2Comm, cluster, group_loc, FieldID) %>%
   as.data.frame
 
-# now convert this to a SPDF.  Use Lambert projections which may not need a CRS
-# as they are already in meters and don't need a conversion for distance
-# calculations.  The CRS for Lambert is USA_Continuous_Lambert_Conformal_Conic.
-coordinates(fall) <- ~lambert_x+lambert_y
+# now convert this to an sf object
+fall <- st_as_sf(fall, coords=c('longitude','latitude'), crs=latlong_proj)
 
-# # probably don't need a projection or CRS for lambert because these are
-# already in meters; keeping just in case:
-# proj4string(fall) <- CRS("+proj=laea")
+# get summary information and column names
+fall
 
-
-# # If we connect with its projection, here are some options as I understand for
-# # two of the 3 coordinates.  (Note:  Not clear how long_m and lat_m are defined.
-# # I'm guessing they are UTMs but not stored in the database that way.)
-# # UTM
-# coordinates(fall) <- ~long_m+lat_m
-# proj4string(fall) <-CRS("+proj=utm +zone=10 +datum=WGS84")
-# # standard latitude and longitude in decimal degrees
-# #coordinates(fall) <- ~longitude+latitude
-# #proj4string(fall) <- CRS("+proj=longlat +ellps=WGS84")
-
-# summarize and get the names
-#names(fall)
-#str(fall)
-glimpse(fall)
+# see the raw XY (long-lat) coordinates
+st_coordinates(fall)
 
 # # maximum distance in the dataset; thought I would use this to set the cutoff in
 # # the variogram, but it didn't work so I hard-coded it.
-# maxdist <- dist(fall@bbox)
+
+# Temporarily convert to lambert projection to get bounding box in meters
+maxdist <- fall %>% st_transform(lambert_proj) %>% st_bbox() %>% dist() %>% max()
 
 
 ```
 
-For later use, we need to convert the grid to a SPDF:  
+For later use, we need to convert the grid to sf points:  
 
 ```{r convert LA grid to SPDF}
 # ------------ convert LA grid to SPDF --------
 
-# la_grid is a tibble; convert to a data frame (needed?)
-la_grid <- as.data.frame(la_grid)
+class(la_grid)
 
-# convert to a SPDF
-coordinates(la_grid) <- ~lambert_x+lambert_y
+# la_grid is a tibble; convert to a data frame (needed?)
+# (We could just import them as data.frame at the beginning with read.csv())
+# Remove redundant lambert columns, we only need one coordinate system
+la_grid <- la_grid %>%
+  as.data.frame() %>%
+  select(-lambert_x,-lambert_y) %>%
+  st_as_sf(coords=c('longitude','latitude'), crs=latlong_proj)
+
+# get info
+la_grid
 
 # Not sure we need to tell R that this is gridded and it is failing b/c
 # coordinate intervals are not constant. The code works without this:
 # # gridded(la_grid) <- TRUE
 # examples suggest this shortcut works too:
 #gridded(la_grid) <- ~lambert_x+lambert_y
-
-# summarize and get the names
-#names(la_grid)
-#str(la_grid)
-glimpse(la_grid)
 
 ```
 
@@ -768,19 +764,19 @@ axis labels, etc.
 # ------------ plot fall snapshot -----
 
 # Follows plotting options shown above; some commented out
-# chops up the range of the data based on the native scale
-spplot(fall, "ln_nox", colorkey = TRUE, main = "ln(NOx) Concentrations (ln(ppb)")
 
-# now produce a bubble plot -- doesn't look great here
-#bubble(fall, "ln_nox", col="blue", main = "ln(NOx) Concentrations (ln(ppb)")
+# log nox
+ggplot(data=fall) +
+  geom_sf(aes(color=ln_nox)) +
+  scale_color_gradientn(colors=rainbow(4,rev=TRUE)) +
+  ggtitle("ln(NOx) Concentrations (ln(ppb)") +
+  theme_bw()
 
-# we can also produce a similar plot of the data with ggplot, though we need to
-# first convert it to a data frame:
-fall %>% as.data.frame %>%
-  ggplot(aes(longitude, latitude)) + geom_point(aes(size = ln_nox), color =
-                                                  "blue", alpha = 1 / 4) +
-  ggtitle("ln(NOx) Concentrations (ln(ppb)") + coord_equal() + theme_bw()
-
+# bubble plot -- doesn't look great here
+ggplot(data=fall) +
+  geom_sf(aes(size=ln_nox), color='blue', alpha=1/2) +
+  ggtitle("ln(NOx) Concentrations (ln(ppb)") +
+  theme_bw()
 
 ```
 
@@ -807,38 +803,50 @@ Note 2:  Maps require access to the internet to load.
 ```{r LA Stamen map}
 # ---------- LA Stamen map --------------
 # uses ggmap; initial version of code kindly provided by Brian High
-# get the basic dimensions of the data
-height <- max(la_grid$latitude) - min(la_grid$latitude)
-width <- max(la_grid$longitude) - min(la_grid$longitude)
 
-# Define the boundaries of our map -- we want it somewhat bigger than our data
-# dimensions
-bbox <- c(
-            min(la_grid$longitude) - 0.1*width,
-            min(la_grid$latitude) - 0.1*height,
-            max(la_grid$longitude) + 0.1*width,
-            max(la_grid$latitude) + 0.1*height
-    )
+# Obtain bounding box (left, bottom, right, top extremes of object) for la_grid
+# Reproject to lambert (in meters) and extent out by 10 km
+# Then convert back to lat-long, get the bounding box, convert bbox to vector
+# We use this to specify how large of a basemap to download
+map_bbox <- la_grid %>%
+  st_transform(lambert_proj) %>%
+  st_buffer(dist=10000) %>%
+  st_transform(latlong_proj) %>%
+  st_bbox() %>%
+  as.vector()
 
-names(bbox) <- c('left', 'bottom', 'right', 'top')
-
-# Make a map base layer of "Stamen" tiles
-map <- suppressMessages(get_stamenmap(bbox, zoom = 11,
+# Download a basemap of "Stamen" tiles
+map <- suppressMessages(get_stamenmap(map_bbox, zoom = 11,
                                      maptype = "toner-background"))
 
-# Make the map image from the tiles 
+# Make a ggmap object from the tiles 
 g <- ggmap(map, darken = c(0.5, "white")) + theme_void() 
 
-# Show the map
+# Plot the map
 g + ggtitle("Sample Map of Los Angeles for \n the area covered by the snapshot data")
 
 # Add snapshot locations to the map will colors for values
 # Note: need to use a data.frame for this, not a spatial data object
-g + geom_point(aes(x = longitude, y = latitude, col = exp(ln_nox)), 
-               data = as.data.frame(fall), alpha = 0.8) + 
-    scale_color_gradient(name = "NOx (ppb", low = "yellow", high = "red") + 
-    ggtitle("Map of Los Angeles \n with the fall snapshot data") +
-    theme(legend.position = c(.98,.02), legend.justification = c(1,0)) 
+
+# For some reason, geom_sf() did not work for this (bug?), so needed to use geom_point
+# and manually add the extracted XY coordinates
+# https://stackoverflow.com/questions/60066424/how-to-align-ggmap-crs-of-google-map-longitude-latitude
+
+# NOx on native scale
+g + geom_point(data=fall,aes(x = st_coordinates(fall)[,'X'],
+                           y = st_coordinates(fall)[,'Y'],
+                           col = exp(ln_nox)), alpha = 0.8) + 
+    scale_color_gradientn(name = "NOx (ppb)", colors=rainbow(4,rev=TRUE)) + 
+    ggtitle("Map of Los Angeles \n with the fall snapshot data")
+
+# NOx on log scale
+g + geom_point(data=fall,aes(x = st_coordinates(fall)[,'X'],
+                           y = st_coordinates(fall)[,'Y'],
+                           col = ln_nox), alpha = 0.8) + 
+  scale_color_gradientn(name='ln(NOx)', colors=rainbow(4,rev=TRUE)) +
+  ggtitle("ln(NOx) Concentrations (ln(ppb))") +
+  theme_bw()
+
 
 ```
 
@@ -849,9 +857,6 @@ few observations are in order:
 was done on purpose in the displays in Mercer et al to enable the viewer to see
 the gradient values.  Our data have not been transformed this way.  (It would be
 a good exercise to implement this...)
-* Not all the points on our map appear to correspond to those displayed in
-Mercer.  This deserves more investigation since the datasets are supposed to be
-identical.
 
 Now add the grid to the map.  This plot isn't particularly informative, other
 than making it obvious to us that the area covered by the grid is not completely
@@ -861,9 +866,11 @@ aligned with the area covered by the map.
 # ------------ plot the grid on the map ---------------
 # Note: we read the grid csv data above
 # The map range is set above so no points are removed.
-g + geom_point(aes(x = longitude, y = latitude), data = as.data.frame(la_grid), 
-               alpha = 0.03) + 
-    ggtitle("Map of Los Angeles \n with the grid locations overlaid") 
+
+g + geom_point(data=la_grid,aes(x = st_coordinates(la_grid)[,'X'],
+                           y = st_coordinates(la_grid)[,'Y']), alpha = 0.2) + 
+  ggtitle("Map of Los Angeles \n with the grid locations overlaid") +
+  theme_bw()
 
 ```
 
