@@ -325,7 +325,7 @@ ggplot(data = temp, aes(x = error_exposure, y = y)) +
               linetype = "dashed", color = "gray")) +
   
   # best fit line given mismeasured exposure
-  geom_smooth(method = lm, se = FALSE, aes(linetype = "solid", color = "red"), alpha = 1) +
+  geom_smooth(method = lm, se = FALSE, aes(linetype = "solid", color = "red")) +
   
   # specify legend values manually
   scale_color_manual(name = "Exposure Type",
