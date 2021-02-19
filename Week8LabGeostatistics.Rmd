@@ -590,9 +590,9 @@ krige.cv.sf <- function(formula, locations, model = NULL, ..., beta = NULL,
 	nmax = Inf, nmin = 0, maxdist = Inf, nfold = nrow(locations), 
 	verbose = interactive(), debug.level = 0){
   # Repeating the exact arguments from krige.cv source code
-  krige.cv1 <- krige.cv(formula, locations, model = NULL, ..., beta = NULL, 
-	nmax = Inf, nmin = 0, maxdist = Inf, nfold = nrow(locations), 
-	verbose = interactive(), debug.level = 0)
+  krige.cv1 <- krige.cv(formula = formula, locations = locations, model = model, ..., beta = beta,
+	nmax = nmax, nmin = nmin, maxdist = maxdist, nfold = nfold,
+	verbose = verbose, debug.level = debug.level)
   # force projection to that of the function input
   st_crs(krige.cv1) <- st_crs(locations)
   return(krige.cv1)
