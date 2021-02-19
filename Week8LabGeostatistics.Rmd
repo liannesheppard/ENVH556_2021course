@@ -287,8 +287,11 @@ st_crs(meuse)
 # The proj4 string is a standardized way to describe a projection
 # Get the proj4string here:
 # https://epsg.io/28992
-# Set the projection
+# Set the projection, in this case a projection commonly used in the Netherlands
 st_crs(meuse) <- '+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +towgs84=565.417,50.3319,465.552,-0.398957,0.343988,-1.8774,4.0725 +units=m +no_defs'
+# Can also just use the EPSG string
+#st_crs(meuse) <- 28992
+
 
 ```
 
@@ -399,7 +402,7 @@ ggplot(data=meuse) +
 
 ```
 
-Note that geom_sf plots in lat-long units by default, even though our data is stored in a different projection. (With the projection defined, it would be trivial to convert our points to a different projection if we wanted as well). We can check that map projections are working properly and explore the study area on [Google Maps](https://www.google.com/maps?q=50.97,5.74)
+Note that geom_sf plots in lat-long units by default, even though our data is stored in a different projection. (As we will see later, it is trivial to convert our points to a different projection once our points have a specific projection in sf). We can check that map projections are working properly and explore the study area on [Google Maps](https://www.google.com/maps?q=50.97,5.74)
 
 ### Estimating variograms
 
@@ -513,11 +516,11 @@ lzn.kr <- krige(log(zinc)~1, meuse, newdata = meuse.grid, model = v.fit)
 
 # plot kriging predictions and SEs
 pl1 <- plot(lzn.kr[c('var1.pred','var1.var')], main = "OK prediction of log-zinc")
-pl1
+#pl1
 
 lzn.kr$se = sqrt(lzn.kr$var1.var)
 pl2 <- plot(lzn.kr["se"], main = "OK prediction error")
-pl2
+#pl2
 
 ```
 
@@ -551,12 +554,12 @@ lzn.kr <- krige(log(zinc)~sqrt(dist), meuse, meuse.grid, model = m.uk)
 pl3 <- plot(lzn.kr[c('var1.pred','var1.var')], main = "UK prediction of log-zinc")
 lzn.kr$se = sqrt(lzn.kr$var1.var)
 pl4 <- plot(lzn.kr["se"], main = "UK prediction error")
-
-# Now plot all 4 kriging results on a single plot, which allows easy comparison
-print(pl1, split = c(1,1,2,2), more = T)
-print(pl2, split = c(1,2,2,2), more = T)
-print(pl3, split = c(2,1,2,2), more = T)
-print(pl4, split = c(2,2,2,2))
+# 
+# # Now plot all 4 kriging results on a single plot, which allows easy comparison
+# print(pl1, split = c(1,1,2,2), more = T)
+# print(pl2, split = c(1,2,2,2), more = T)
+# print(pl3, split = c(2,1,2,2), more = T)
+# print(pl4, split = c(2,2,2,2))
 
 ```
 
@@ -652,20 +655,9 @@ been projected to a flat surface, and
 * `lambert_x` and `lambert_y` which is a Lambert projection and is in meters.
 It is the USA_Continguous_Lambert_Conformal_Conic.
 
-Here is an example of [projections in R](https://rpubs.com/nabilabd/142092)
-Possible code for lat/long CRS:
-```
-crdref <- CRS('+proj=longlat +datum=WGS84')
-pts <- SpatialPoints(lonlat, proj4string=crdref)
-```
-Here is code to project into Lambert coordinates in R:
-```
-usa_lamb=Proj("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
-```
-
-We are going to use the [Lambert
+We are going to use [Lambert
 coordinates](https://en.wikipedia.org/wiki/Lambert_conformal_conic_projection)
-also in this dataset because these are in meters and projected for a flat
+for this dataset because these are in meters and projected for a flat
 surface so distance calculations can be done directly.  To see a documentation
 of the projection formulas, see this [New Zealand government
 website](https://www.linz.govt.nz/data/geodetic-system/coordinate-conversion/projection-conversions/lambert-conformal-conic-geographic)
@@ -675,6 +667,8 @@ and to get distances.  Some examples are:
 
 * The `sp::SpatialPoints` function can is used to create objects of the spatial
 points from lat/long data.
+
+* The `sf` package is the modern replacement for package sp.
 
 * The `rgeos::gWithinDistance` function is used to find if locations are the
 same, or within a specified distance.
@@ -721,7 +715,7 @@ st_coordinates(fall)
 # # the variogram, but it didn't work so I hard-coded it.
 
 # Temporarily convert to lambert projection to get bounding box in meters
-maxdist <- fall %>% st_transform(lambert_proj) %>% st_bbox() %>% dist() %>% max()
+#maxdist <- fall %>% st_transform(lambert_proj) %>% st_bbox() %>% dist() %>% max()
 
 
 ```
@@ -783,7 +777,7 @@ ggplot(data=fall) +
   theme_bw()
 
 # [Lianne, here is an option, not sure it is better. The ln_nox really scruntches up the scale]
-  # (Leaving this code from Chris in here for now, fairly similar to above -- DLS)
+  # (DLS -- leaving this code from Chris in here for now, fairly similar to above -- DLS)
   #ggplot(data=fall) + 
   #geom_sf(aes(color = exp(ln_nox)), alpha = 0.4) +
   #scale_color_continuous(type = "viridis") +
@@ -1027,7 +1021,7 @@ kc_la <- st_transform(kc_la,latlong_proj)
 # first need to merge the predictions into the la_grid in order to use.
 # We can verify that the coordinates are *almost* exactly the same
 all.equal(st_coordinates(kc_la), st_coordinates(la_grid))
-# But not *exactly* identical.
+# But not *exactly* the same.
 # Likely due to floating point / rounding issues during kriging
 identical(st_coordinates(kc_la), st_coordinates(la_grid))
 
@@ -1042,8 +1036,9 @@ new_grid <- st_join(la_grid, kc_la, join=st_nearest_feature)
 # also create predicted NOx on the native scale
 new_grid <- new_grid %>% mutate(NOx = exp(var1.pred))
 
-# Take a look
+# Take a look. Still has same number of features, and no NAs
 new_grid
+all(!is.na(new_grid$var1.pred))
 
 # create theme
 my_theme <- theme(
@@ -1062,6 +1057,7 @@ g + geom_point(data=new_grid,aes(x = st_coordinates(new_grid)[,'X'],
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") +
   my_theme
 # 
+# Dave getting ready to crop out the water points, but haven't bothered to implement yet.
 # if (!file.exists('Datasets/ne_10m_land.zip')){
 #   download.file('https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_land.zip',
 #                 'Datasets/ne_10m_land.zip')
@@ -1070,9 +1066,6 @@ g + geom_point(data=new_grid,aes(x = st_coordinates(new_grid)[,'X'],
 #   unzip('Datasets/ne_10m_land.zip',exdir='Datasets/ne_10m_land')
 # }
 # land <- st_read('Datasets/ne_10m_land/ne_10m_land.shp')
-# land <- land[land$featurecla=='Land',]
-# land <- st_crop(land,st_bbox(la_grid))
-# trial <- st_overlaps(la_grid,land)
 
 ```
 
