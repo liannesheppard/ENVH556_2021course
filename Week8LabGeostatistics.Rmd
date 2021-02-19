@@ -72,8 +72,8 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 # sp: spatial data methods -- will eventually be superseded by `sf`
 # rgdal:  projections, coordinate systems
 # downloader
-pacman::p_load(tidyverse, knitr, dplyr, gstat, maps, ggmap, 
-               funModeling, Hmisc, scales, akima, sp, rgdal, downloader)
+pacman::p_load(tidyverse, knitr, dplyr, gstat, maps, ggmap, stars,
+               funModeling, Hmisc, scales, akima, sp, rgdal, downloader, sf)
 # Note: this lab will only knit if the latest version of ggmap is installed.  
 #   The following line does this, but needs to be run at the console before
 #   knitting.  (Note: Installation of ggmap takes a LONG time.)
@@ -260,9 +260,9 @@ Tutorial](https://rstudio-pubs-static.s3.amazonaws.com/134781_28af3676f8b943749e
 data(meuse)
 
 # learn about this dataset
-# currently a data frame
+# currently it is just a raw data.frame
 class(meuse)
-names(meuse)
+head(meuse)
 
 # glimpse and str are both useful to learn the structure.  I like glimpse from the `dplyr` package, particularly once this becomes converted to a spatial dataset
 str(meuse)
@@ -271,23 +271,27 @@ glimpse(meuse)
 # summary of the data
 summary(meuse) 
 
-# Now turn meuse into a spatial dataset and see how the class changes 
-# use of `coordinates` changes it to a SpatialPointsDataFrame (SPDF)
-coordinates(meuse) <- ~x+y
+# So far, R does not know that this is spatial data.
+# Now turn meuse into a spatial dataset
+# We specify that the XY coordinates are in columns `x` and `y`
+meuse <- st_as_sf(meuse, coords=c('x','y'))
+# It is now both an sf object and a data.frame
 class(meuse)
 
-# see the impact on str and glimpse
-# note that both describe 5 slots with names @data, @coords.nrs, @coords, @bbox,
-# @proj4string
-str(meuse)
-glimpse(meuse)
+# Although the xy columns are now recognized as the coordinates,
+# they still have no explicit spatial meaning without a projection
+st_crs(meuse)
+# Look up the projection of the meuse coordinates here.
+# This is dataset-specific
+# https://rdrr.io/cran/sp/man/meuse.html
+# The proj4 string is a standardized way to describe a projection
+# Get the proj4string here:
+# https://epsg.io/28992
+# Set the projection, in this case a projection commonly used in the Netherlands
+st_crs(meuse) <- '+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +towgs84=565.417,50.3319,465.552,-0.398957,0.343988,-1.8774,4.0725 +units=m +no_defs'
+# Can also just use the EPSG string
+#st_crs(meuse) <- 28992
 
-# see the impact on summary.  It gives us a little more information but only
-# summarizes the non-location variables, dropping x and y from the summary now
-summary(meuse)
-
-# Note that we can use the function `coordinates` to retrieve the coordinates
-coordinates(meuse)[1:5,]
 
 ```
 
@@ -305,17 +309,29 @@ Projections are essential to know in order to place maps in space correctly.
 
 The next chunk shows how to access values in slots.  
 
-```{r access slots}
-# ---- meuse access slots ----
+```{r extract meuse data}
+# ---- extract meuse data ----
 
-# bounding box, coordinates, proj4string all have helper functions:
-bbox(meuse)
-coordinates(meuse) %>% glimpse
-proj4string(meuse)
+# Confirm the coordinates are properly projected now:
+st_crs(meuse)
 
-# and all the slots can be accessed directly
-meuse@data %>% glimpse
-meuse@coords.nrs
+# View a summary description of our projected data frame
+meuse
+
+# bounding box
+st_bbox(meuse)
+
+# projection
+st_crs(meuse)
+
+# The original data.frame columns (except for X and Y, which are now `geometry`),
+# can still be accessed in the usual way
+head(meuse)
+meuse$zinc
+colnames(meuse)
+
+# To extract original XY coordinates
+st_coordinates(meuse) %>% head()
 
 
 ```
@@ -326,35 +342,67 @@ meuse@coords.nrs
 ```{r meuse plots}
 # ---- meuse plots ----
 
-# Now use some default plots from the `sp` package to plot the data
-# chops up the range of the data based on the native scale
-spplot(meuse, "zinc", colorkey = TRUE, main = "Zinc Concentrations (ppm)")
-
-# same plot, but chops up the range of the data on the log scale
-spplot(meuse, "zinc", do.log = TRUE, colorkey = TRUE, 
-       main = "Zinc Concentrations (ppm)")
-
-# now produce a bubble plot
-bubble(meuse, "zinc", col="blue", main = "Zinc Concentrations (ppm)")
-
-# we can also produce a similar plot of the data with ggplot, though we need to
-# first convert it to a data frame:
-meuse %>% as.data.frame %>% 
-  ggplot(aes(x, y)) + geom_point(aes(size=zinc), color="blue", alpha=3/4) + 
-  ggtitle("Zinc Concentration (ppm)") + coord_equal() + theme_bw()
-
-# and we can read in the Meuse River boundary and add it to the plot
+# Read in the Meuse River polygon
 data(meuse.riv)
-# filtering so the bounds of the river aren't too long
-meuse.riv.subset <- as.data.frame(meuse.riv) %>% filter(V2 > 329500 & V2 < 334100)
+head(meuse.riv,3)
+tail(meuse.riv,3)
+# Note that row 1 is the same as the last row (this closes the polygon)
+str(meuse.riv)
+# The meuse.riv object is still just a matrix of raw XY values.
+# The following code specifies the columns containing the coordinates,
+# specifies the projection of the coordinates as the same as meuse projection,
+# and explicitly combines the points into a polygon
+meuse.riv <- st_as_sf(data.frame(meuse.riv),coords=1:2,crs=st_crs(meuse)) %>%
+  st_combine() %>%
+  st_cast('POLYGON')
 
-meuse %>% as.data.frame %>% 
-  ggplot(aes(x, y)) + geom_point(aes(size=zinc), color="blue", alpha=1/4) + 
-  ggtitle("Zinc Concentration (ppm)") + coord_equal() + theme_bw() +
-  geom_path(data=meuse.riv.subset, aes(x=V1,y=V2) )
+# ggplot2 readily accepts sf objects for plotting via geom_sf()
+# Let's make a map
+ggplot(data=meuse) + geom_sf() + geom_sf(data=meuse.riv)
 
+# The river is too long compared to the study area
+# For prettier plotting, crop the river polygon to within 500m buffer of data
+# This works because our projection is in meter units
+# This code buffers the points of the measurements by 500 m,
+# obtains the smallest possible rectanglar bounding box around those buffers,
+# and crops the river polygon to that rectangle
+meuse.riv <- st_crop(meuse.riv,st_bbox(st_buffer(meuse,500)))
+
+# Much better!
+ggplot(data=meuse) + geom_sf() + geom_sf(data=meuse.riv)
+
+# Color the zinc data based on the native scale
+# Plotting the river before the points ensures points are on top of river
+# Scale_color_gradients with rainbow(rev=TRUE) creates a heatmap
+
+ggplot(data=meuse) +
+  geom_sf(data=meuse.riv) +
+  geom_sf(data=meuse, aes(color=zinc)) +
+  scale_color_gradientn(colors=rainbow(4,rev=TRUE)) +
+  ggtitle("Zinc Concentration (ppm)") +
+  theme_bw()
+
+# Color the zinc data based on the log scale
+
+ggplot(data=meuse) +
+  geom_sf(data=meuse.riv) +
+  geom_sf(data=meuse, aes(color=log(zinc))) +
+  scale_color_gradientn(colors=rainbow(4,rev=TRUE)) +
+  ggtitle("Zinc Concentration in log(ppm)") +
+  theme_bw()
+
+# Make a bubble plot
+# The alpha value adds transparency to plotting shapes
+
+ggplot(data=meuse) +
+  geom_sf(data=meuse.riv) +
+  geom_sf(data=meuse, aes(size=zinc), color='blue', alpha=1/2) +
+  ggtitle("Zinc Concentration (ppm)") +
+  theme_bw()
 
 ```
+
+Note that geom_sf plots in lat-long units by default, even though our data is stored in a different projection. (As we will see later, it is trivial to convert our points to a different projection once our points have a specific projection in sf). We can check that map projections are working properly and explore the study area on [Google Maps](https://www.google.com/maps?q=50.97,5.74)
 
 ### Estimating variograms
 
@@ -457,7 +505,9 @@ example we are estimating a common mean using ordinary kriging.
 
 # read in the meuse grid to use for predictions
 data(meuse.grid)
-gridded(meuse.grid) = ~x+y
+# convert to sf points
+meuse.grid <- st_as_sf(meuse.grid,coords=c('x','y'),crs=st_crs(meuse))
+#gridded(meuse.grid) = ~x+y
 
 # ordinary kriging of log(zinc)
 # first two arguments are formula and data; krige doesn't like explicit
@@ -465,12 +515,12 @@ gridded(meuse.grid) = ~x+y
 lzn.kr <- krige(log(zinc)~1, meuse, newdata = meuse.grid, model = v.fit)
 
 # plot kriging predictions and SEs
-pl1 <- spplot(lzn.kr[1], main = "OK prediction of log-zinc")
-pl1
+pl1 <- plot(lzn.kr[c('var1.pred','var1.var')], main = "OK prediction of log-zinc")
+#pl1
 
 lzn.kr$se = sqrt(lzn.kr$var1.var)
-pl2 <- spplot(lzn.kr["se"], main = "OK prediction error")
-pl2
+pl2 <- plot(lzn.kr["se"], main = "OK prediction error")
+#pl2
 
 ```
 
@@ -501,15 +551,15 @@ plot(v.uk, model = m.uk)
 lzn.kr <- krige(log(zinc)~sqrt(dist), meuse, meuse.grid, model = m.uk)
 
 # plot the UK predictions and SEs
-pl3 <- spplot(lzn.kr[1], main = "UK prediction of log-zinc")
+pl3 <- plot(lzn.kr[c('var1.pred','var1.var')], main = "UK prediction of log-zinc")
 lzn.kr$se = sqrt(lzn.kr$var1.var)
-pl4 <- spplot(lzn.kr["se"], main = "UK prediction error")
-
-# Now plot all 4 kriging results on a single plot, which allows easy comparison
-print(pl1, split = c(1,1,2,2), more = T)
-print(pl2, split = c(1,2,2,2), more = T)
-print(pl3, split = c(2,1,2,2), more = T)
-print(pl4, split = c(2,2,2,2))
+pl4 <- plot(lzn.kr["se"], main = "UK prediction error")
+# 
+# # Now plot all 4 kriging results on a single plot, which allows easy comparison
+# print(pl1, split = c(1,1,2,2), more = T)
+# print(pl2, split = c(1,2,2,2), more = T)
+# print(pl3, split = c(2,1,2,2), more = T)
+# print(pl4, split = c(2,2,2,2))
 
 ```
 
@@ -532,32 +582,82 @@ cross-validation for prediction performance.
 ```{r meuse cross-validation}
 # ---- meuse cross-validation ----
 
+# Define a wrapper function krige.cv.sf that does not drop the projection
+# of the sf object. This repairs a bug in gstat.cv(), called internally by krige.cv()
+# Bug has been reported on github to gstat maintainers and fixed,
+# so this wrapper function probably won't be needed next time course is taught
+krige.cv.sf <- function(formula, locations, model = NULL, ..., beta = NULL, 
+	nmax = Inf, nmin = 0, maxdist = Inf, nfold = nrow(locations), 
+	verbose = interactive(), debug.level = 0){
+  # Repeating the exact arguments from krige.cv source code
+  krige.cv1 <- krige.cv(formula = formula, locations = locations, model = model, ..., beta = beta,
+	nmax = nmax, nmin = nmin, maxdist = maxdist, nfold = nfold,
+	verbose = verbose, debug.level = debug.level)
+  # force projection to that of the function input
+  st_crs(krige.cv1) <- st_crs(locations)
+  return(krige.cv1)
+}
+
+# Define function to create a bubble plot for kriging residuals
+bubble.krige.cv.sf <- function(cv.out, plot_title){
+  ggplot(data=cv.out) +
+  geom_sf(aes(size=abs(residual), color=factor(residual>0)), alpha=1/2) +
+  scale_color_discrete(name='residual > 0', direction=-1) +
+  scale_size_continuous(name='|residual|') +
+  ggtitle(plot_title) +
+  theme_bw()
+}
+
+# Define function for calculating the MSE, RMSE, MSE-based R2 from krige.cv output
+krige.cv.stats <- function(krige.cv.output){
+  d <- krige.cv.output
+  # mean of observations
+  mean_observed <- mean(d$observed)
+  # MSE of predictions
+  MSE_pred <- mean((d$observed - d$var1.pred)^2)
+  # MSE of observations (for R2 denominator)
+  MSE_obs <- mean((d$observed - mean_observed)^2)
+  # print the results not rounded
+  cat(paste("RMSE:  ", sqrt(MSE_pred)),'\n')
+  cat(paste("MSE-based R2:  ", max(1 - MSE_pred/MSE_obs, 0)),'\n')
+}
+
+
 # ordinary kriging, 5-fold cross-validation 
 # nmax defaults to all observations used for kriging; this sets it at 40
 # TODO:  investigate the difference
-meuse.CV5 <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5) 
+meuse.CV5 <- krige.cv.sf(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5)
+# stats
+krige.cv.stats(meuse.CV5)
 # plot the residuals
-bubble(meuse.CV5, "residual", main = "log(zinc): 5-fold CV residuals")
+bubble.krige.cv.sf(meuse.CV5,"log(zinc): 5-fold CV residuals")
+
 
 # ordinary kriging, LOOCV
-meuse.CVLOO <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40)
+meuse.CVLOO <- krige.cv.sf(log(zinc)~1, meuse, model = v.fit, nmax = 40)
+# stats
+krige.cv.stats(meuse.CVLOO)
 # plot the residuals
-bubble(meuse.CVLOO, "residual", main = "log(zinc): LOO CV residuals")
+bubble.krige.cv.sf(meuse.CVLOO, "log(zinc): LOO CV residuals")
+
 
 # universal kriging, 5-fold cross-validation 
 meuse.CV5uk <-
-  krige.cv( log(zinc) ~ sqrt(dist), meuse,
+  krige.cv.sf( log(zinc) ~ sqrt(dist), meuse,
     model = m.uk, nmax = 40, nfold = 5 )
+# stats
+krige.cv.stats(meuse.CV5uk)
 # plot the residuals
-bubble(meuse.CV5uk, "residual", 
-      main = "log(zinc) UK on sqrt(dist): 5-fold CV residuals")
+bubble.krige.cv.sf(meuse.CV5uk,"log(zinc) UK on sqrt(dist): 5-fold CV residuals")
 
-# ordinary kriging, LOOCV
-meuse.CVLOO <- krige.cv(log(zinc)~sqrt(dist), meuse, 
+
+# universal kriging, LOOCV
+meuse.CVLOOuk <- krige.cv.sf(log(zinc)~sqrt(dist), meuse, 
                         model = m.uk, nmax = 40)
+# stats
+krige.cv.stats(meuse.CVLOOuk)
 # plot the residuals
-bubble(meuse.CVLOO, "residual", 
-       main = "log(zinc) UK on sqrt(dist): LOO CV residuals")
+bubble.krige.cv.sf(meuse.CVLOOuk,"log(zinc) UK on sqrt(dist): LOO CV residuals")
 
 ```
 
@@ -583,20 +683,9 @@ been projected to a flat surface, and
 * `lambert_x` and `lambert_y` which is a Lambert projection and is in meters.
 It is the USA_Continguous_Lambert_Conformal_Conic.
 
-Here is an example of [projections in R](https://rpubs.com/nabilabd/142092)
-Possible code for lat/long CRS:
-```
-crdref <- CRS('+proj=longlat +datum=WGS84')
-pts <- SpatialPoints(lonlat, proj4string=crdref)
-```
-Here is code to project into Lambert coordinates in R:
-```
-usa_lamb=Proj("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
-```
-
-We are going to use the [Lambert
+We are going to use [Lambert
 coordinates](https://en.wikipedia.org/wiki/Lambert_conformal_conic_projection)
-also in this dataset because these are in meters and projected for a flat
+for this dataset because these are in meters and projected for a flat
 surface so distance calculations can be done directly.  To see a documentation
 of the projection formulas, see this [New Zealand government
 website](https://www.linz.govt.nz/data/geodetic-system/coordinate-conversion/projection-conversions/lambert-conformal-conic-geographic)
@@ -606,6 +695,8 @@ and to get distances.  Some examples are:
 
 * The `sp::SpatialPoints` function can is used to create objects of the spatial
 points from lat/long data.
+
+* The `sf` package is the modern replacement for package sp.
 
 * The `rgeos::gWithinDistance` function is used to find if locations are the
 same, or within a specified distance.
@@ -624,62 +715,58 @@ using the fall season for this example.  Summarize the data.  Take note of the
 range of the data coordinates, the maximum distance, and other dataset features
 (e.g. which covariates are included).
 
-```{r read fall snapshot as SPDF}
-#-----read fall snapshot as SPDF-----
+```{r read fall snapshot as a SPDF}
+# save coordinate systems as variables
+# WGS84 latitude-longitude
+latlong_proj <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+# Lambert Conic projection (meters)
+lambert_proj <- "+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
 
 # focus only on the common model covariates
+# Not importing redundant spatial columns like lat_m, long_m, lambert_x, lambert_y,
+# Because we can easily reproject the data however we like later
 fall <- snapshot %>%
-  filter(seasonfac == "2Fall") %>%
-  select(ID, latitude, longitude, lat_m, long_m, lambert_x, lambert_y, ln_nox, 
-         D2A1, A1_50, A23_400, Pop_5000, D2C, Int_3000, D2Comm, cluster, 
-         group_loc, FieldID) %>% 
-  as.data.frame()
+    filter(seasonfac == "2Fall") %>%
+    select(ID, latitude, longitude, ln_nox, D2A1, A1_50, A23_400, Pop_5000, D2C, Int_3000, D2Comm, cluster, group_loc, FieldID) %>%
+  as.data.frame
 
-# now convert this to a SPDF.  Use Lambert projections which may not need a CRS
-# as they are already in meters and don't need a conversion for distance
-# calculations.  The CRS for Lambert is USA_Continuous_Lambert_Conformal_Conic.
-coordinates(fall) <- ~lambert_x+lambert_y
+# now convert this to an sf object
+fall <- st_as_sf(fall, coords=c('longitude','latitude'), crs=latlong_proj)
 
-# # probably don't need a projection or CRS for lambert because these are
-# already in meters; keeping just in case:
-# proj4string(fall) <- CRS("+proj=laea")
+# get summary information and column names
+fall
 
-
-# # If we connect with its projection, here are some options as I understand for
-# # two of the 3 coordinates.  (Note:  Not clear how long_m and lat_m are defined.
-# # I'm guessing they are UTMs but not stored in the database that way.)
-# # UTM
-# coordinates(fall) <- ~long_m+lat_m
-# proj4string(fall) <-CRS("+proj=utm +zone=10 +datum=WGS84")
-# # standard latitude and longitude in decimal degrees
-# #coordinates(fall) <- ~longitude+latitude
-# #proj4string(fall) <- CRS("+proj=longlat +ellps=WGS84")
-
-# summarize and get the names
-#names(fall)
-#str(fall)
-glimpse(fall)
+# see the raw XY (long-lat) coordinates
+st_coordinates(fall)
 
 # # maximum distance in the dataset; thought I would use this to set the cutoff in
 # # the variogram, but it didn't work so I hard-coded it.
-# maxdist <- dist(fall@bbox)
+
+# Temporarily convert to lambert projection to get bounding box in meters
+#maxdist <- fall %>% st_transform(lambert_proj) %>% st_bbox() %>% dist() %>% max()
 
 
 ```
 
-For later use, we need to convert the grid to a SPDF:  
+For later use, we need to convert the grid to sf points:  
 
 ```{r convert LA grid to SPDF}
 #-----convert LA grid to SPDF-----
 
-# la_grid is a tibble; convert to a data frame (needed?)
-la_grid <- la_grid %>% 
-  
-  # drop -Inf values in D2A1 variable
-  filter(D2A1 != -Inf)
+class(la_grid)
 
-# convert to a SPDF
-coordinates(la_grid) <- ~lambert_x+lambert_y
+# la_grid is a tibble; convert to a data frame (needed?)
+# (We could just import them as data.frame at the beginning with read.csv())
+# Remove redundant lambert columns, we only need one coordinate system
+# also drop -Inf values in D2A1 variable
+la_grid <- la_grid %>%
+  filter(D2A1 != -Inf) %>%
+  as.data.frame() %>%
+  select(-lambert_x,-lambert_y) %>%
+  st_as_sf(coords=c('longitude','latitude'), crs=latlong_proj)
+
+# get info
+la_grid
 
 # Not sure we need to tell R that this is gridded and it is failing b/c
 # coordinate intervals are not constant. The code works without this:
@@ -687,10 +774,25 @@ coordinates(la_grid) <- ~lambert_x+lambert_y
 # examples suggest this shortcut works too:
 #gridded(la_grid) <- ~lambert_x+lambert_y
 
-# summarize and get the names
-#names(la_grid)
-#str(la_grid)
-glimpse(la_grid)
+
+# Remove the water points from la_grid
+# (We don't have data from the water, so we do not want to predict there)
+if (!file.exists(file.path('Datasets','ne_10m_land.zip'))){
+  download.file('https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_land.zip',
+                'Datasets/ne_10m_land.zip')
+}
+if (!file.exists(file.path('Datasets','ne_10m_land','ne_10m_land.shp'))){
+  unzip(file.path('Datasets','ne_10m_land.zip'),exdir=file.path('Datasets','ne_10m_land'))
+}
+# read shapefile as sf multipolygon
+land <- st_read(file.path('Datasets','ne_10m_land','ne_10m_land.shp'))
+# crop world land multipolygon to that which overlaps la_grid
+# to save time in next step
+land <- suppressWarnings(st_crop(land,st_bbox(la_grid)))
+# Show map of the cropped land object
+ggplot(land) + geom_sf(aes(fill=featurecla))
+# Remove water points from la_grid
+la_grid <- la_grid[st_within(la_grid,land) %>% sapply(length) > 0,]
 
 ```
 
@@ -705,29 +807,32 @@ axis labels, etc.
 #-----plot fall snapshot-----
 
 # Follows plotting options shown above; some commented out
-# chops up the range of the data based on the native scale
-spplot(fall, "ln_nox", colorkey = TRUE, main = "ln(NOx) Concentrations (ln(ppb)")
+
+# log nox
+ggplot(data=fall) +
+  geom_sf(aes(color=ln_nox)) +
+  scale_color_gradientn(colors=rainbow(4,rev=TRUE)) +
+  ggtitle("ln(NOx) Concentrations (ln(ppb)") +
+  theme_bw()
 
 # now produce a bubble plot -- doesn't look great here
 #bubble(fall, "ln_nox", col="blue", main = "ln(NOx) Concentrations (ln(ppb)")
 
-# we can also produce a similar plot of the data with ggplot, though we need to
-# first convert it to a data frame:
-fall %>% as.data.frame() %>%
-  ggplot(aes(longitude, latitude)) + 
-  geom_point(aes(size = ln_nox), color ="blue", alpha = 1 / 4) +
-  ggtitle("ln(NOx) Concentrations (ln(ppb)") + coord_equal() + theme_bw()
-
-# [Lianne, here is an option, not sure it is better. The ln_nox really scruntches up the scale]
-fall %>% as.data.frame() %>%
-  ggplot(aes(longitude, latitude)) + 
-  geom_point(aes(color = exp(ln_nox)), alpha = 0.4) +
-  scale_color_continuous(type = "viridis") +
-  labs(title = "NOx Concentrations (ppb)", 
-       color = "NOx (ppb)") + 
-  coord_equal() + 
+# we can also produce a similar plot of the data with ggplot
+ggplot(data=fall) +
+  geom_sf(data=fall,aes(size=ln_nox), color='blue', alpha=1/2) +
+  ggtitle("ln(NOx) Concentrations (ln(ppb)") +
   theme_bw()
 
+# [Lianne, here is an option, not sure it is better. The ln_nox really scruntches up the scale]
+  # (DLS -- leaving this code from Chris in here for now, fairly similar to above -- DLS)
+  #ggplot(data=fall) + 
+  #geom_sf(aes(color = exp(ln_nox)), alpha = 0.4) +
+  #scale_color_continuous(type = "viridis") +
+  #labs(title = "NOx Concentrations (ppb)", 
+  #     color = "NOx (ppb)") + 
+  #coord_equal() + 
+  #theme_bw()
 ```
 
 ### Mapping the data
@@ -755,43 +860,72 @@ Note 2:  Maps require access to the internet to load.
 
 # uses ggmap; initial version of code kindly provided by Brian High
 
+# Obtain bounding box (left, bottom, right, top extremes of object) for la_grid
+# Reproject to lambert (in meters) and extent out by 10 km
+# Then convert back to lat-long, get the bounding box, convert bbox to vector
+# We use this to specify how large of a basemap to download
+map_bbox <- la_grid %>%
+  st_transform(lambert_proj) %>%
+  st_buffer(dist=10000) %>%
+  st_transform(latlong_proj) %>%
+  st_bbox() %>%
+  as.vector()
+
 # helper function for bbox (you can modify and use this for your own work)
-make_bbox <- function(.data, width_extra = 0.0001, height_extra = 0.00005){
-  
-  # find lat and long column names
-  long <- str_subset(string = names(.data), pattern = "Long|long")
-  lat <- str_subset(string = names(.data), pattern = "Lat|lat")
-  
-  # drop rows with NA (first converting to a dataframe if not already)
-  temp <- .data %>% as_tibble() %>% drop_na(all_of(c(long, lat)))
-  
-  # create a named vector with the corners of the plotting region
-  out <- c(left = min(temp[[long]]) + width_extra*min(temp[[long]]),
-           bottom = min(temp[[lat]]) - height_extra*min(temp[[lat]]),
-           right = max(temp[[long]]) - width_extra*min(temp[[long]]),
-           top = max(temp[[lat]]) + height_extra*min(temp[[lat]]) )
-}
+# DLS note--leaving this in here for now, but maybe not needed, or maybe could
+# adapt the above code into bbox function instead.
+# make_bbox <- function(.data, width_extra = 0.0001, height_extra = 0.00005){
+#   
+#   # find lat and long column names
+#   long <- str_subset(string = names(.data), pattern = "Long|long")
+#   lat <- str_subset(string = names(.data), pattern = "Lat|lat")
+#   
+#   # drop rows with NA (first converting to a dataframe if not already)
+#   temp <- .data %>% as_tibble() %>% drop_na(all_of(c(long, lat)))
+#   
+#   # create a named vector with the corners of the plotting region
+#   out <- c(left = min(temp[[long]]) + width_extra*min(temp[[long]]),
+#            bottom = min(temp[[lat]]) - height_extra*min(temp[[lat]]),
+#            right = max(temp[[long]]) - width_extra*min(temp[[long]]),
+#            top = max(temp[[lat]]) + height_extra*min(temp[[lat]]) )
+# }
 
 # define the bounding box for the map using make_bbox 
-bbox <- make_bbox(la_grid)
+# bbox <- make_bbox(la_grid)
 
-# Make a map base layer of "Stamen" tiles (suppressing messages)
-map <- get_stamenmap(bbox, zoom = 11, maptype = "toner-background") %>% 
-  suppressMessages()
 
-# Make the map image from the tiles 
+# Download a basemap of "Stamen" tiles
+map <- suppressMessages(get_stamenmap(map_bbox, zoom = 11,
+                                     maptype = "toner-background"))
+
+# Make a ggmap object from the tiles 
 g <- ggmap(map, darken = c(0.5, "white")) + theme_void() 
 
-# Show the map
+# Plot the map
 g + ggtitle("Sample Map of Los Angeles for \n the area covered by the snapshot data")
 
 # Add snapshot locations to the map will colors for values
 # Note: need to use a data.frame for this, not a spatial data object
-g + geom_point(aes(x = longitude, y = latitude, col = exp(ln_nox)), 
-               data = as.data.frame(fall), alpha = 0.8) + 
-    scale_color_gradient(name = "NOx (ppb", low = "yellow", high = "red") + 
-    ggtitle("Map of Los Angeles \n with the fall snapshot data") +
-    theme(legend.position = c(.98,.02), legend.justification = c(1,0)) 
+
+# For some reason, geom_sf() did not work for this (bug?), so needed to use geom_point
+# and manually add the extracted XY coordinates
+# https://stackoverflow.com/questions/60066424/how-to-align-ggmap-crs-of-google-map-longitude-latitude
+
+# NOx on native scale
+g + geom_point(data=fall,aes(x = st_coordinates(fall)[,'X'],
+                           y = st_coordinates(fall)[,'Y'],
+                           col = exp(ln_nox)), alpha = 0.8) + 
+    scale_color_gradientn(name = "NOx (ppb)", colors=rainbow(4,rev=TRUE)) + 
+    ggtitle("Map of Los Angeles \n with the fall snapshot data")
+
+# NOx on log scale
+g + geom_point(data=fall,aes(x = st_coordinates(fall)[,'X'],
+                           y = st_coordinates(fall)[,'Y'],
+                           col = ln_nox), alpha = 0.8) + 
+  scale_color_gradientn(name='ln(NOx)', colors=rainbow(4,rev=TRUE)) +
+  ggtitle("ln(NOx) Concentrations (ln(ppb))") +
+  theme_bw()
+
 
 ```
 
@@ -802,9 +936,6 @@ few observations are in order:
 was done on purpose in the displays in Mercer et al to enable the viewer to see
 the gradient values.  Our data have not been transformed this way.  (It would be
 a good exercise to implement this...)
-* Not all the points on our map appear to correspond to those displayed in
-Mercer.  This deserves more investigation since the datasets are supposed to be
-identical.
 
 Now add the grid to the map.  This plot isn't particularly informative, other
 than making it obvious to us that the area covered by the grid is not completely
@@ -815,9 +946,11 @@ aligned with the area covered by the map.
 
 # Note: we read the grid csv data above
 # The map range is set above so no points are removed.
-g + geom_point(aes(x = longitude, y = latitude), data = as.data.frame(la_grid), 
-               alpha = 0.03) + 
-    ggtitle("Map of Los Angeles \n with the grid locations overlaid") 
+
+g + geom_point(data=la_grid,aes(x = st_coordinates(la_grid)[,'X'],
+                           y = st_coordinates(la_grid)[,'Y']), alpha = 0.2) + 
+  ggtitle("Map of Los Angeles \n with the grid locations overlaid") +
+  theme_bw()
 
 ```
 
@@ -842,7 +975,8 @@ these data is a sensible choice.)
 # first estimate the variogram object and assign it a name
 # the default maximum distance (cutoff) is too short so set it to align w/
 # values shown in Mercer
-vf <- variogram(ln_nox~1, fall, cutoff = 31000)
+# Use lambert projection (meters) for variogram
+vf <- variogram(ln_nox~1, st_transform(fall,lambert_proj), cutoff = 31000)
 
 # Then fit a variogram model, offering to the function several different model
 # options (exponential, spherical, and Matern):
@@ -863,7 +997,7 @@ plot(vf, vf.fit)
 # first estimate the variogram object and assign it a name
 vfc <-
   variogram(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
-            data = fall,
+            data = st_transform(fall,lambert_proj),
             cutoff = 31000)
 
 # Then fit a variogram model, offering to the function several different model
@@ -896,8 +1030,29 @@ Observe:  TODO:  ADD comments.
 **Step 2**:  Cross-validate the UK models to evaluate the quality of the
 predictions.  
 
-TODO:  ADD
 
+```{r krige.cv in LA}
+
+# clusterwise cross-validation of OK model with covariates
+fall.CVcluster.ok <- krige.cv.sf(ln_nox~1,
+    st_transform(fall,lambert_proj),
+    model = vf.fit,
+    nfold = fall$cluster,
+    )
+#stats
+krige.cv.stats(fall.CVcluster.ok)
+
+
+# clusterwise cross-validation of UK model with covariates
+fall.CVcluster.uk <- krige.cv.sf(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
+    st_transform(fall,lambert_proj),
+    model = vfc.fit,
+    nfold = fall$cluster,
+    )
+#stats
+krige.cv.stats(fall.CVcluster.uk)
+
+```
 
 
 **Step 3**:  Estimate the kriging predictions.  
@@ -907,12 +1062,12 @@ TODO:  ADD
 
 kc_la <-
   krige(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
-        fall,
-        la_grid,
+        st_transform(fall,lambert_proj),
+        st_transform(la_grid,lambert_proj),
         model = vfc.fit)
 
 # check out the results; predictions are in `var1.pred`
-glimpse(kc_la)
+kc_la
 
 ```
 
@@ -929,15 +1084,30 @@ area shown.
 ```{r plot the grid predictions on the map}
 #-----plot the grid predictions on the map-----
 
-# first need to merge the predictions into the la_grid in order to use.
-# also create predicted NOx on the native scale
-new_grid <- inner_join(as.data.frame(la_grid),
-                       as.data.frame(kc_la),
-                       by = c("lambert_x", "lambert_y")) %>% 
-  mutate(NOx = exp(var1.pred))
-  #filter(NOx != Inf)
+# reproject predictons from labmert to to lat-long before plotting
+kc_la <- st_transform(kc_la,latlong_proj)
 
-glimpse(new_grid)
+# first need to merge the predictions into the la_grid in order to use.
+# We can verify that the coordinates are *almost* exactly the same
+all.equal(st_coordinates(kc_la), st_coordinates(la_grid))
+# But not *exactly* the same.
+# Likely due to floating point / rounding issues during kriging
+identical(st_coordinates(kc_la), st_coordinates(la_grid))
+
+# So when we do a strict spatial join, all the predictions are NA.
+st_join(la_grid, kc_la)
+
+# To circumvent this issue, let's join by nearest feature (point)
+new_grid <- st_join(la_grid, kc_la, join=st_nearest_feature)
+# Another way to join -- specifying very small tolerance -- takes longer
+#new_grid <- st_join(la_grid, kc_la, join=st_equals_exact, par=1e-10)
+
+# also create predicted NOx on the native scale
+new_grid <- new_grid %>% mutate(NOx = exp(var1.pred))
+
+# Take a look. Still has same number of features, and no NAs
+new_grid
+all(!is.na(new_grid$var1.pred))
 
 # create theme
 my_theme <- theme(
@@ -947,18 +1117,19 @@ my_theme <- theme(
     legend.background = element_rect(fill = "white")
     )
 
-# make plot
-g + geom_point(aes(x = longitude, y = latitude, color = NOx),
-               data = new_grid, alpha = 0.5) +
+
+# make plot.  Note the relationship between NOx and highways
+g + geom_point(data=new_grid,aes(x = st_coordinates(new_grid)[,'X'],
+                           y = st_coordinates(new_grid)[,'Y'],
+                           col = NOx), alpha = 0.2) + 
+    scale_color_gradientn(name = "NOx (ppb)", colors=rainbow(4,rev=TRUE)) + 
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") +
-    scale_color_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +
-    my_theme
+  my_theme
+
 
 ```
 
-This refinement is the same gridded predictions, but now drops all points over 
-the water. 
-```{r plot gridded predictions not on the water}
+#```{r plot gridded predictions not on the water}
 #-----plot gridded predictions not on the water-----
 
 # Note: The shape of the plotted prediction area does not quite match the land
@@ -1011,7 +1182,7 @@ g + geom_point(aes(x = longitude, y = latitude, col = NOx),
   scale_color_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +
   my_theme
 
-```
+#```
 
 Now we show an example plotting smooth gridded predictions on the map with polygons.
 ```{r plot smooth grid predictions on the map with polygons}
@@ -1021,7 +1192,9 @@ Now we show an example plotting smooth gridded predictions on the map with polyg
 # TODO:  this step is failing due to missing values and Infs not allowed so the
 # rest of the chunk fails also
 # [CZ: I filtered out the Inf values of la_grid, so this works now. It doesn't fix the fact that the la_grid file has -Infs]
-new_grid_interp <- with(new_grid, interp(longitude, latitude, NOx))
+# DLS -- Needed to back-transform the sf object to SpatialPointsDataFrame here (for interp)
+
+new_grid_interp <- new_grid %>% as_Spatial() %>% interp(z='NOx')
 
 # Expand grid into a data frame
 new_grid_dens_expand<-
@@ -1029,12 +1202,12 @@ new_grid_dens_expand<-
     mutate(z = as.vector(new_grid_interp$z),
            z = ifelse(is.na(z), 0, z))
 
+# Note that the smoothing pattern smudges onto the water
 g + stat_contour(aes(x = x, y = y, z = z, fill = ..level..), alpha = 0.07, 
                  data = new_grid_dens_expand, geom = "polygon", bins = 50) + 
     scale_fill_gradient(name = "NOx (ppb)", low = "yellow", high = "red", 
                         breaks = seq(0, 125, 25), limits = c(0, 125)) +  
-    ggtitle("Map of Los Angeles \n with fall UK predictions overlaid, \n smoothed predictions (with interpolation due to missing grid points)") + 
-    my_theme
+    ggtitle("Map of Los Angeles \n with fall UK predictions overlaid, \n smoothed predictions (with interpolation due to missing grid points)")
 
 ```
 
@@ -1046,6 +1219,8 @@ using stat_summary_2d:
 
 # Note: we replace "+" with "%+%" to override the data previously mapped (i.e., replace
 #   the current data frame, due to S3 method precedence issues)
+
+## DLS - not sure what this is trying to plot, so left alone for now
 g %+% new_grid + aes(x = longitude, y = latitude, z = NOx) +
     stat_summary_2d(fun = mean, alpha = 0.7, geom = "tile", bins = 30) +
     scale_fill_gradient(name = "NOx (ppb)", low = "yellow", high = "red") +
@@ -1060,6 +1235,9 @@ TODO:  This isn't currently working.  Drop?
 
 ```{r prediction map with shapefiles, eval = FALSE}
 #----- prediction map with shapefiles --------
+
+
+## DLS -- Link no longer works
 
 # Define URL for shapefile data library top-level folder
 
