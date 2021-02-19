@@ -268,7 +268,9 @@ res_pure <- result_pure_sp %>%
               `E(b1)` = mean(b1),
               sd_b1 = sd(b1),
               `E(se_b1)` = sqrt(mean(seb1^2)),
-              `E(R2)` = mean(R2),
+              `RMSE_b1` = sqrt(var(b1)+(mean(b1-2)^2)),
+              `E(R2_exp(reg))` = mean(R2_W_reg),
+              `E(R2_exp(MSE))` = mean(R2_W_MSE),
               `E(exp_var)` = mean(exp_var),
               .groups = "drop" 
               ) %>%
@@ -291,12 +293,20 @@ kable(
 
 ## Plots of one dataset showing the best fit lines for true vs. mismeasured exposures
 
+Note:  For clarity of display we are presenting only 1,000 subjects.  However,
+the sample size of the subject dataset impacts the certainty of the parameter
+estimates, so the slopes shown in this figure have more uncertainty than the
+slopes estimated in the simulation study with 10,000 subjects.  (Why?)
+
 ```{r plot.pure.ME.data, message=FALSE}
 #-----plot pure ME data-----
 
+# Set the seed
+set.seed(556)
+
 # create one example of the pure measurement error dataframe
 #pure_data <- me_pure_data(n_subj = 10000)
-pure_data <- me_pure_data(n_subj = 100)
+pure_data <- me_pure_data(n_subj = 1000)
 
 # get the "true" coefficients of the relationship between exposure and outcome
 coefs_true <- lm(y ~ x, pure_data)$coefficients
@@ -316,18 +326,18 @@ ggplot(data = temp, aes(x = error_exposure, y = y)) +
   facet_wrap(~error_type) +
   
   # points
-  geom_point(shape = "o", alpha = 0.4) +
+  geom_point(shape = "o", alpha = 0.6) +
   
   # Best fit line given true exposure x
   geom_abline(aes(intercept = coefs_true[1], slope = coefs_true[2], 
-              linetype = "dashed", color = "gray")) +
+              linetype = "dashed", color = "black")) +
   
   # best fit line given mismeasured exposure
-  geom_smooth(method = lm, se = FALSE, aes(linetype = "solid", color = "red"), alpha = 1) +
+  geom_smooth(method = lm, se = FALSE, aes(linetype = "solid", color = "red")) +
   
   # specify legend values manually
   scale_color_manual(name = "Exposure Type",
-                       values = c("gray", "red"),
+                       values = c("black", "red"),
                        labels = c("True", "Mismeasured"),
                        guide = "legend") +
   
@@ -401,16 +411,19 @@ ggplot(data = temp, aes(x = error_exposure, y = y)) +
 source("mesim_like.R")
 
 # Set the seed
-set.seed(101)
+set.seed(521)
 
 # define the number of simulation iterations to use
-n_iter <- 10
+# Note: with a small number of iterations, the results may not be consistent
+# with the results reported in the paper.  They will also vary more than you
+# might expect if you change the seed. (Why?)
+n_iter <- 100
 
 # start timing for single-core processing
 tic("single-core Berkson-like ME timing")
 
 # Step II:  Iterate
-result_like_sp <- lapply(seq_len(n_iter), function(x) me_like()) %>% 
+result_like_sp <- lapply(seq_len(n_iter), function(x) me_like(n_subj = 10000)) %>% 
   
   # bind list elements (Step III)
   bind_rows(.id = "replicate")
@@ -453,13 +466,14 @@ locations.
 # This repeats similar results as developed for the pure ME case.
 # Note:  Students need to analyze the other features and develop plots
 
-# Note: if you're using the multicore results, change `result_pure_sp` to 
-# `result_pure_mp`
+# Note: if you're using the multicore results, change `result_like_sp` to 
+# `result_like_mp`
 
 res_like <- result_like_sp %>% 
-  group_by(predictor) %>% 
+  group_by(exposure_vars) %>% 
   summarise(N = n(),
-            `R2_W` = mean(r2),
+            `R2_W_reg` = mean(R2_W_reg),
+            `R2_W_MSE` = mean(R2_W_MSE),
             `E(exp_var)` = mean(exp_var),
             `E(a3)` = mean(a3hat),
             `E(se(a3))` = sqrt(mean(a3var)),
@@ -469,7 +483,7 @@ res_like <- result_like_sp %>%
             `RMSE_b1` = sqrt(var(b1)+(mean(b1-2)^2)),
             .groups = "drop"
             ) %>% 
-  arrange(predictor) 
+  arrange(exposure_vars) 
 
 # Display results
 kable(res_like %>% select(-N), 
@@ -524,14 +538,19 @@ kable(res_like %>% select(-N),
     well as characteristics of the health effect estimates for pure Berkson and 
     classical measurement error, respectively.  Discuss your understanding of 
     these results.
-2.  In your lab write-up:  
+2.  Develop one or more figures to show your insights into pure Berkson and classical measurement error.  Consider figures that show:
+    a. The relationship in one simulated dataset.
+    b. The distribution of the health effect parameter estimate across simulations.
+3.  In your lab write-up:  
     a. Make sure you describe clearly the conditions you studied in your
        simulation study.   State the assumptions used in the simulation.  (Note:
        If you wish you may change the underlying assumptions, but if you do, make
        sure you convey what you did completely clearly in your write-up.)
-    b. Develop some informative figures to help you make your points.  Think
-       about both the exposure side and the health effect estimate side of the
-       simulation study results.
+    b. Show some informative figures to help you make your points.  Think about
+    both the exposure side and the health effect estimate side of the simulation
+    study results.  If you show figures that summarize a single simulated
+    dataset vs. figures that summarize results across all simulated datasets,
+    indicate your understanding of how they are related.
     c. Discuss your understanding of pure Berkson and classical measurement
        error and connect that understanding to the quantities you simulated and
        estimated in the simulation study.

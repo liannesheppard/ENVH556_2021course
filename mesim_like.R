@@ -44,8 +44,8 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
     #   n_samp=100 (default) is the no. monitors/monitor locations/exposure samples
     #   s3_sd is the SD for the s3 variable in the sample 
     #       and defaults to be 1 or 0.3  (All other SDs for the s's are 1)
-    #       s3_sd1=1   (default)
-    #       s3_sd2=0.3 (default)
+    #       s3_sd1=1   (default) SD(s3) for subjects and monitor group 1
+    #       s3_sd2=0.3 (default) SD(s3) for monitor group 2
     # the following terms are set inside the program:
     #   sd_eta=4 is the SD for the error in the exposure model
     #   sd_eps=25 is the SD for the error in the disease model
@@ -89,7 +89,9 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
     # collect 1full model parameters 
     one_full <- tibble(a3hat = tidy(lm_1full)$estimate[4], 
                        a3var = tidy(lm_1full)$std.error[4]^2, 
-                       r2 = glance(lm_1full)$r.squared)
+                       r2 = glance(lm_1full)$r.squared,
+                       r2_MSE = as.numeric(getMSE(samp1$x, lm_1full$fitted.values)[2])
+                       )
     
     # Reduced exposure model
     lm_1red <- lm(x ~ s_1 + s_2, data = samp1)
@@ -98,7 +100,9 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
     # want for the reduced model but will be in our summary table)
     one_red <- tibble(a3hat = NA, 
                       a3var = NA, 
-                      r2 = glance(lm_1red)$r.squared)
+                      r2 = glance(lm_1red)$r.squared,
+                      r2_MSE = as.numeric(getMSE(samp1$x, lm_1red$fitted.values)[2])
+                      )
     
     
     # Now develop exposure predictions using the second monitor dataset and
@@ -109,7 +113,9 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
     # collect 2full model parameters 
     two_full <- tibble(a3hat = tidy(lm_2full)$estimate[4], 
                        a3var = tidy(lm_2full)$std.error[4]^2, 
-                       r2 = glance(lm_2full)$r.squared)
+                       r2 = glance(lm_2full)$r.squared,
+                       r2_MSE = as.numeric(getMSE(samp2$x, lm_2full$fitted.values)[2])
+                       )
     
     # Reduced exposure model
     lm_2red <- lm(x ~ s_1 + s_2, data = samp2)
@@ -118,7 +124,9 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
     # want for the reduced model)
     two_red <- tibble(a3hat = NA, 
                       a3var = NA, 
-                      r2 = glance(lm_2red)$r.squared)
+                      r2 = glance(lm_2red)$r.squared,
+                      r2_MSE = as.numeric(getMSE(samp2$x, lm_2red$fitted.values)[2]) 
+                      )
     
     
     # add predictions from all models to subject dataframe
@@ -128,17 +136,20 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
         add_predictions(lm_2full,"xhat_2full") %>% 
         add_predictions(lm_2red,"xhat_2red")
     
-    # collect b1, Vb1, R2 for disease model, variance of xhat, 
-    predictor <- list(x = c(a3hat = NA, a3var = NA, r2 = NA), 
-                      xhat_1full = one_full, 
-                      xhat_1red = one_red, 
-                      xhat_2full = two_full, 
+    # collect key exposure model statistics 
+    predictor <- list(x = c(a3hat = NA, a3var = NA, r2 = NA, r2_MSE = NA),
+                      xhat_1full = one_full,
+                      xhat_1red = one_red,
+                      xhat_2full = two_full,
                       xhat_2red = two_red)
     
+    # descriptively name these for future use
+    exposure_vars <- names(predictor)
+    
     # create a list of parameters from disease model fits x 5 exposures
-    return_list <- lapply(names(predictor), function(i) {
+    return_list <- lapply(exposure_vars, function(i) {
         
-        # fit model for outcome, y and and predictor (x or x hat) 
+        # fit model for outcome, y and and exposure variable (x or x hat) 
         lmfit <- lm(subj$y ~ subj[[i]])
         
         # create tibble with variables of interest
@@ -147,15 +158,16 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
                exp_var = var(subj[[i]]), 
                a3hat = predictor[[i]][["a3hat"]], 
                a3var = predictor[[i]][["a3var"]], 
-               r2 = predictor[[i]][["r2"]] 
+               R2_W_reg = predictor[[i]][["r2"]],
+               R2_W_MSE = predictor[[i]][["r2_MSE"]]
                )
     }) %>% 
         
-        # Set names for list items and the items contained in each item
-        setNames(names(predictor)) %>% 
+    # Set names for list items and the items contained in each item
+    setNames(exposure_vars) %>% 
         
-        # bind list elements
-        bind_rows(.id = "predictor")
+    # bind list elements
+    bind_rows(.id = "exposure_vars")
     
     
     # Return the list
