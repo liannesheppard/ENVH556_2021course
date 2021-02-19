@@ -337,14 +337,12 @@ ggplot(data = temp, aes(x = error_exposure, y = y)) +
   
   # specify legend values manually
   scale_color_manual(name = "Exposure Type",
-                       values = c("black", "red"),
-                       labels = c("True", "Mismeasured"),
-                       guide = "legend") +
+                     values = c("black", "red"),
+                     labels = c("True", "Mismeasured")) +
   
   scale_linetype_manual(name = "Exposure Type",
-                       values = c("dashed", "solid"),
-                       labels = c("True", "Mismeasured"),
-                       guide = "legend") +
+                        values = c("dashed", "solid"),
+                        labels = c("True", "Mismeasured")) +
 
   # labels
   labs(x = "Exposure with Various Types of Pure Measurement Error", 
