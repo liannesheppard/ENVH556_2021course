@@ -774,6 +774,26 @@ la_grid
 # examples suggest this shortcut works too:
 #gridded(la_grid) <- ~lambert_x+lambert_y
 
+
+# Remove the water points from la_grid
+# (We don't have data from the water, so we do not want to predict there)
+if (!file.exists('Datasets/ne_10m_land.zip')){
+  download.file('https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_land.zip',
+                'Datasets/ne_10m_land.zip')
+}
+if (!file.exists('Datasets/ne_10m_land/ne_10m_land.shp')){
+  unzip('Datasets/ne_10m_land.zip',exdir='Datasets/ne_10m_land')
+}
+# read shapefile as sf multipolygon
+land <- st_read('Datasets/ne_10m_land/ne_10m_land.shp')
+# crop world land multipolygon to that which overlaps la_grid
+# to save time in next step
+land <- suppressWarnings(st_crop(land,st_bbox(la_grid)))
+# Show map of the cropped land object
+ggplot(land) + geom_sf(aes(fill=featurecla))
+# Remove water points from la_grid
+la_grid <- la_grid[st_within(la_grid,land) %>% sapply(length) > 0,]
+
 ```
 
 Now plot the snapshot data using the same plotting code as applied to the
@@ -1105,16 +1125,7 @@ g + geom_point(data=new_grid,aes(x = st_coordinates(new_grid)[,'X'],
     scale_color_gradientn(name = "NOx (ppb)", colors=rainbow(4,rev=TRUE)) + 
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") +
   my_theme
-# 
-# Dave getting ready to crop out the water points, but haven't bothered to implement yet.
-# if (!file.exists('Datasets/ne_10m_land.zip')){
-#   download.file('https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_land.zip',
-#                 'Datasets/ne_10m_land.zip')
-# }
-# if (!file.exists('Datasets/ne_10m_land/ne_10m_land.shp')){
-#   unzip('Datasets/ne_10m_land.zip',exdir='Datasets/ne_10m_land')
-# }
-# land <- st_read('Datasets/ne_10m_land/ne_10m_land.shp')
+
 
 ```
 
