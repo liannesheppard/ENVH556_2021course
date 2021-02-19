@@ -1,5 +1,6 @@
 # "Like" measurement error functions for simulation:
 #   getMSE
+#   create_dataset
 #   me_like
 
 # Load the broom package for the tidy() function
