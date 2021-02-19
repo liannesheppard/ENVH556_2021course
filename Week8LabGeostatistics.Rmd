@@ -1202,6 +1202,7 @@ new_grid_dens_expand<-
     mutate(z = as.vector(new_grid_interp$z),
            z = ifelse(is.na(z), 0, z))
 
+# Note that the smoothing pattern smudges onto the water
 g + stat_contour(aes(x = x, y = y, z = z, fill = ..level..), alpha = 0.07, 
                  data = new_grid_dens_expand, geom = "polygon", bins = 50) + 
     scale_fill_gradient(name = "NOx (ppb)", low = "yellow", high = "red", 
