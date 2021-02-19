@@ -1010,8 +1010,29 @@ Observe:  TODO:  ADD comments.
 **Step 2**:  Cross-validate the UK models to evaluate the quality of the
 predictions.  
 
-TODO:  ADD
 
+```{r krige.cv in LA}
+
+# clusterwise cross-validation of OK model with covariates
+fall.CVcluster.ok <- krige.cv.sf(ln_nox~1,
+    st_transform(fall,lambert_proj),
+    model = vf.fit,
+    nfold = fall$cluster,
+    )
+#stats
+krige.cv.stats(fall.CVcluster.ok)
+
+
+# clusterwise cross-validation of UK model with covariates
+fall.CVcluster.uk <- krige.cv.sf(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
+    st_transform(fall,lambert_proj),
+    model = vfc.fit,
+    nfold = fall$cluster,
+    )
+#stats
+krige.cv.stats(fall.CVcluster.uk)
+
+```
 
 
 **Step 3**:  Estimate the kriging predictions.  
