@@ -608,28 +608,54 @@ bubble.krige.cv.sf <- function(cv.out, plot_title){
   theme_bw()
 }
 
+# Define function for calculating the MSE, RMSE, MSE-based R2 from krige.cv output
+krige.cv.stats <- function(krige.cv.output){
+  d <- krige.cv.output
+  # mean of observations
+  mean_observed <- mean(d$observed)
+  # MSE of predictions
+  MSE_pred <- mean((d$observed - d$var1.pred)^2)
+  # MSE of observations (for R2 denominator)
+  MSE_obs <- mean((d$observed - mean_observed)^2)
+  # print the results not rounded
+  cat(paste("RMSE:  ", sqrt(MSE_pred)),'\n')
+  cat(paste("MSE-based R2:  ", max(1 - MSE_pred/MSE_obs, 0)),'\n')
+}
+
+
 # ordinary kriging, 5-fold cross-validation 
 # nmax defaults to all observations used for kriging; this sets it at 40
 # TODO:  investigate the difference
 meuse.CV5 <- krige.cv.sf(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5)
+# stats
+krige.cv.stats(meuse.CV5)
 # plot the residuals
 bubble.krige.cv.sf(meuse.CV5,"log(zinc): 5-fold CV residuals")
 
+
 # ordinary kriging, LOOCV
 meuse.CVLOO <- krige.cv.sf(log(zinc)~1, meuse, model = v.fit, nmax = 40)
+# stats
+krige.cv.stats(meuse.CVLOO)
 # plot the residuals
 bubble.krige.cv.sf(meuse.CVLOO, "log(zinc): LOO CV residuals")
+
 
 # universal kriging, 5-fold cross-validation 
 meuse.CV5uk <-
   krige.cv.sf( log(zinc) ~ sqrt(dist), meuse,
     model = m.uk, nmax = 40, nfold = 5 )
+# stats
+krige.cv.stats(meuse.CV5uk)
 # plot the residuals
 bubble.krige.cv.sf(meuse.CV5uk,"log(zinc) UK on sqrt(dist): 5-fold CV residuals")
+
 
 # universal kriging, LOOCV
 meuse.CVLOOuk <- krige.cv.sf(log(zinc)~sqrt(dist), meuse, 
                         model = m.uk, nmax = 40)
+# stats
+krige.cv.stats(meuse.CVLOOuk)
 # plot the residuals
 bubble.krige.cv.sf(meuse.CVLOOuk,"log(zinc) UK on sqrt(dist): LOO CV residuals")
 
