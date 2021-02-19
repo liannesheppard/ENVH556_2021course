@@ -163,7 +163,7 @@ me_like <- function(n_subj = 10000, n_samp = 100, s3_sd1 = 1, s3_sd2 = 0.3) {
                )
     }) %>% 
         
-    # Set names for list items and the items contained in each item
+    # set names for list items
     setNames(exposure_vars) %>% 
         
     # bind list elements
