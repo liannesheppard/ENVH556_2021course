@@ -583,7 +583,9 @@ cross-validation for prediction performance.
 # ---- meuse cross-validation ----
 
 # Define a wrapper function krige.cv.sf that does not drop the projection
-# of the sf object. This repairs an apparent bug in krige.cv()
+# of the sf object. This repairs a bug in gstat.cv(), called internally by krige.cv()
+# Bug has been reported on github to gstat maintainers and fixed,
+# so this wrapper function probably won't be needed next time course is taught
 krige.cv.sf <- function(formula, locations, model = NULL, ..., beta = NULL, 
 	nmax = Inf, nmin = 0, maxdist = Inf, nfold = nrow(locations), 
 	verbose = interactive(), debug.level = 0){
