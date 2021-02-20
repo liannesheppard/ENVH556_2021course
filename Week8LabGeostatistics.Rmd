@@ -717,7 +717,7 @@ fall <- st_as_sf(fall, coords=c('longitude','latitude'), crs=latlong_proj)
 fall
 
 # see the raw XY (long-lat) coordinates
-st_coordinates(fall)
+st_coordinates(fall) %>% head()
 
 # # maximum distance in the dataset; thought I would use this to set the cutoff in
 # # the variogram, but it didn't work so I hard-coded it.
