@@ -1004,8 +1004,7 @@ predictions.
 fall.CVcluster.ok <- krige.cv(ln_nox~1,
     st_transform(fall,lambert_proj),
     model = vf.fit,
-    nfold = fall$cluster,
-    )
+    nfold = fall$cluster)
 #stats
 krige.cv.stats(fall.CVcluster.ok)
 # bubble plot
@@ -1016,8 +1015,7 @@ krige.cv.bubble(st_transform(fall.CVcluster.ok,latlong_proj),'ln(NOx) OK: cluste
 fall.CVcluster.uk <- krige.cv(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
     st_transform(fall,lambert_proj),
     model = vfc.fit,
-    nfold = fall$cluster,
-    )
+    nfold = fall$cluster)
 #stats
 krige.cv.stats(fall.CVcluster.uk)
 # bubble plot
@@ -1095,8 +1093,7 @@ g + geom_point(data=new_grid,aes(x = st_coordinates(new_grid)[,'X'],
                            y = st_coordinates(new_grid)[,'Y'],
                            col = NOx), alpha = 0.2) + 
     scale_color_gradientn(name = "NOx (ppb)", colors=rainbow(4,rev=TRUE)) + 
-    ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") +
-  my_theme
+    ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points")
 
 
 ```
