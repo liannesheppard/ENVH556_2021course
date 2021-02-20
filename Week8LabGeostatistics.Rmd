@@ -69,6 +69,10 @@ pacman::p_load(tidyverse, knitr, dplyr, maps, ggmap, stars,
 # Next time this course is taught, should be able to remove this line and
 # place gstat in the p_load list above
 pacman::p_load_gh('r-spatial/gstat')
+if (packageVersion('gstat') < '2.0.7'){
+  message('Requires gstat version >= 2.0.7')
+  message('Try `remove.packages('gstat')`, then quit Rstudio and run this chunk again')
+}
 
 # Note: this lab will only knit if the latest version of ggmap is installed.  
 #   The following line does this, but needs to be run at the console before
