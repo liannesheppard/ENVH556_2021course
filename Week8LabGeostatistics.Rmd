@@ -62,8 +62,13 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 # sp: spatial data methods -- will eventually be superseded by `sf`
 # rgdal:  projections, coordinate systems
 # downloader: download files over HTTP and HTTPS
-pacman::p_load(tidyverse, knitr, dplyr, gstat, maps, ggmap, stars,
+pacman::p_load(tidyverse, knitr, dplyr, maps, ggmap, stars,
                funModeling, Hmisc, scales, akima, sp, rgdal, downloader, sf)
+# Install development version of gstat
+# As of February 2021, an important bugfix has not yet made it onto Cran
+# Next time this course is taught, should be able to remove this line and
+# place gstat in the p_load list above
+pacman::p_load_gh('r-spatial/gstat')
 
 # Note: this lab will only knit if the latest version of ggmap is installed.  
 #   The following line does this, but needs to be run at the console before
@@ -573,24 +578,8 @@ cross-validation for prediction performance.
 ```{r meuse cross-validation, warning=FALSE}
 # ---- meuse cross-validation ----
 
-# Define a wrapper function krige.cv.sf that does not drop the projection
-# of the sf object. This repairs a bug in gstat.cv(), called internally by krige.cv()
-# Bug has been reported on github to gstat maintainers and fixed,
-# so this wrapper function probably won't be needed next time course is taught
-krige.cv.sf <- function(formula, locations, model = NULL, ..., beta = NULL, 
-	nmax = Inf, nmin = 0, maxdist = Inf, nfold = nrow(locations), 
-	verbose = interactive(), debug.level = 0){
-  # Repeating the exact arguments from krige.cv source code
-  krige.cv1 <- krige.cv(formula = formula, locations = locations, model = model, ..., beta = beta,
-	nmax = nmax, nmin = nmin, maxdist = maxdist, nfold = nfold,
-	verbose = verbose, debug.level = debug.level)
-  # force projection to that of the function input
-  st_crs(krige.cv1) <- st_crs(locations)
-  return(krige.cv1)
-}
-
 # Define function to create a bubble plot for kriging residuals
-bubble.krige.cv.sf <- function(cv.out, plot_title){
+krige.cv.bubble <- function(cv.out, plot_title){
   ggplot(data=cv.out) +
   geom_sf(aes(size=abs(residual), color=factor(residual>0)), alpha=1/2) +
   scale_color_discrete(name='residual > 0', direction=-1) +
@@ -617,38 +606,38 @@ krige.cv.stats <- function(krige.cv.output){
 # ordinary kriging, 5-fold cross-validation 
 # nmax defaults to all observations used for kriging; this sets it at 40
 # TODO:  investigate the difference
-meuse.CV5 <- krige.cv.sf(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5)
+meuse.CV5 <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5)
 # stats
 krige.cv.stats(meuse.CV5)
 # plot the residuals
-bubble.krige.cv.sf(meuse.CV5,"log(zinc): 5-fold CV residuals")
+krige.cv.bubble(meuse.CV5,"log(zinc): 5-fold CV residuals")
 
 
 # ordinary kriging, LOOCV
-meuse.CVLOO <- krige.cv.sf(log(zinc)~1, meuse, model = v.fit, nmax = 40)
+meuse.CVLOO <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40)
 # stats
 krige.cv.stats(meuse.CVLOO)
 # plot the residuals
-bubble.krige.cv.sf(meuse.CVLOO, "log(zinc): LOO CV residuals")
+krige.cv.bubble(meuse.CVLOO, "log(zinc): LOO CV residuals")
 
 
 # universal kriging, 5-fold cross-validation 
 meuse.CV5uk <-
-  krige.cv.sf( log(zinc) ~ sqrt(dist), meuse,
+  krige.cv( log(zinc) ~ sqrt(dist), meuse,
     model = m.uk, nmax = 40, nfold = 5 )
 # stats
 krige.cv.stats(meuse.CV5uk)
 # plot the residuals
-bubble.krige.cv.sf(meuse.CV5uk,"log(zinc) UK on sqrt(dist): 5-fold CV residuals")
+krige.cv.bubble(meuse.CV5uk,"log(zinc) UK on sqrt(dist): 5-fold CV residuals")
 
 
 # universal kriging, LOOCV
-meuse.CVLOOuk <- krige.cv.sf(log(zinc)~sqrt(dist), meuse, 
+meuse.CVLOOuk <- krige.cv(log(zinc)~sqrt(dist), meuse, 
                         model = m.uk, nmax = 40)
 # stats
 krige.cv.stats(meuse.CVLOOuk)
 # plot the residuals
-bubble.krige.cv.sf(meuse.CVLOOuk,"log(zinc) UK on sqrt(dist): LOO CV residuals")
+krige.cv.bubble(meuse.CVLOOuk,"log(zinc) UK on sqrt(dist): LOO CV residuals")
 
 ```
 
@@ -1012,7 +1001,7 @@ predictions.
 ```{r krige.cv in LA, warning=FALSE}
 
 # clusterwise cross-validation of OK model with covariates
-fall.CVcluster.ok <- krige.cv.sf(ln_nox~1,
+fall.CVcluster.ok <- krige.cv(ln_nox~1,
     st_transform(fall,lambert_proj),
     model = vf.fit,
     nfold = fall$cluster,
@@ -1022,7 +1011,7 @@ krige.cv.stats(fall.CVcluster.ok)
 
 
 # clusterwise cross-validation of UK model with covariates
-fall.CVcluster.uk <- krige.cv.sf(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
+fall.CVcluster.uk <- krige.cv(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
     st_transform(fall,lambert_proj),
     model = vfc.fit,
     nfold = fall$cluster,
