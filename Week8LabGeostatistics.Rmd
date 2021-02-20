@@ -1008,6 +1008,8 @@ fall.CVcluster.ok <- krige.cv(ln_nox~1,
     )
 #stats
 krige.cv.stats(fall.CVcluster.ok)
+# bubble plot
+krige.cv.bubble(st_transform(fall.CVcluster.ok,latlong_proj),'ln(NOx) OK: clusterwise CV residuals')
 
 
 # clusterwise cross-validation of UK model with covariates
@@ -1018,6 +1020,9 @@ fall.CVcluster.uk <- krige.cv(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C +
     )
 #stats
 krige.cv.stats(fall.CVcluster.uk)
+# bubble plot
+krige.cv.bubble(st_transform(fall.CVcluster.uk,latlong_proj),'ln(NOx) UK: clusterwise CV residuals')
+
 
 ```
 
