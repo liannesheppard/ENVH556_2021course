@@ -481,7 +481,7 @@ plot(v, v.fit)
 
 ### Kriging
 
-Credit:  The following examples follow the code [here](http://127.0.0.1:18522/library/gstat/demo/krige.R).
+Credit:  The following examples follow the code [here](https://github.com/r-spatial/gstat/blob/master/demo/krige.R).
 
 #### Ordinary Kriging (OK)
 
