@@ -52,6 +52,8 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 # Hmisc:  describe
 # gstat:  for kriging
 # maps: for maps
+# ggmap: to plot maps
+# stars:  ADD
 # sf:  will eventually replace sp: spatial data methods, the modern "simpler"
 #   version (see
 #   https://www.nickbearman.me.uk/2019/04/spatial-r-moving-from-sp-to-sf/ for
@@ -103,20 +105,30 @@ if (file.exists(grid.path)) {
 
 ```
 
-# Introduction and Purpose
+# Introduction, Purpose, and Credit
 
 The purpose of this lab is to learn about geostatistical models and further
 solidify your understanding of regression for prediction.  We will use the same
 MESA Air snapshot data described in Mercer et al 2011 that we used earlier in
-the quarter.
+the quarter.  As a side benefit you will also get exposure to the most modern
+tools for handling spatial data in R and learn how to create maps and add your
+data to them.  The secondary intent of this lab is to help you learn to use
+geographic data in R as productively as possible while recognizing there is much
+more to learn and develop.
 
-TODO:  UPdate:  **Important Winter 2021 note**:  This lab is a work in progress
-and it has some unfinished pieces.  I believe that all included analyses have
-been sufficiently tested and debugged, but it is also possible some errors
-remain.  In addition, there are a number of ideas that need further
-investigation.  The intent of the current version of this lab is to help you
-learn to use geographic data in R as productively as possible while recognizing
-there is much more to learn and develop.
+**Credit**:  Brian High, Chris Zuidema, and Dave Slager have provided an enormous amount of support in developing this lab.
+
+**A brief history of the evolution of this lab**:  Originally developed in 2019,
+this lab and its geostatistical examples were based on `geoR`.  The `geoR`
+coordinate system is outdated, so in 2021 we switched the geostatistics package
+to `gstat`.  This also meant adopting the `sp` system for spatial data.
+However, the `sf` package is a better way to handle spatial data, so thanks to
+support from Dave Slager, this lab now uses `sf` instead of `sp`.  See the
+resources section below for links to information about `sf` vs. `sp`.
+
+Also, please recognize that this lab is a work in progress.  While it has
+undergone extensive testing, it is possible some errors remain.  In addition,
+there are some ideas that would benefit from further development.
 
 # Getting Started
 
@@ -130,17 +142,16 @@ overview resources:
 * A good and recently updated book is  [Geocomputation in
 R](https://geocompr.robinlovelace.net/index.html) by Robin Lovelace.  Its
 [introductory chapter](https://geocompr.robinlovelace.net/intro.html) gives a
-great overview of the "what" and "why" of geocomputation.  It also has a very
+great overview of the "what" and "why" of geocomputation.  It also has a good
+overview of [R's spatial ecosystem](https://geocompr.robinlovelace.net/intro.html#rs-spatial-ecosystem), and a very
 nice overview of the history of spatial data in R, which Lovelace calls [The
 history of
 R-spatial](https://geocompr.robinlovelace.net/intro.html#the-history-of-r-spatial).
 In particular, it puts into historical context the tools we are using in this
-lab with the current state of the art.  Clearly, more could be done to
-demonstrate the current state of the art for R-spatial data.
+lab with the current state of the art.
 
 * Roger Bivand has done an incredible amount of work with spatial data in R. His
-book, [Spatial Data Analysis in R](https://asdar-book.org/) was published in
-2013.  (The link is actually to the scripts and datasets to reproduce the
+book, [Spatial Data Analysis in R](https://asdar-book.org/) was published in 2013.  (The link is actually to the scripts and datasets to reproduce the
 examples in his book.)  It is available for download from the UW library and
 there is a copy on the course website. In particular, I recommend Chapter 1 for
 an overview of ideas, Chapter 4 for the quickest start to using spatial data
@@ -152,25 +163,35 @@ Science](https://keen-swartz-3146c4.netlify.app/) that explains the concepts
 underlying spatial data and links it to many modern packages of theirs (e.g.
 `sf`, `lwgeom`, and `stars`) and accompanies this with `tidyverse`.
 
-* This RPub describes [Spatial Data
-Objects](https://rpubs.com/NateByers/spatialobjects) including `Spatial`,
-`SpatialPoints`, and `SpatialPointsDataFrame`.
+### Spatial data in R:  `sf` and `sp`
+
+The `sf` or Simple Features package is the more modern way to reference spatial data in R.  We use `sf` in this lab.  The alternative is `sp` and we include a few references to it for completeness.
 
 See also the introduction to the snapshot data section below for a discussion on
 distance calculations.
 
+* Jesse Sadler gives a good overview in his [Introduction to GIS with R:  Spatial data with the sp and sf packages](https://www.jessesadler.com/post/gis-with-r-intro/)
+
+* R-bloggers post [Should I learn sf or sp for spatial R programming?](https://www.r-bloggers.com/2018/03/should-i-learn-sf-or-sp-for-spatial-r-programming/)
+* Moving from `sp` to `sf`: See this [Nick Bearman blog](https://www.nickbearman.me.uk/2019/04/spatial-r-moving-from-sp-to-sf/) for some good perspective. 
+
+* `sp`: This RPub describes [Spatial Data
+Objects](https://rpubs.com/NateByers/spatialobjects) including `Spatial`,
+`SpatialPoints`, and `SpatialPointsDataFrame`.
+
+* `sf`: See the very accessible Ed Pebesma overview of [Simple Features for R](https://r-spatial.github.io/sf/articles/sf1.html#what-is-a-feature-) and to digu further, [here](https://r-spatial.github.io/sf/articles/) is the index to all his `sf` vignettes.
+
 ### R packages for geostatistics and spatial data
 
 Packages for kriging include `geoR`, `automap`, and `gstat`.  The package `geoR`
-has been around for some time and the version of this lab develped 2 years ago
-used this package.  The package `gstat` is newer and uses the `sp` class which
-has become a standard for geographic data (though it appears that `sf` may
-eventually replace it).  `automap` calls `gstat`.  `geoR` and `gstat` appear to
+has been around for some time and the original 2019 version of this lab used
+this package.  The package `gstat` is newer and uses either the `sp` or `sf`
+class.  `automap` calls `gstat`.  `geoR` and `gstat` have been documented to
 give identical results, at least for a simple dataset example.  To verify this,
 type `demo(gstat::comp_geoR)` in the console after loading both `gstat` and
-`geoR`.  Because of its apparent current use, we discuss `gstat` in this lab.
-There are good examples online and in books (e.g., Bivand's) that show how to do
-kriging with `gstat`.
+`geoR`.  Because of its more modern implementation with `sf` and `sp`, we
+discuss `gstat` in this lab. There are good examples online and in books (e.g.,
+Bivand's) that show how to do kriging with `gstat`.
 
 (Aside:  There is an interesting [stackoverflow
 discussion](https://stackoverflow.com/questions/21970992/compare-variogram-and-variog-function)
@@ -178,9 +199,9 @@ of comparing empirical variograms in `geoR` vs. `sp` and `gstat` that addresses
 coordinate transformations and binning.  It is worth a look if you want to
 understand the details better.)
 
-**Note on `rgdal`**:  If you are running your lab locally on a Mac, this package
-doesn't load properly on newer Macs running Catalina.  You need to install GDAL
-from the terminal.  See this
+**Note on `rgdal`**:  If you are running your lab locally on a Mac, the `rgdal`
+package doesn't load properly on newer Macs running Catalina.  You need to
+install GDAL from the terminal.  See this
 [link](https://medium.com/@egiron/how-to-install-gdal-and-qgis-on-macos-catalina-ca690dca4f91)
 for how to do this.
 
@@ -232,7 +253,7 @@ looking at each term that goes into the sum as a function of distance.
 
 The purpose of this section is to show some `gstat` tools using the built-in
 `meuse` dataset.  The dataset is part of the package `sp` and documentation of
-it can be found
+this dataset can be found
 [here](http://www.dpi.inpe.br/gilberto/tutorials/software/R-contrib/sp/html/meuse.html).
 
 First we will go through the `meuse` dataset, a dataset of soil contamination
@@ -245,10 +266,10 @@ Meuse river.
 
 ### Summary & learn about the data
 
-The following section follows the example [here](https://rpubs.com/liem/63374) as
+The following section was structured after the examples [here](https://rpubs.com/liem/63374) as
 well as a more updated version that uses `tidyverse` and `ggplot` commands called
 [Meuse
-Tutorial](https://rstudio-pubs-static.s3.amazonaws.com/134781_28af3676f8b943749ebfa536b3897cac.html).
+Tutorial](https://rstudio-pubs-static.s3.amazonaws.com/134781_28af3676f8b943749ebfa536b3897cac.html).  However, this implementation uses `sf`.
 
 ```{r basics with meuse dataset - summary + EDA}
 # ------------ basics with meuse dataset - summary -----------
@@ -267,43 +288,46 @@ glimpse(meuse)
 # summary of the data
 summary(meuse) 
 
+```
+
+#### Comments about Simple Features
+
+As summarized in this [vignette](https://r-spatial.github.io/sf/articles/sf1.html), simple features is formal standard used for geographic data and geographic information systems (GIS) that has both geographic and non-geographic attributes.  It has a common architecture and a geometry to indicate its location on Earth.  In R the package `sf` represents simple features objects.  All operations from this package are preceded by `st_` to refer to *spatial data type*.  There are 3 classes used to represent simple features.  We will focus on the `sf` class which is a table or `data.frame`.  It contains `sfc`, with the geometries for each record, which is in turn made up of `sfg`, the geometry for a single feature such as a point or polygon.
+
+The next chunk turns `meuse` into an `sf` object.  Of note, there needs to be a projection for the coordinates.  Projections are essential to know in order to place maps in space correctly. Here are the links we will need to handle the projection:
+
+* Look up the projection of the `meuse` coordinates [here: https://rdrr.io/cran/sp/man/meuse.html](https://rdrr.io/cran/sp/man/meuse.html).  Note this is dataset-specific. 
+
+* The proj4 string is a standardized way to describe a projection.  Get the proj4string [here: https://epsg.io/28992](https://epsg.io/28992).
+
+
+```{r meuse as an sf object}
+# ---- meuse as an sf object ----
+
 # So far, R does not know that this is spatial data.
 # Now turn meuse into a spatial dataset
 # We specify that the XY coordinates are in columns `x` and `y`
 meuse <- st_as_sf(meuse, coords=c('x','y'))
+
 # It is now both an sf object and a data.frame
 class(meuse)
 
 # Although the xy columns are now recognized as the coordinates,
 # they still have no explicit spatial meaning without a projection
 st_crs(meuse)
-# Look up the projection of the meuse coordinates here.
-# This is dataset-specific
-# https://rdrr.io/cran/sp/man/meuse.html
-# The proj4 string is a standardized way to describe a projection
-# Get the proj4string here:
-# https://epsg.io/28992
-# Set the projection, in this case a projection commonly used in the Netherlands
-st_crs(meuse) <- '+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +towgs84=565.417,50.3319,465.552,-0.398957,0.343988,-1.8774,4.0725 +units=m +no_defs'
-# Can also just use the EPSG string
-#st_crs(meuse) <- 28992
 
+# Look up the projection of the meuse coordinates  and get the proj4string using the links above.
+
+# Set the projection, in this case it is a projection commonly used in the Netherlands
+st_crs(meuse) <- '+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +towgs84=565.417,50.3319,465.552,-0.398957,0.343988,-1.8774,4.0725 +units=m +no_defs'
+
+# As an alternative, we can also just use the EPSG string.  While much simpler,
+# this is harder to troubleshoot
+#st_crs(meuse) <- 28992
 
 ```
 
-#### Comments about SpatialPointsDataFrame objects
-
-By specifying the `coordinates()` above, meuse becomes a SpatialPointsDataFrame
-(SPDF).  This class is a S4 object where key data and attributes are stored in
-"slots".  For a SPDF object there are 5 slots:  data, coords.nrs, coords, bbox,
-and proj4string.  All the data are stored in the `data` slot.  The coordinates
-are stored in the `coordinates` slot.  The location of the coordinates in the
-dataframe is stored in `coords.nrs`.  The `bbox` is the bounding box, or the
-spatial exent of the data.  It corresponds to the "corners" of a rectangular
-map.  Finally, `proj4string` contains the projection for the coordinates.
-Projections are essential to know in order to place maps in space correctly.
-
-The next chunk shows how to access values in slots.  
+The following chunk shows how to access various aspects of this `sf` object.  
 
 ```{r extract meuse data}
 # ---- extract meuse data ----
@@ -317,36 +341,45 @@ meuse
 # bounding box
 st_bbox(meuse)
 
-# projection
-st_crs(meuse)
+# projection (already shown above)
+# st_crs(meuse)
 
 # The original data.frame columns (except for X and Y, which are now `geometry`),
 # can still be accessed in the usual way
 head(meuse)
-meuse$zinc
+head(meuse$zinc)
 colnames(meuse)
 
-# To extract original XY coordinates
+# To extract the original XY coordinates
 st_coordinates(meuse) %>% head()
-
 
 ```
 
 
-#### Some meuse plots
+### Some meuse plots
+
+Note that geom_sf plots in lat-long units by default, even though our data is stored in a different projection. (As we will see later, it is trivial to convert our points to a different projection once our points have a specific projection in sf). We can check that map projections are working properly and explore the study area on [Google Maps](https://www.google.com/maps?q=50.97,5.74)
+
+
 
 ```{r meuse plots}
 # ---- meuse plots ----
 
 # Read in the Meuse River polygon
 data(meuse.riv)
+
+# Look at the data and note that row 1 is the same as the last row (this closes
+# the polygon)
 head(meuse.riv,3)
 tail(meuse.riv,3)
-# Note that row 1 is the same as the last row (this closes the polygon)
+ 
+
+# Looking at its structure, we see the meuse.riv object is still just a matrix
+# of raw XY values.
 str(meuse.riv)
-# The meuse.riv object is still just a matrix of raw XY values.
+
 # The following code specifies the columns containing the coordinates,
-# specifies the projection of the coordinates as the same as meuse projection,
+# specifies the projection of the coordinates as the same meuse projection,
 # and explicitly combines the points into a polygon
 meuse.riv <- st_as_sf(data.frame(meuse.riv),coords=1:2,crs=st_crs(meuse)) %>%
   st_combine() %>%
@@ -368,7 +401,7 @@ meuse.riv <- st_crop(meuse.riv,st_bbox(st_buffer(meuse,500)))
 ggplot(data=meuse) + geom_sf() + geom_sf(data=meuse.riv)
 
 # Color the zinc data based on the native scale
-# Plotting the river before the points ensures points are on top of river
+# Plotting the river before the points ensures points are on top of the river
 # Scale_color_gradients with rainbow(rev=TRUE) creates a heatmap
 
 ggplot(data=meuse) +
@@ -396,9 +429,15 @@ ggplot(data=meuse) +
   ggtitle("Zinc Concentration (ppm)") +
   theme_bw()
 
-```
+# Put these ideas together:  Size based on native scale, color based on log scale
+ggplot(data=meuse) +
+  geom_sf(data=meuse.riv) +
+  geom_sf(data=meuse, aes(size=zinc, color=zinc)) +
+  scale_color_gradientn(colors=rainbow(4,rev=TRUE)) +
+  ggtitle("Zinc Concentration (ppm)") +
+  theme_bw()
 
-Note that geom_sf plots in lat-long units by default, even though our data is stored in a different projection. (As we will see later, it is trivial to convert our points to a different projection once our points have a specific projection in sf). We can check that map projections are working properly and explore the study area on [Google Maps](https://www.google.com/maps?q=50.97,5.74)
+```
 
 ### Estimating variograms
 
@@ -406,7 +445,7 @@ Note that geom_sf plots in lat-long units by default, even though our data is st
 
 We use variograms to get an understanding on how our variable of interest varies
 over space.  One of the variables in the `meuse` dataset is the concentration of
-zinc.  We will focus on the log-transformed value of zinc.
+zinc.  We will focus on modeling the log-transformed value of zinc.
 
 The following code gives empirical variograms plotted using two different
 options:  a *variogram cloud* with all squared distances (`cloud = TRUE`), and
@@ -414,15 +453,16 @@ the default *binned variogram*.  The third plot is the binned variogram again;
 this one shows the number of points that make up each bin.  Note that while the
 `meuse` dataset has only 155 observations, the variogram is binning over all
 possible point pairs: 155 * 154 / 2 = 11,935.  However, the variogram cloud
-dataset only has 6833 data points (and the sum of `np` the number of points in
-each bin is also 6833), so there must be some truncation we aren't aware of.
-
-TODO:  why fewer than 11935 points?  This is probably because the default
+dataset only has 6,833 data points (and the sum of `np` the number of points in
+each bin is also 6,833).  This is because the default
 distance is 1/3 of the maximum distance.  We can change the default distance
 using the `cutoff =` option.  (See example with the snapshot data.)
 
+The distance is Euclidean distance; gamma is the semi-variance estimate, as described in this helpful document: [An introduction to (geo)statistics with R](http://www.css.cornell.edu/faculty/dgr2/_static/files/R_PDF/gs_intro_20Mar2019.pdf), also uploaded to the course Canvas site.  
+
 ```{r meuse empirical variogram, warning=FALSE}
 # ---- meuse empirical variogram ----
+# Note: We set warning=FALSE to omit warnings about the non-standard projection.
 
 # plot variogram cloud
 plot(variogram(log(zinc)~1, meuse, cloud=TRUE))
@@ -437,17 +477,15 @@ plot(variogram(log(zinc)~1, meuse), pl=TRUE)
 vgm.meuse <- variogram(log(zinc)~1, meuse, cloud=TRUE)
 
 # Now plot the cloud and overlay a smooth curve
-# note that the full scatter is misleading relative to the smooth curve
-# we could adjust the density to more clearly see where the data are
-# according to the gs_intro_20Mar2019.pdf, the distance is Euclidean distance;
-#         gamma is the semi-variance estimate
-# TOOD:  refine plot w/ labels, adjusted density, using ggplot
-plot(vgm.meuse$dist, vgm.meuse$gamma)
-lines(smooth.spline(vgm.meuse$dist, vgm.meuse$gamma, df = 6), col="red",lwd = 4)
-
-
-#vgm.meuse <- variogram(log(zinc)~1, meuse)
-#sum(vgm.meuse$np)
+# Note that the full scatter is misleading relative to the smooth curve
+ggplot(data=vgm.meuse, aes(x = dist, y = gamma)) +
+  geom_point(shape = "o", alpha = 0.6) +
+  geom_smooth(se = FALSE, aes(linetype = "solid", color = "red")) +
+  labs(x = "Distance in meters", 
+       y = "Semi-variance",
+       title = "Meuse semi-variogram cloud\nwith overlaid smooth curve") +
+  theme_bw() + 
+  theme(legend.position = "none")
 
 ```
 
@@ -486,7 +524,7 @@ plot(v, v.fit)
 
 ### Kriging
 
-Credit:  The following examples follow the code [here](https://github.com/r-spatial/gstat/blob/master/demo/krige.R).
+Credit:  The following examples were modified to use the `sf` package and follow the code [here](https://github.com/r-spatial/gstat/blob/master/demo/krige.R).
 
 #### Ordinary Kriging (OK)
 
@@ -501,22 +539,19 @@ example we are estimating a common mean using ordinary kriging.
 
 # read in the meuse grid to use for predictions
 data(meuse.grid)
+
 # convert to sf points
 meuse.grid <- st_as_sf(meuse.grid,coords=c('x','y'),crs=st_crs(meuse))
-#gridded(meuse.grid) = ~x+y
 
 # ordinary kriging of log(zinc)
-# first two arguments are formula and data; krige doesn't like explicit
-# reference to them (??)
+# first two arguments are formula and data
 lzn.kr <- krige(log(zinc)~1, meuse, newdata = meuse.grid, model = v.fit)
 
 # plot kriging predictions and SEs
-pl1 <- plot(lzn.kr[c('var1.pred','var1.var')], main = "OK prediction of log-zinc")
-#pl1
+pl1 <- plot(lzn.kr["var1.pred"], main = "OK prediction of log(zinc)")
 
 lzn.kr$se = sqrt(lzn.kr$var1.var)
 pl2 <- plot(lzn.kr["se"], main = "OK prediction error")
-#pl2
 
 ```
 
@@ -547,15 +582,9 @@ plot(v.uk, model = m.uk)
 lzn.kr <- krige(log(zinc)~sqrt(dist), meuse, meuse.grid, model = m.uk)
 
 # plot the UK predictions and SEs
-pl3 <- plot(lzn.kr[c('var1.pred','var1.var')], main = "UK prediction of log-zinc")
+pl3 <- plot(lzn.kr["var1.pred"], main = "UK prediction of log-zinc")
 lzn.kr$se = sqrt(lzn.kr$var1.var)
 pl4 <- plot(lzn.kr["se"], main = "UK prediction error")
-# 
-# # Now plot all 4 kriging results on a single plot, which allows easy comparison
-# print(pl1, split = c(1,1,2,2), more = T)
-# print(pl2, split = c(1,2,2,2), more = T)
-# print(pl3, split = c(2,1,2,2), more = T)
-# print(pl4, split = c(2,2,2,2))
 
 ```
 
@@ -563,20 +592,23 @@ pl4 <- plot(lzn.kr["se"], main = "UK prediction error")
 
 #### Cross-validation using the built-in CV function `krige.cv`
 
-`gstat` uses the function `krige.cv` to do kriging with cross-validation. One
-passes it the number of folds as a scalar and then it randomly divides the data
+`gstat` uses the function `krige.cv` to do kriging with cross-validation. If you pass it the number of folds as a scalar and then it randomly divides the data
 into that number of folds.  The default is leave one out (LOO) which is a scalar
-of the length of the data.  One can also pass to nfolds a vector of the length
+of the length of the data.  One can also pass to `nfolds` a vector of the length
 the data with values to indicate the groups each observation belongs in (e.g.
 the cluster variable in the snapshot dataset).
 
-TODO test/expand:  need to identify how the code works with the various options
-and explore the output.  Update to align with the didactic goals of the lab
-which is to show geostatistics tools and to leverage our understanding of
-cross-validation for prediction performance.
+First we define two functions to use later:  `krige.cv.bubble` - a bubble plot
+for kriging residuals, and `getMSE` - a function to produce prediction model
+performance statistics.  Then we use ordinary kriging with cross-validation,
+followed by universal kriging with cross-validation.  We first conduct 5-fold
+cross-validation, followed by LOO.  We observe that for OK the LOO has better
+performance.  For UK, the performance doesn't meaningfully change with the CV
+approach.
 
-```{r meuse cross-validation, warning=FALSE}
-# ---- meuse cross-validation ----
+
+```{r define CV functions}
+# ---- define CV functions ----
 
 # Define function to create a bubble plot for kriging residuals
 krige.cv.bubble <- function(cv.out, plot_title){
@@ -602,31 +634,40 @@ krige.cv.stats <- function(krige.cv.output){
   cat(paste("MSE-based R2:  ", max(1 - MSE_pred/MSE_obs, 0)),'\n')
 }
 
+```
+
+```{r meuse cross-validation, warning=FALSE}
+# ---- meuse cross-validation ----
 
 # ordinary kriging, 5-fold cross-validation 
 # nmax defaults to all observations used for kriging; this sets it at 40
-# TODO:  investigate the difference
 meuse.CV5 <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5)
-# stats
+
+# performance statistics
 krige.cv.stats(meuse.CV5)
+
 # plot the residuals
-krige.cv.bubble(meuse.CV5,"log(zinc): 5-fold CV residuals")
+krige.cv.bubble(meuse.CV5,"log(zinc) OK results: 5-fold CV residuals")
 
 
 # ordinary kriging, LOOCV
 meuse.CVLOO <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40)
-# stats
+
+# performance statistics
 krige.cv.stats(meuse.CVLOO)
+
 # plot the residuals
-krige.cv.bubble(meuse.CVLOO, "log(zinc): LOO CV residuals")
+krige.cv.bubble(meuse.CVLOO, "log(zinc) OK results: LOO CV residuals")
 
 
 # universal kriging, 5-fold cross-validation 
 meuse.CV5uk <-
   krige.cv( log(zinc) ~ sqrt(dist), meuse,
     model = m.uk, nmax = 40, nfold = 5 )
-# stats
+
+# performance statistics
 krige.cv.stats(meuse.CV5uk)
+
 # plot the residuals
 krige.cv.bubble(meuse.CV5uk,"log(zinc) UK on sqrt(dist): 5-fold CV residuals")
 
@@ -634,18 +675,14 @@ krige.cv.bubble(meuse.CV5uk,"log(zinc) UK on sqrt(dist): 5-fold CV residuals")
 # universal kriging, LOOCV
 meuse.CVLOOuk <- krige.cv(log(zinc)~sqrt(dist), meuse, 
                         model = m.uk, nmax = 40)
-# stats
+
+# performance statistics
 krige.cv.stats(meuse.CVLOOuk)
+
 # plot the residuals
 krige.cv.bubble(meuse.CVLOOuk,"log(zinc) UK on sqrt(dist): LOO CV residuals")
 
 ```
-
-
-#### Kriging using our own cross-validation code
-
-TODO:  The following chunk integrates kriging with our cross-validation function
-from lab 4 and shows the same performance statistics.
 
 
 ## Geostatistical analysis using the Snapshot data
