@@ -920,7 +920,6 @@ ggplot(data=fall) +
   scale_color_continuous(type = "viridis") +
   labs(title = "NOx Concentrations (ppb)",
       color = "NOx (ppb)") +
-  coord_equal() +
   theme_bw()
 ```
 
