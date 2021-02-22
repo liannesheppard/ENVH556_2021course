@@ -1189,22 +1189,12 @@ new_grid <- new_grid %>% mutate(NOx = exp(var1.pred))
 new_grid
 all(!is.na(new_grid$var1.pred))
 
-# create theme so it can easily be re-used
-my_theme <- theme(
-    legend.position = c(.98, .02),
-    legend.justification = c(1, 0),
-    legend.box.background = element_rect(colour = "white", size = 3),
-    legend.background = element_rect(fill = "white")
-    )
-
-
 # make plot.  Note the relationship between NOx and highways
 g + geom_point(data=new_grid,aes(x = st_coordinates(new_grid)[,'X'],
                            y = st_coordinates(new_grid)[,'Y'],
                            col = NOx), alpha = 0.2) + 
     scale_color_gradientn(name = "NOx (ppb)", colors=rainbow(4,rev=TRUE)) + 
-    ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points") +
-  my_theme
+    ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points")
 
 
 ```
@@ -1257,7 +1247,15 @@ new_grid_in_la <- spdf_new_grid %>%
   as_tibble() %>% 
   mutate(idx = over(spdf_new_grid, la_county_sps) ) %>% 
   drop_na(idx)
-  
+
+# create theme so it can easily be re-used
+my_theme <- theme(
+    legend.position = c(.98, .02),
+    legend.justification = c(1, 0),
+    legend.box.background = element_rect(colour = "white", size = 3),
+    legend.background = element_rect(fill = "white")
+    )
+
 # Make the map
 g + geom_point(aes(x = longitude, y = latitude, col = NOx),
                data = new_grid_in_la,
