@@ -292,6 +292,7 @@ However, this implementation uses `sf`.
 
 ```{r basics with meuse dataset - summary + EDA}
 #-----basics with meuse dataset - summary + EDA-----
+
 # load the data
 data(meuse)
 
@@ -311,13 +312,29 @@ summary(meuse)
 
 #### Comments about Simple Features
 
-As summarized in this [vignette](https://r-spatial.github.io/sf/articles/sf1.html), simple features is formal standard used for geographic data and geographic information systems (GIS) that has both geographic and non-geographic attributes.  It has a common architecture and a geometry to indicate its location on Earth.  In R the package `sf` represents simple features objects.  All operations from this package are preceded by `st_` to refer to *spatial data type*.  There are 3 classes used to represent simple features.  We will focus on the `sf` class which is a table or `data.frame`.  It contains `sfc`, with the geometries for each record, which is in turn made up of `sfg`, the geometry for a single feature such as a point or polygon.
+As summarized in this
+[vignette](https://r-spatial.github.io/sf/articles/sf1.html), simple features is
+formal standard used for geographic data and geographic information systems
+(GIS) that has both geographic and non-geographic attributes.  It has a common
+architecture and a geometry to indicate its location on Earth.  In R the package
+`sf` represents simple features objects.  All operations from this package are
+preceded by `st_` to refer to *spatial data type*.  There are 3 classes used to
+represent simple features.  We will focus on the `sf` class which is a table or
+`data.frame`.  It contains `sfc`, with the geometries for each record, which is
+in turn made up of `sfg`, the geometry for a single feature such as a point or
+polygon.
 
-The next chunk turns `meuse` into an `sf` object.  Of note, there needs to be a projection for the coordinates.  Projections are essential to know in order to place maps in space correctly. Here are the links we will need to handle the projection:
+The next chunk turns `meuse` into an `sf` object.  Of note, there needs to be a
+projection for the coordinates.  Projections are essential to know in order to
+place maps in space correctly. Here are the links we will need to handle the
+projection:
 
-* Look up the projection of the `meuse` coordinates [here: https://rdrr.io/cran/sp/man/meuse.html](https://rdrr.io/cran/sp/man/meuse.html).  Note this is dataset-specific. 
+* Look up the projection of the `meuse` coordinates [here:
+https://rdrr.io/cran/sp/man/meuse.html](https://rdrr.io/cran/sp/man/meuse.html).
+Note this is dataset-specific.
 
-* The proj4 string is a standardized way to describe a projection.  Get the proj4string [here: https://epsg.io/28992](https://epsg.io/28992).
+* The proj4 string is a standardized way to describe a projection.  Get the
+proj4string [here: https://epsg.io/28992](https://epsg.io/28992).
 
 
 ```{r meuse as an sf object}
@@ -360,9 +377,6 @@ meuse
 # bounding box
 st_bbox(meuse)
 
-# projection (already shown above)
-# st_crs(meuse)
-
 # The original data.frame columns (except for X and Y, which are now `geometry`),
 # can still be accessed in the usual way
 head(meuse)
@@ -377,9 +391,12 @@ st_coordinates(meuse) %>% head()
 
 ### Some meuse plots
 
-Note that geom_sf plots in lat-long units by default, even though our data is stored in a different projection. (As we will see later, it is trivial to convert our points to a different projection once our points have a specific projection in sf). We can check that map projections are working properly and explore the study area on [Google Maps](https://www.google.com/maps?q=50.97,5.74)
-
-
+Note that geom_sf plots in lat-long units by default, even though our data is
+stored in a different projection. (As we will see later, it is trivial to
+convert our points to a different projection once our points have a specific
+projection in sf). We can check that map projections are working properly and
+explore the study area on [Google
+Maps](https://www.google.com/maps?q=50.97,5.74)
 
 ```{r meuse plots}
 # ---- meuse plots ----
@@ -400,7 +417,7 @@ str(meuse.riv)
 # The following code specifies the columns containing the coordinates,
 # specifies the projection of the coordinates as the same meuse projection,
 # and explicitly combines the points into a polygon
-meuse.riv <- st_as_sf(data.frame(meuse.riv),coords=1:2,crs=st_crs(meuse)) %>%
+meuse.riv <- st_as_sf(data.frame(meuse.riv), coords=1:2, crs=st_crs(meuse)) %>%
   st_combine() %>%
   st_cast('POLYGON')
 
@@ -412,9 +429,9 @@ ggplot(data=meuse) + geom_sf() + geom_sf(data=meuse.riv)
 # For prettier plotting, crop the river polygon to within 500m buffer of data
 # This works because our projection is in meter units
 # This code buffers the points of the measurements by 500 m,
-# obtains the smallest possible rectanglar bounding box around those buffers,
+# obtains the smallest possible rectangular bounding box around those buffers,
 # and crops the river polygon to that rectangle
-meuse.riv <- st_crop(meuse.riv,st_bbox(st_buffer(meuse,500)))
+meuse.riv <- st_crop(meuse.riv, st_bbox(st_buffer(meuse, 500)))
 
 # Much better!
 ggplot(data=meuse) + geom_sf() + geom_sf(data=meuse.riv)
@@ -426,7 +443,7 @@ ggplot(data=meuse) + geom_sf() + geom_sf(data=meuse.riv)
 ggplot(data=meuse) +
   geom_sf(data=meuse.riv) +
   geom_sf(data=meuse, aes(color=zinc)) +
-  scale_color_gradientn(colors=rainbow(4,rev=TRUE)) +
+  scale_color_gradientn(colors=rainbow(4, rev=TRUE)) +
   ggtitle("Zinc Concentration (ppm)") +
   theme_bw()
 
@@ -435,7 +452,7 @@ ggplot(data=meuse) +
 ggplot(data=meuse) +
   geom_sf(data=meuse.riv) +
   geom_sf(data=meuse, aes(color=log(zinc))) +
-  scale_color_gradientn(colors=rainbow(4,rev=TRUE)) +
+  scale_color_gradientn(colors=rainbow(4, rev=TRUE)) +
   ggtitle("Zinc Concentration in log(ppm)") +
   theme_bw()
 
@@ -452,7 +469,7 @@ ggplot(data=meuse) +
 ggplot(data=meuse) +
   geom_sf(data=meuse.riv) +
   geom_sf(data=meuse, aes(size=zinc, color=zinc)) +
-  scale_color_gradientn(colors=rainbow(4,rev=TRUE)) +
+  scale_color_gradientn(colors=rainbow(4, rev=TRUE)) +
   ggtitle("Zinc Concentration (ppm)") +
   theme_bw()
 
