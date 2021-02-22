@@ -1154,11 +1154,10 @@ kc_la
 ### Plotting the predictions
 
 Display the predictions on a map.  First we need to join the predictions with
-the original grid in order to get the longitude and latitue coordinates.  The
+the original grid in order to get the longitude and latitude coordinates.  The
 second visible chunk adds our predictions to a Stamen map.  Later plots show
 refinements to the plotted predictions, with smoothing and restrictions to the
 area shown.
-
 
 
 ```{r plot the grid predictions on the map}
@@ -1182,14 +1181,14 @@ new_grid <- st_join(la_grid, kc_la, join=st_nearest_feature)
 # Another way to join -- specifying very small tolerance -- takes longer
 #new_grid <- st_join(la_grid, kc_la, join=st_equals_exact, par=1e-10)
 
-# also create predicted NOx on the native scale
+# also transform predicted NOx to the native scale
 new_grid <- new_grid %>% mutate(NOx = exp(var1.pred))
 
 # Take a look. Still has same number of features, and no NAs
 new_grid
 all(!is.na(new_grid$var1.pred))
 
-# create theme
+# create theme so it can easily be re-used
 my_theme <- theme(
     legend.position = c(.98, .02),
     legend.justification = c(1, 0),
@@ -1211,6 +1210,10 @@ g + geom_point(data=new_grid,aes(x = st_coordinates(new_grid)[,'X'],
 
 ```{r plot gridded predictions not on the water, eval=FALSE, include=FALSE}
 #-----plot gridded predictions not on the water-----
+
+# [CZ: Lianne & Dave, This chunk no longer works (failing at the creation of
+# `spdf_new_grid`). Do the issues this chunk is trying to address exist
+# anymore?]
 
 # Note: The shape of the plotted prediction area does not quite match the land
 # area because the LA shape used to limit the plotting to LA does not match the
@@ -1269,11 +1272,8 @@ Now we show an example plotting smooth gridded predictions on the map with polyg
 # ----plot smooth grid predictions on the map with polygons-----
 
 # Interpolate to a regularly spaced grid and store as a list
-# TODO:  this step is failing due to missing values and Infs not allowed so the
-# rest of the chunk fails also
-# [CZ: I filtered out the Inf values of la_grid, so this works now. It doesn't fix the fact that the la_grid file has -Infs]
-# DLS -- Needed to back-transform the sf object to SpatialPointsDataFrame here (for interp)
-
+  # we need to to back-transform the sf object to SpatialPointsDataFrame here 
+  # (for `new_grid_interp()`)
 new_grid_interp <- new_grid %>% as_Spatial() %>% interp(z='NOx')
 
 # Expand grid into a data frame
@@ -1291,11 +1291,14 @@ g + stat_contour(aes(x = x, y = y, z = z, fill = ..level..), alpha = 0.07,
 
 ```
 
-Now show an example plotting smooth gridded predictons on the map with tiles
+Now show an example plotting smooth gridded predictions on the map with tiles
 using stat_summary_2d:
 
 ```{r plot smooth grid predictions on the map with tiles 2, eval=FALSE, include=FALSE}
 #-----plot smooth grid predictions on the map with tiles 2-----
+
+# [CZ: Lianne & Dave, this chunk fails, but with Dave's note below, is it
+# something we still need/want?]
 
 # Note: we replace "+" with "%+%" to override the data previously mapped (i.e., replace
 #   the current data frame, due to S3 method precedence issues)
@@ -1311,13 +1314,15 @@ g %+% new_grid + aes(x = longitude, y = latitude, z = NOx) +
 
 Now we add code to plot the predictions on a map using shapefiles.
 
-TODO:  This isn't currently working.  Drop?
+TODO:  This isn't currently working.  Drop? 
 
 ```{r prediction map with shapefiles, eval = FALSE}
 #----- prediction map with shapefiles --------
 
 
 ## DLS -- Link no longer works
+# [CZ: Lianne & Dave, I looked and couldn't find updates/replacements for this
+# file. Suggest removing.]
 
 # Define URL for shapefile data library top-level folder
 
