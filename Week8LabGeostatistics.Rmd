@@ -490,11 +490,14 @@ this one shows the number of points that make up each bin.  Note that while the
 `meuse` dataset has only 155 observations, the variogram is binning over all
 possible point pairs: 155 * 154 / 2 = 11,935.  However, the variogram cloud
 dataset only has 6,833 data points (and the sum of `np` the number of points in
-each bin is also 6,833).  This is because the default
-distance is 1/3 of the maximum distance.  We can change the default distance
-using the `cutoff =` option.  (See example with the snapshot data.)
+each bin is also 6,833).  This is because the default distance is 1/3 of the
+maximum distance.  We can change the default distance using the `cutoff =`
+option.  (See example with the snapshot data.)
 
-The distance is Euclidean distance; gamma is the semi-variance estimate, as described in this helpful document: [An introduction to (geo)statistics with R](http://www.css.cornell.edu/faculty/dgr2/_static/files/R_PDF/gs_intro_20Mar2019.pdf), also uploaded to the course Canvas site.  
+The distance is Euclidean distance; gamma is the semi-variance estimate, as
+described in this helpful document: [An introduction to (geo)statistics with
+R](http://www.css.cornell.edu/faculty/dgr2/_static/files/R_PDF/gs_intro_20Mar2019.pdf),
+also uploaded to the course Canvas site.
 
 ```{r meuse empirical variogram, warning=FALSE}
 # ---- meuse empirical variogram ----
@@ -555,12 +558,12 @@ v.fit
 # Plot the empirical variogram with the overlaid fit
 plot(v, v.fit)
 
-
 ```
 
 ### Kriging
 
-Credit:  The following examples were modified to use the `sf` package and follow the code [here](https://github.com/r-spatial/gstat/blob/master/demo/krige.R).
+Credit:  The following examples were modified to use the `sf` package and follow
+the code [here](https://github.com/r-spatial/gstat/blob/master/demo/krige.R).
 
 #### Ordinary Kriging (OK)
 
@@ -583,9 +586,10 @@ meuse.grid <- st_as_sf(meuse.grid,coords=c('x','y'),crs=st_crs(meuse))
 # first two arguments are formula and data
 lzn.kr <- krige(log(zinc)~1, meuse, newdata = meuse.grid, model = v.fit)
 
-# plot kriging predictions and SEs
+# plot kriging predictions
 pl1 <- plot(lzn.kr["var1.pred"], main = "OK prediction of log(zinc)")
 
+# calculate then plot kriging standard errors
 lzn.kr$se = sqrt(lzn.kr$var1.var)
 pl2 <- plot(lzn.kr["se"], main = "OK prediction error")
 
