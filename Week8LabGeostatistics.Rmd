@@ -472,7 +472,7 @@ ggplot(data=meuse) +
 # Put these ideas together:  Size based on native scale, color based on log scale
 ggplot(data=meuse) +
   geom_sf(data=meuse.riv) +
-  geom_sf(data=meuse, aes(size=zinc, color=zinc)) +
+  geom_sf(data=meuse, aes(size=zinc, color=log(zinc))) +
   scale_color_gradientn(colors=rainbow(4, rev=TRUE)) +
   ggtitle("Zinc Concentration (ppm)") +
   theme_bw()
