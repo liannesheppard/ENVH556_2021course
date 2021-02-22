@@ -742,19 +742,20 @@ bind_rows(
 It is important to know the projection used in order to correctly do distance
 calculations.  Using distance calculations based on the Pythagorean theorem
 won't give you correct distances on a sphere.  Thus we can't use latitude and
-longitude directly.  The Mercer dataset we are using for this lab has three location variables:
+longitude directly.  The Mercer dataset we are using for this lab has three
+location variables:
 
-* `latitude` and `longitude` which is in decimal degrees
-* `lat_m` and `long_m`, which may be in UTM, and which supposedly had
-been projected to a flat surface, and
-* `lambert_x` and `lambert_y` which is a Lambert projection and is in meters.
-It is the USA_Continguous_Lambert_Conformal_Conic.
+* `latitude` and `longitude` which is in decimal degrees 
+* `lat_m` and `long_m`, which may be in UTM, and which supposedly had been
+projected to a flat surface, and
+* `lambert_x` and `lambert_y` which is a Lambert projection and is in
+meters. It is the USA_Continguous_Lambert_Conformal_Conic.
 
 We are going to use [Lambert
 coordinates](https://en.wikipedia.org/wiki/Lambert_conformal_conic_projection)
-for this dataset because these are in meters and projected for a flat
-surface so distance calculations can be done directly.  To see a documentation
-of the projection formulas, see this [New Zealand government
+for this dataset because these are in meters and projected for a flat surface so
+distance calculations can be done directly.  To see a documentation of the
+projection formulas, see this [New Zealand government
 website](https://www.linz.govt.nz/data/geodetic-system/coordinate-conversion/projection-conversions/lambert-conformal-conic-geographic)
 
 There are also some useful packages and functions for working with spatial data
@@ -783,15 +784,17 @@ range of the data coordinates, the maximum distance, and other dataset features
 (e.g. which covariates are included).
 
 ```{r read fall snapshot as a SPDF}
+#-----read fall snapshot as a SPDF-----
+
 # save coordinate systems as variables
 # WGS84 latitude-longitude
 latlong_proj <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
 # Lambert Conic projection (meters)
 lambert_proj <- "+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
 
-# focus only on the common model covariates
-# Not importing redundant spatial columns like lat_m, long_m, lambert_x, lambert_y,
-# Because we can easily reproject the data however we like later
+# focus only on the common model covariates, not importing redundant spatial
+# columns like lat_m, long_m, lambert_x, lambert_y, because we can easily
+# reproject the data however we like later
 fall <- snapshot %>%
     filter(seasonfac == "2Fall") %>%
     select(ID, latitude, longitude, ln_nox, D2A1, A1_50, A23_400, Pop_5000, D2C, Int_3000, D2Comm, cluster, group_loc, FieldID) %>%
@@ -803,8 +806,8 @@ fall <- st_as_sf(fall, coords=c('longitude','latitude'), crs=latlong_proj)
 # get summary information and column names
 fall
 
-# see the raw XY (long-lat) coordinates
-st_coordinates(fall)
+# see the top of the raw XY (long-lat) coordinates
+st_coordinates(fall) %>% head(10)
 
 # # maximum distance in the dataset; thought I would use this to set the cutoff in
 # # the variogram, but it didn't work so I hard-coded it.
@@ -820,15 +823,13 @@ For later use, we need to convert the grid to sf points:
 ```{r convert LA grid to SPDF}
 #-----convert LA grid to SPDF-----
 
+# first check class
 class(la_grid)
 
-# la_grid is a tibble; convert to a data frame (needed?)
-# (We could just import them as data.frame at the beginning with read.csv())
 # Remove redundant lambert columns, we only need one coordinate system
 # also drop -Inf values in D2A1 variable
 la_grid <- la_grid %>%
   filter(D2A1 != -Inf) %>%
-  as.data.frame() %>%
   select(-lambert_x,-lambert_y) %>%
   st_as_sf(coords=c('longitude','latitude'), crs=latlong_proj)
 
@@ -845,11 +846,12 @@ la_grid
 # Remove the water points from la_grid
 # (We don't have data from the water, so we do not want to predict there)
 
-# specify url
+# specify url a zip file to a shapefile
 url <- "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_land.zip"
 
 # download zip file
 # note: if on Windows, the argument `mode = "wb"` (Windows binary) must be added
+# to the `download.file()` function.
 if (!file.exists(file.path('Datasets','ne_10m_land.zip'))){
   download.file(url = url, 
                 destfile = file.path('Datasets','ne_10m_land.zip'))
@@ -863,11 +865,14 @@ if (!file.exists(file.path('Datasets','ne_10m_land','ne_10m_land.shp'))){
 
 # read shapefile as sf multipolygon
 land <- st_read(file.path('Datasets','ne_10m_land','ne_10m_land.shp'))
+
 # crop world land multipolygon to that which overlaps la_grid
 # to save time in next step
 land <- suppressWarnings(st_crop(land,st_bbox(la_grid)))
+
 # Show map of the cropped land object
 ggplot(land) + geom_sf(aes(fill=featurecla))
+
 # Remove water points from la_grid
 la_grid <- la_grid[st_within(la_grid,land) %>% sapply(length) > 0,]
 
