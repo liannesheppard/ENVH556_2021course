@@ -621,9 +621,11 @@ plot(v.uk, model = m.uk)
 # fit the universal kriging model, predicting on the meuse.grid
 lzn.kr <- krige(log(zinc)~sqrt(dist), meuse, meuse.grid, model = m.uk)
 
+# calculate standard errors
+lzn.kr$se = sqrt(lzn.kr$var1.var)
+
 # plot the UK predictions and SEs
 pl3 <- plot(lzn.kr["var1.pred"], main = "UK prediction of log-zinc")
-lzn.kr$se = sqrt(lzn.kr$var1.var)
 pl4 <- plot(lzn.kr["se"], main = "UK prediction error")
 
 ```
