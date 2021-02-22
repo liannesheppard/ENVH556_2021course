@@ -25,7 +25,7 @@ getMSE <- function(obs,pred) {
 me_pure_data <- function(n_subj = 10000) {
     # definition of terms:
     #   n for sample size (n_subj), referring to subject 
-    #   z for exposure model covariates
+    #   s for exposure model covariates
     #   y for outcome
     # the following terms are passed from outside if not using defaults:
     #   n_subj=10000 (default) is the # subjects
