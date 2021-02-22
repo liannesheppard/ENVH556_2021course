@@ -45,36 +45,37 @@ my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.  Some reasons for packages:
-# knitr:  kable()
-# ggplot2: part of tidyverse
-# readr: file reading
-# dplyr: data wrangling
-# Hmisc:  describe
-# gstat:  for kriging
-# maps: for maps
-# ggmap: to plot maps
-# stars:  ADD
-# sf:  will eventually replace sp: spatial data methods, the modern "simpler"
-#   version (see
-#   https://www.nickbearman.me.uk/2019/04/spatial-r-moving-from-sp-to-sf/ for
-#   details)
-# funModeling:  for EDA
-# scales: muted and other color scale functions
-# akima: gridded bivariate interpolation for irregular data
-# sp: spatial data methods -- will eventually be superseded by `sf`
-# rgdal:  projections, coordinate systems
-# downloader: download files over HTTP and HTTPS
+  # knitr:  kable()
+  # ggplot2: part of tidyverse
+  # readr: file reading
+  # dplyr: data wrangling
+  # Hmisc:  describe
+  # gstat:  for kriging
+  # maps: for maps
+  # ggmap: to plot maps
+  # stars:  ADD
+  # sf:  will eventually replace sp: spatial data methods, the modern "simpler"
+  #   version (see
+  #   https://www.nickbearman.me.uk/2019/04/spatial-r-moving-from-sp-to-sf/ for
+  #   details)
+  # funModeling:  for EDA
+  # scales: muted and other color scale functions
+  # akima: gridded bivariate interpolation for irregular data
+  # sp: spatial data methods -- will eventually be superseded by `sf`
+  # rgdal:  projections, coordinate systems
+  # downloader: download files over HTTP and HTTPS
 pacman::p_load(tidyverse, knitr, dplyr, maps, ggmap, stars,
                funModeling, Hmisc, scales, akima, sp, rgdal, downloader, sf)
+
 # Install development version of gstat
-# As of February 2021, an important bugfix has not yet made it onto Cran
-# Next time this course is taught, should be able to remove this line and
-# place gstat in the p_load list above
+  # As of February 2021, an important bugfix has not yet made it onto Cran.
+  # The next time this course is taught, this could be removed and `gstat` added
+  # to the list of packages in `p_load()` above.
 pacman::p_load_gh('r-spatial/gstat')
 
 # Note: this lab will only knit if the latest version of ggmap is installed.  
-#   The following line does this, but needs to be run at the console before
-#   knitting.  (Note: Installation of ggmap takes a LONG time.)
+  # The following line does this, but needs to be run at the console before
+  # knitting.  (Note: Installation of ggmap takes a LONG time.)
 #pacman::p_load(ggmap, install = TRUE, update = TRUE)
 
 ```
