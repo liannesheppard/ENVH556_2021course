@@ -1,7 +1,7 @@
 ---
 title: "Week 9 Lab:  Time Series Data and Analysis Strategies"
 author: "Elena Austin for ENVH 556"
-date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
+date: "Winter 2021; Updated `r format(Sys.time(), '%B %d, %Y')`"
 output: 
     html_document:
         df_print: "paged"
@@ -36,12 +36,8 @@ my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.
-pacman::p_load(knitr, dplyr, tidyr, data.table, modelr, stringr, ggplot2, 
-               lubridate)
-
-# load functions from function library
-source(file.path("function_library", "read_data.R"))
-source(file.path("function_library", "get_external_data.R"))
+pacman::p_load(knitr, dplyr, tidyr, readr, stringr, ggplot2, 
+               lubridate, purrr, tsibble, feasts, slider, ggmap, ggrepel)
 
 ```
 
@@ -52,9 +48,31 @@ source(file.path("function_library", "get_external_data.R"))
 project_path <- getwd()
 
 # specify data directory
-data_dir <- file.path(project_path, "Datasets", "Summer'18")
+data_dir <- file.path(project_path, "Datasets", "mobile_monitoring")
 
 ```
+
+<!-- THINGS TO ADD/MODIFY/REFRAME IN LAB:
+
+# Time alignment before combining dataset
+(all instruments are one 1-sec interval currently...)
+
+# Spatial Smoothing
+average by distance covered?
+
+# Removing the Influence of Local Exhaust Plumes
+rolling 25th percentile method used by Choi et al. (2012)
+outlier resistant statistics such as the median
+
+# Characterizing Background
+Another task in mobile monitoring studies is to characterize "background"
+concentrations.
+
+# Lab replicates concepts in:
+[Brantley et al., 2014](https://amt.copernicus.org/articles/7/2169/2014/)
+[full text](https://amt.copernicus.org/articles/7/2169/2014/amt-7-2169-2014.pdf)
+
+-->
 
 # Introduction and Purpose
 
@@ -67,14 +85,14 @@ questions that can be answered using variance components.
 
 In this lab exercise we will use data collected as part of the MOV-UP mobile
 monitoring campaign. This data was collected on 1 second and 10 second time
-scales. The lab will walk you through the steps of important the raw instrument
-data. Instruments included in the lab include a PTrak particle counting
+scales. The lab will walk you through the steps of importing the raw instrument
+data. Instruments included in the lab include a P-Trak particle counting
 instrument, a CPC instrument, a GPS tracker, a black carbon aethelometer and a
 NanoScan particle sizing spectrometer. The full suite of instruments and their
 characteristics of the platform used in this study can be found in [Xiang et
 al., 2020](https://doi.org/10.1021/acs.est.0c00612).
 
-# Getting Started
+# Dates and Times
 
 Managing dates and times in exposure assessment is a common challenge because
 there are a variety of common date and time formats used to log instrument data.
@@ -98,401 +116,683 @@ each instrument. In addition, the time scale of each instrument can be
 different, and it is necessary to ensure a common time base prior to merging the
 data.
 
-# Identify Files of Interest
+# Identify Files of Interest, Read Files & Wrangle
 
 ```{r gather.file.names.for.import}
 #-----gather file names for import-----
 
-# create an input list, specifying input data characteristics
-input <- list(user_time_avg = 1, #30, 60, 60*5 
-              data_options = c("missing", "ksea") )
-
-# get filename paths for data files, 
-   # "recursive" means the function will dig into subdirectories
-   # subset to file names that do not contain "CoLo" or "Fixed Sites" 
-filename_paths = list.files(data_dir, recursive=T, full.names=T) %>% 
-   str_subset("CoLo|Fixed Sites", negate = TRUE)
-
-# [Elena, I didn't see any files with "CoLo" or "Fixed Sites" in the names,
-# commented out for now]
-#filename_paths = grep("CoLo", filename_paths, value=T, invert=T)
-#filename_paths = grep("Fixed Sites", filename_paths, value=T, invert=T)
-
-
-# Get GPS file names 
-gps_path = str_subset(filename_paths, "GPS")
-gps_file = basename(gps_path)
-
-
-# get p-trak path
-ptrak_path = str_subset(filename_paths, "PT")
-
-# identify non-screened files and get file names
-ptrak_no_screen <- ptrak_path %>% 
-   str_subset("scrnd|Scrnd|Screened|screen", negate = TRUE)
-
-ptrak_no_screen_file = basename(ptrak_no_screen)
-
-
-# identify screened files and get file names
-ptrak_screen <- ptrak_path %>% 
-   str_subset("scrnd|Scrnd|Screened|screen")
-   
-ptrak_screen_file = basename(ptrak_screen)
-
-# identify AE51 path and file
-ae51_path = str_subset(filename_paths, "AE51")
-ae51_file = basename(ae51_path)
-
-# identify cpc path and file
-cpc_path = str_subset(filename_paths, "CPC")
-cpc_file = basename(cpc_path)
-
-# get scan path and file
-scan_path = str_subset(filename_paths, "Scan")
-scan_file = basename(scan_path)
-
-# get CO path and file
-co2_path = str_subset(filename_paths, "CO2")
-co2_file = basename(co2_path)
-
-# get nano single path and file
-# [Elena, I don't see any nano files in these folders]
-# nano_single_path <- filename_paths %>% 
-#    str_subset("Size") %>% 
-#    str_subset("VOID", negate = TRUE)
-# 
-# nano_single_file <- basename(nano_single_path)
+# get filename paths for data files
+filenames <- list.files(data_dir) %>% str_subset("car1")
 
 ```
 
-# Read Data Files
+## GPS
 
-```{r read.data}
-#-----read data-----
+```{r gps}
+#-----gps-----
 
-# Initialize all data sets to NULL 
-# [CZ: I don't think this is necessary with lapply]
-   # gps.data = NULL
-   # langan.data = NULL
-   # ptrak.data = NULL
-   # ptrak.screen.data =NULL
-   # ae51.data= NULL
-   # cpc.data=NULL
-   # nanoScan.data = NULL
-   # nanoSingle.data = NULL
-   # Labview.data=NULL
-   # filelog.data =NULL
-   # weather_data = NULL
-   # co2.data = NULL
+# Get GPS file name  
+gps_file <- str_subset(filenames, "GPS")
 
-
-# read in GPS data      
-gps.data <- lapply(seq_along(gps_path), FUN = function(fileind) {
-  #read gps file and apply a time averaging based on the input parameters
-  read.gps(datafile = gps_path[fileind],
-           runname = getrunname(gps_file[fileind]),
-           location = "mobile",
-           timeaverage = as.numeric(input$user_time_avg)/60,
-           splineval= "missing" %in% input$data_options) 
-}) %>% 
-   # bind list objects
-   bind_rows() %>% 
-
-   # set data.table keys
-   setkey(timeint, runname, location)
-
-
-# read in non-screened p-trak data
-ptrak.data <- lapply(seq_along(ptrak_no_screen), FUN = function(fileind) { 
-   try(read.ptrak(datafile = ptrak_no_screen[fileind],
-                  runname = getrunname(ptrak_no_screen_file[fileind]),
-                  timeaverage = as.numeric(input$user_time_avg)/60,
-                  location = "mobile",
-                  screen = F,
-                  splineval= "missing" %in% input$data_options) )
-}) %>% 
-   # bind rows
-   bind_rows() %>%
-
-   # average by the time interval of interest
-   # [CZ: this doesn't appear to do anything as written...]
-   #ptrak.data = ptrak.data[, lapply(.SD, mean) , 
-   #                      by = c("timeint","runname", "location", "serial.noscreen")]
-
-   # set data.table key
-   setkey(timeint, runname, location, serial.noscreen)
-
-
-# read screened p-trak data 
-ptrak.screen.data <- lapply(seq_along(ptrak_screen), FUN = function(fileind) { 
+# read data
+gps <- read_csv(file.path(data_dir, gps_file)) %>%
    
-   read.ptrak(datafile=ptrak_screen[fileind],
-              runname = getrunname(ptrak_screen_file[fileind]),
-              location = "mobile",
-              timeaverage = as.numeric(input$user_time_avg)/60,
-              screen=T,
-              splineval= "missing" %in% input$data_options )
-}) %>% 
-   # bind list together 
-   bind_rows() %>% 
+   # set column names
+   setNames(c("date", "time", "latitude", "longitude", "altitude", "speed")) %>% 
    
-   # # average? [CZ: same here?]
-   # ptrak.screen.data = ptrak.screen.data[, lapply(.SD, mean) , 
-   #                                 by = c("timeint","runname", 
-   #                                        "location", "serial.screen")]
+   # create datetime column
+   mutate(datetime = as.POSIXct(paste(date, time), tz = "US/Pacific") )
+
+# show dataframe
+gps
+
+```
+
+## P-Trak
+
+```{r p.trak}
+#-----p-trak-----
+
+# get p-trak not-screened file names
+ptrak_noscreen_file <- filenames %>% 
+   str_subset("PT") %>% 
+   str_subset("scrnd|Scrnd|Screened|screen", negate = TRUE)
+
+# read data
+ptrak_noscreen <-  read_tsv(file.path(data_dir, ptrak_noscreen_file), skip = 29) %>% 
    
-   # set data.table keys
-   setkey(timeint, runname, location, serial.screen)
-
-
-# read in CO2 data
-co2.data <- lapply(seq_along(co2_path), FUN = function(fileind) {
+   # name columns
+   setNames(c("date","time", "ptrak_noscreen_conc")) %>% 
    
-   serial.co2 = NA
- if(length(grep("-14",co2_file[fileind]))>0)
-   serial.co2 = "co2_14"
- if(length(grep("-19",co2_file[fileind]))>0)
-   serial.co2 = "co2_19"
- if(is.na(serial.co2))
-   serial.co2 = "unknown"
- 
-   read.co2(datafile=co2_path[fileind],
-            runname = getrunname(co2_file[fileind]),
-            timeaverage = as.numeric(input$user_time_avg)/60,
-            location = "mobile",
-            splineval= "missing" %in% input$data_options,
-            serial = serial.co2)
-}) %>% 
-   # bind rows 
-   bind_rows() %>% 
+   # modify date column and create datetime column
+   mutate(date = as.Date(date, format = "%m/%d/%Y"), 
+          datetime = as.POSIXct(paste(date, time), tz = "US/Pacific") )
+
+
+# get p-trak-screened file names and read in data
+ptrak_screen_file <- filenames %>% 
+   str_subset("scrnd|Scrnd|Screened|screen")
+
+# read data
+ptrak_screen <-  read_tsv(file.path(data_dir, ptrak_screen_file), skip = 29) %>% 
    
-   # average
-   # co2.data = co2.data[, lapply(.SD, mean) , 
-   #                 by = c("timeint","runname", "location","serial.co2")]
-
-   # set data.table key
-   setkey(timeint, runname, location,serial.co2)
-
-
-# # read in microAeth data
-# # [Elena, there doesn't apper to be microAeth data in these data files]
-# ae51.data <- lapply(seq_along(ae51_path), FUN = function(fileind) {
-#  read.ae51(datafile=ae51_path[fileind],
-#            runname = getrunname(ae51_file[fileind]),
-#            location = "mobile",
-#            timeaverage = as.numeric(input$user_time_avg)/60,
-#            splineval= "missing" %in% input$data_options )
-# }) %>% 
-#    # bind_rows 
-#    bind_rows() %>%
-# 
-#    # # average 
-#    # ae51.data = ae51.data[, lapply(.SD, mean) , 
-#    #                 by = c("timeint","runname", "location","serial.ae51")]
-# 
-#    # set key
-#    setkey(ae51.data, timeint, runname, location, serial.ae51)
-
-# read in cpc data
-cpc.data <- lapply(seq_along(cpc_path), FUN = function(fileind) { 
-   read.cpc(datafile = cpc_path[fileind], 
-            runname = getrunname(cpc_file[fileind]),
-            location = "mobile",
-            timeaverage = as.numeric(input$user_time_avg)/60,
-            splineval = "missing" %in% input$data_options )
-}) %>% 
-   # bind rows
-   bind_rows() %>%
-
-# # average?
-#  cpc.data = cpc.data[, lapply(.SD, mean) , 
-#                    by = c("timeint","runname", "location","serial.cpc")]
-
-# set data.table key
-setkey(timeint, runname, location, serial.cpc)
+   # name columns
+   setNames(c("date","time", "ptrak_screen_conc")) %>% 
+   
+   # modify date column and create datetime column
+   mutate(date = as.Date(date, format = "%m/%d/%Y"), 
+          datetime = as.POSIXct(paste(date, time), tz = "US/Pacific") )
 
 
-# # nano scan data
-# # [CZ: keep, no nano scan data?]
-# nanoScan.data.list <- lapply(1:length(scan_path), FUN = function(fileind) {
-#  temp = read.nano.scan(datafile=scan_path[fileind],
-#            runname = getrunname(scan_file[fileind]),
-#            timeaverage = as.numeric(input$user_time_avg)/60,
-#            location  = "mobile",
-#            splineval= "missing" %in% input$data_options)
-#    temp
-# })
-# 
-# nanoScan.data = rbindlist(nanoScan.data.list, fill=T)
-# nanoScan.data[grep("car", runname, invert=T, ignore.case = T), 
-#              runname := paste0(runname, "_Car1")]
-#  nanoScan.data = nanoScan.data[, lapply(.SD, mean) , 
-#                    by = c("timeint","Status","runname", "location")]
-# 
-# setkey(nanoScan.data, timeint, runname, location)
+# show dataframes
+ptrak_noscreen
+ptrak_screen
 
-```   
+```
+
+## Carbon Dioxide ($CO_2$)
+
+```{r co2}
+#-----co2-----
+
+# get CO2 file name
+co2_file <- str_subset(filenames, "CO2")
+
+# read data, specify time as character because of time parsing issue
+co2 <- read_tsv(file.path(data_dir, co2_file), skip = 1, 
+                col_types = cols(`System_Time_(h:m:s)` = col_character()) ) %>% 
+   
+   # name columns
+   setNames(c("date", "time", "co2_conc", "h2o_conc", "temp", "pressure", 
+              "co2_absorp",  "flow") ) %>% 
+   
+   # select columns of interest
+   select(date, time, co2_conc) %>% 
+   
+   # address time parsing (some minute values have only one digit)
+   separate(time, into = c("h", "m", "s"), sep = ":") %>% 
+   mutate(m = if_else(str_count(m) == 1, paste0("0", m), m)) %>% 
+   unite(c(h, m, s), col = "time", sep = ":") %>% 
+   mutate(time = parse_time(time)) %>%
+   
+   # create datetime column
+   mutate(datetime = as.POSIXct(paste(date, time), tz = "US/Pacific") )
+
+# show dataframe
+co2
+
+```
 
 
-# Merge Instrument Data Files
+# Merge Instrument Data
 
 ```{r merge.datasets}
 #-----merge datasets-----
 
 # create a list of all data to merge 
-instrument_list <- list(gps.data, ptrak.data, ptrak.screen.data, cpc.data, co2.data)
+instrument_list <- list(gps = gps, ptrak_noscreen = ptrak_noscreen, 
+                        ptrak_screen = ptrak_screen, co2 = co2)
 
-# define `merge.all()` function from `merge()`, specifying argument `all = TRUE` 
-# because `Reduce()`, used to successively combine elements, does not accept 
-# additional arguments
-merge.all <- function(x, y){ merge(x, y, all = TRUE) }
+# use `purrr::reduce` to run `full_join()` multiple times on `instrument_list`
+all_data <- reduce(instrument_list, full_join) %>% 
+   
+   # reorder columns so datetime is first
+   relocate(datetime) %>% 
+   
+   # ensure data are arranged in datetime order
+   arrange(datetime)
 
-# merge all data data sets
-instrument_data <- Reduce(merge.all, instrument_list)
-
-# option to make 5-min averages
-#output[, min5date := floor_date(timeint, "5 min")]
-
-
-```
-
-# Get Weather Data
-
-```{r collect.weather.data}
-#-----collect weather data-----
-
-# get date range from output using `lubridate` helpers
-date_range <- c(start = as.Date(min(instrument_data$timeint) - hours(2)), 
-                end = as.Date(max(instrument_data$timeint) +  days(1)) )
-
-# get weather data using customized `riem_measures()` function
-weather_data <- get_ASOS(date_start = date_range[["start"]], 
-                         date_end = date_range[["end"]], 
-                         station = "SEA")
-
-# set data.table keys
-#setkey(weather_data, timeint)
-#setkey(output, timeint)
-#setkey(output, min5)
-
-# # using data.table
-# output <- weather_data[instrument_data]
-
-# join weather data and instrument data using dplyr
-output <- left_join(instrument_data, weather_data, by = "timeint")
+# show data
+all_data
 
 ```
 
 
-# Wranlge Data...
+## Inspect Merged Data
 
-```{r }
+## Missing Data
 
-# get the names of numeric columns in `output` 
-colnamesvals <- names(which(sapply(output, is.numeric)))
+How much missing data do we have? What are the likely sources of data
+missingness in our data?
 
-# [CZ: I don't know what this is doing - we need some comments or to draft a
-# simpler approach]
-output[ ,(colnamesvals) := lapply(.SD, as.double), .SDcols = colnamesvals]
+```{r missing}
+#-----missing-----
 
-output[, (colnamesvals) := lapply(.SD, FUN = function(x){
- tempval= rep(NA, length(x))
- if(is.finite(max(x,na.rm=T))) {
- tempval = na.approx(x, na.rm=F, maxgap= 60/input$user_time_avg*5, rule=1)
- tempval[tempval>=max(x, na.rm=T)]= max(x, na.rm=T)
- tempval[tempval<=min(x, na.rm=T)]= min(x, na.rm=T)
- }
- tempval[is.na(tempval)] = (-9999999)
- tempval[!is.finite(tempval)] = (-9999999)
- tempval
-      }),
- .SDcols = colnamesvals, by=runname]
-
-output[output==-9999999] = NA
-
-
-# identify the maximum time _______ and weather variables
-maxgapval <-  1/as.numeric(input$user_time_avg)*60*80
-weather_vars <- c("tmpf","relh","drct","sknt","alti","mslp","vsby")
-
-# [CZ: I don't know what this is doing...]
-output[, (weather_vars) := lapply(.SD, function(x)
-     na.approx(x, na.rm=F, maxgap= maxgapval, rule=1)),
- , .SDcols = weather_vars]
-
-
-
-# create a particle number concentration difference value
-output[,pnc_diff := pnc_noscreen - pnc_screen]
-
-# try to create pnc_diff/BC ratio column [CZ: NO BC COLUMN]
-try(output[,ratio := pnc_diff / BC], silent = TRUE)
-
-# create particle number count background variable
-if(input$user_time_avg=="1"){
+lapply(all_data, function(i){ 
    
-   output[,timeint := as.POSIXct(timeint)]
-   # g <- data.table(timeint=seq(min(output$timeint), max(output$timeint), 1))
-   # setkey(g, timeint)
-   # setkey(output, timeint, runname)
-   #
-   # output = output[g]
+   tibble( 
+          # sum missing
+          n_miss = sum(is.na(i)), 
+          
+          # percent missing
+          perc_miss = round(n_miss/length(i) * 100, 1)
+          )
+   }) %>% 
    
-   #apply a rolling mean by runname (monitoring period)
-   output[, pnc_background :=
-          rollapply(pnc_noscreen, width = 30, FUN = function(x){
-            quantile(x, 0.05, na.rm=T)
-          }, align = 'right', partial = FALSE, fill = NA), by = c("runname")]
- 
- output <- output[!is.na(runname), ]
+   # bind list
+   bind_rows(.id = "variable")
+
+```
+
+## Plot Data 
+
+Let's make a quick visualization of our data to see what we're working with.
+What features do you see?
+
+```{r plot.data}
+#-----plot data-----
+
+# transform data from wide to long for ggplot
+ggplot(data = all_data %>% 
+         pivot_longer(cols = contains("_conc"), 
+                      names_to = "pollutant", 
+                      values_to = "concentration"), 
+       aes(x = datetime, y = concentration) ) + 
+  
+  # plot each pollutant in a facet
+  facet_wrap(~pollutant, ncol = 1, scales = "free_y") + 
+  
+  # specify type of plot
+  geom_line() +
+  
+  # specify theme
+  theme_bw()
+
+```
+
+
+# Time Interval
+
+Our data appeared to be on a similar 1-second time interval. Let's confirm:
+
+```{r time.stamps}
+#-----time stamps
+
+# we'll use our instrument data list
+lapply(instrument_list, function(i){
+   
+   # get vector of datetimes
+   datetimes <- i[["datetime"]]
+   
+   # get a vector of the differences between consecutive measurements
+   time_diff <- datetimes[2:length(datetimes)] - datetimes[1:length(datetimes)-1]
+   
+   # summarize differences
+   table(time_diff)
+   
+}) %>% 
+   
+   # use list names
+   setNames(names(instrument_list))
+
+```
+
+It seems that some of our missingness is due to instrument reporting. Some
+measurements did not occur at 1-second intervals. From this we can also see
+there are duplicate measurements for each instruments (difference of zero
+seconds).
+
+Lastly, it appears that the GPS instrument was not turned on at the same time as
+the other instruments (there is no GPS data at the beginning of the dataframe).
+This may be due to the fact that the instruments were turned on for "warm-up"
+before the measurement campaign started.
+
+Let's drop data missing the GPS variables for convenience, but is this the best
+thing to under all circumstances and for all variables?
+
+```{r drop.missing}
+#-----drop missing-----
+
+all_data <- drop_na(all_data, latitude, longitude)
+
+```
+
+
+# Timeseries data
+
+Timeseries data are marked by measurements that are indexed to a time component.
+There are many `R` standards for timeseries data: `ts`, `xts`, `data.frame`,
+`data.table`, `tibble`, `zoo`, `tsibble`, `tibbletime` or `timeSeries`. The
+package `tsbox` has many useful functions for converting between these
+timeseries formats.
+
+We've focused most of our effort on `tidyverse` tools this term, so let's focus
+on the `tsibble`, `feasts`, and `slider` package functions.
+
+```{r try.tsibble}
+#-----try tsibble----
+
+# use "try" here so document knits
+try( as_tsibble(all_data, index = datetime) )
+
+# inspect duplicate rows
+duplicates(all_data, index = datetime)
+
+```
+
+`tsibble` alerts us of our time issues and prompts us to deal with them, so
+let's remove the duplicates (you could average duplicates also). 
+
+```{r to.tsibble}
+#-----to tsibble-----
+
+# remove duplicate rows, and convert to `tsibble`
+ts_data <- all_data %>% 
+  distinct() %>% 
+  as_tsibble(index = datetime)
+
+# show dataframe
+ts_data
+
+```
+
+Let's also fill the gaps in time. In other words, the index column `datetime`
+needs to be unique and complete. Adding these new time rows introduces NAs to
+the data, so you'll then have a choice about if and how to fill the non-index
+data in. `tidyr::fill()` can help with this task, and the choice may be more or
+less important depending on the timescale you're working on, the amount of
+missingness, and if there are consecutive measurements mising. Given the small
+amount of missing and the one second timescale, it's not unreasonable to
+introduce a few rows with NAs here.
+
+```{r fill.ts}
+#-----fill ts-----
+
+ts_data <- fill_gaps(ts_data) 
+  
+  # # if you wanted to "fill" the new explicitly missing data here is an option
+  # # (add a `%>%` to the function above). Note this could have downstream
+  # # effects.
+  # fill(co2_conc, .direction = "down")
+
+ts_data
+
+```
+
+# Temporal Autocorrelation
+
+Timeseries data is often correlated in time - measurements taken close in time
+to one another are more similar than measurements taken farther apart. An
+autocorrelation plot helps identify at what lag (or time interval) data are
+less correlated.
+
+```{r autocorrelation}
+#-----autocorrelation-----
+
+ts_data %>% ACF(co2_conc, lag_max = 60) %>% autoplot()
+
+```
+
+
+# Temporal Smoothing with New Time Scales 
+
+A common task with timeseries data is averaging to different timescales. From
+the autocorrelation plot above, we can see at a lag of 60 seconds, the $CO_2$
+concentrations are less correlated. So let's convert our 1-second data to some
+longer timescales. One package that helps with averaging tasks is `slider`.
+
+For the first average we'll use the timescale period (minutes) to calculate
+1-minute averages. Though with other data, this could also be months, weeks,
+years, etc. This is a "block average" based on an attribute of the data. For
+example, if you wanted monthly averages, this method would be "aware" of the
+fact there are a different number of days in each month. For the second average
+(2-minutes) we'll demonstrate a moving ("sliding" or "rolling") average, where a
+number of neighbors before and after a value of interest are used to compute an
+average.
+
+Notice how both functions preserve the input dataframe size. For the period
+average we can then easily merge the new column with our existing dataframe
+(however, you'll notice values are repeated 60 times for each minute). The
+moving average, works nicely with `mutate()`.
+
+## `slider`
+
+```{r slider}
+#-----slider-----
+
+ts_data <- ts_data %>% 
+  
+  # left join new 1-minute period values
+  left_join(
+
+    # use `slider` to calculate 1-minute concentrations by period
+    slide_period_dfr(ts_data, ts_data$datetime, "minute",
+                     ~tibble(datetime = floor_date(.x$datetime),
+                             co2_conc_one = mean(.x$co2_conc)
+                             ) ),
+    by = "datetime" ) %>%
+  
+  # use `slider` to calculate 2 minute moving averages (this works becuase we've
+  # made sure our datetime index is unique and complete)
+  mutate(co2_conc_two = slide_dbl(co2_conc, ~mean(.x, na.rm = TRUE), 
+                             .before = 60, .after = 60) ) 
+
+# # slide_period also works like this, but returns a vector of different length
+# # than the original inputs
+# with(ts_data, 
+#      slide_period_dbl(.x = co2_conc, .i = datetime, 
+#              .period = "minute", .f = mean, na.rm = TRUE) 
+#      )
+
+# show dataframe
+ts_data
+
+```
+
+## `tsibble`
+
+Next, let's take a look at a `tsibble` approach for 5-minute averages. Notice
+that the size of the dataframe decreases.
+
+```{r new.timescale}
+#-----new timescales-----
+
+ts_new <- ts_data %>% 
+  
+  # get the "floor" of each datetime row (unfortunately `tsibble` doesn't let us
+  # use "datetime" for this new variable name)
+  index_by(datetime_new = floor_date(datetime, unit = "5mins")) %>%
+  
+  # summarise the mean of rows across all dataframe columns
+  summarise(across(where(is.numeric), mean, na.rm = TRUE ), .groups = "drop") %>% 
+  
+  # rename to get "datetime" variable name back
+  rename(datetime = datetime_new)
+  
+# show dataframe
+ts_new
+
+# check 5-minute average autocorrelation
+#ts_new %>% ACF(co2_conc) %>% autoplot()
+```
+
+All our example data are on the 1-second timescale; however, it is common to have multiple timescales in a suite of direct-reading instruments. Using the techniques above, you'll be able to average different time intervals to a common schedule. Once the measurements are on a shared timescale, they can be merged/joined as we have shown in the "Merge Instrument Data" section.
+
+## Plot Different Timescales
+
+Let's inspect the timeseries of our different averages:
+
+```{r plot.different.time.averages}
+#-----plot different time averages-----
+
+# we're going to cheat a little here and just manually specify each series rather
+# than make a dataframe with all the plotting data combined
+
+ggplot() + 
+  
+  # plot original 1-second data
+  geom_line(data = ts_data, aes(x = datetime, y = co2_conc), color = "blue") + 
+  
+  # plot `slider` 1-min period averages
+  geom_line(data = ts_data, aes(x = datetime, y = co2_conc_one), color = "black") +
+  
+  # plot `slider` 2-min moving averages
+  geom_line(data = ts_data, aes(x = datetime, y = co2_conc_two), color = "red") +
+  
+  # plot `tsibble` 5-minute block averages
+  geom_line(data = ts_new, aes(x = datetime, y = co2_conc), color = "darkgreen") + 
+  
+  # labels
+  labs(x = "Time", 
+       y = "CO2 (ppm)" 
+       ) +
+  
+  # theme
+  theme_bw()
+```
+
+
+# Map concentrations
+
+Our data was from a mobile monitoring campaign - so let's map the
+concentrations.
+
+Here is a helper function for the `bbox` argument of `get_stamenmap()`. It takes
+a dataframe, finds the latitude and longitude columns, makes calculations to add
+a little "extra" space to the plotting area, and outputs an object used to
+define the extent of the mapping region. You might find it helpful in the
+future. It requires `stringr`and `tidyr`.
+
+```{r define.make_bbox.function}
+#-----define make_bbox function------
+
+make_bbox <- function(.data, width_extra = 0.0001, height_extra = 0.00005){
+  
+  # dependencies
+  pacman::p_load(stringr, tidyr)
+  
+  # find lat and long column names
+  long <- str_subset(string = names(.data), pattern = "Long|long")
+  lat <- str_subset(string = names(.data), pattern = "Lat|lat")
+  
+  # drop rows with NA
+  temp <- .data %>% drop_na(all_of(c(long, lat)))
+  
+  # create a named vector with the corners of the plotting region
+  out <- c(left = min(temp[[long]]) + width_extra*min(temp[[long]]),
+           bottom = min(temp[[lat]]) - height_extra*min(temp[[lat]]),
+           right = max(temp[[long]]) - width_extra*min(temp[[long]]),
+           top = max(temp[[lat]]) + height_extra*min(temp[[lat]]) )
 }
 
 ```
 
+(I've split up getting the map objects from mapping them so you can run the
+mapping chunk interactively without re-downloading the stamen map.)
 
-```{r }
+```{r get.map.objects}
+#-----get map objects-----
 
-# check the number of rows in `output`
-nrow(output[is.na(timeint) | is.na(runname) | is.na(Longitude),])
+# define the bounding box for the map using make_bbox 
+bbox <- make_bbox(ts_data)
 
-# drop rows with NAs
-output <- output[!is.na(timeint) & !is.na(runname) & !is.na(Longitude)]
+# make a map of the base layer of stamen tiles (without downloading messages)
+map <- get_stamenmap(bbox, zoom = 14, maptype = "terrain") %>% suppressMessages()
 
-# convert columns to numeric [CZ: this did not work...]
-#output <- output[, lapply(.SD, makenum), by = c("timeint", "runname", "Longitude")]
+# make the map image from the stamen map tiles
+basemap <- ggmap(map, darken = c(0.5, "white")) + theme_void()
 
-# take mean of duplicates
-output <- output[, lapply(.SD, mean), by = c("timeint", "runname", "Longitude")]
+```
 
-# number of days
-numdays <- unique(format(output$timeint, "%Y-%m-%d"))
+To help represent the time-varying nature of the data in this lab, let's collect
+the times of some of our measurements to help our visualization.
 
-# minimum day
-mindays = as.POSIXct(min(numdays))
+```{r get time stamps}
+#-----get time stamps-----
 
-# maximum day
-maxdays = as.POSIXct(max(numdays))
+map_times <- ts_data %>% 
+  
+  # convert to `tibble` because we're breaking up our `tsibble`
+  as_tibble() %>%
+  
+  # filter to rows with :00, :15, :30, and :45 minute times
+  filter(str_detect(time, pattern = ":00:00|:15:00|:30:00|:45:00")) %>% 
+  
+  # make a map_time variable, dropping the seconds 
+  # (`$` indicates the character pattern should be at the end of the string)
+  mutate(map_time = str_remove(time, pattern = ":00$"))
 
-# reformat time interval 
-output[,day := format(timeint, "%Y-%m-%d")]
+```
+
+## Map CO2 Concentrations
+
+```{r map.concentration}
+#-----map concentrations----
+
+# map concentrations
+map_co2 <- basemap +
+    
+# locations with concentrations
+geom_point(data = ts_data %>% drop_na(co2_conc), 
+           aes(x = longitude, y = latitude, color = co2_conc))+ 
+
+# add measurement times to map
+geom_text_repel(data = map_times,
+                aes(x = longitude, y = latitude, label = map_time), 
+                force_pull = -.02) +
+
+# color scale
+scale_color_continuous(low = "#56B1F7", high = "#132B43") +  
+
+# labels
+labs(color = "CO2 (ppm)") +
+
+# theme
+theme_void() 
+
+# show map
+map_co2
+
+```
 
 
-# setnames(output, unlist(output[1,]))
-# output = output[-1,]
+## Map P-Trak Ratios
+<!-- THIS IS NOT IN BRANTLEY, BUT IS IT SOMETHING TO KEEP? IT LIKELY NEEDS 
+MODIFICATION AS I WAS JUST FIGURING OUT/DRAFTING SOME CODE -->
+
+As the $CO_2$ map shows, the data we've collected represent concentrations over 4 hours, meaning some of the variability we're observing could be a mix of spatial (i.e. the variability we see in the map) and temporal (i.e. the variability observed in timeseries plots) processes.
+
+Next, we'll use the P-Trak data to explore the idea of pollutant ratios...
+
+```{r map.ratios}
+#-----map ratios----
+
+# calculate ratio
+ts_data <- ts_data %>% 
+  mutate(ptrak_ratio = ptrak_screen_conc / ptrak_noscreen_conc)
+
+# map concentrations
+map_ratios <- basemap +
+    
+# locations with concentrations
+geom_point(data = ts_data %>% drop_na(ptrak_ratio), 
+           aes(x = longitude, y = latitude, color = ptrak_ratio)) + 
+
+# color scale
+scale_color_continuous(low = "#56B1F7", high = "#132B43") +  
+
+# labels
+labs(color = "P-trak Ratio \nscreened:unscreened") +
+
+# theme
+theme_void() 
+
+# show map
+map_ratios
+
+```
 
 
-# [Elena, there is no airplane landing data, correct?]
-# obsland_dir <- fread("C:\\Users\\elaustin\\OneDrive\\Documents\\UW Postdoc\\MOVUP\\Merged Data\\aircraft landing direction observed.csv")
-# 
-# obsland_dir[, date := as.POSIXct(date)]
-# 
-# output[,day := as.POSIXct(day)]
-# 
-# setkey(obsland_dir, date)
-# 
-# setkey(output, day)
-# 
-# output = obsland_dir[output]
+## Remove a Percentile of the Data 
+<!-- IS THIS PLUME DETECTION OR BACKGROUND CHARACTERIZATION?? -->
+
+One method to do that is to subtract a percentile of the data... 
+
+```{r remove.moving.percentile}
+#-----remove moving percentile-----
+
+# specify the time in minutes from which to calculate the percentile
+time_min <- 10
+
+# specify the percentile to remove
+perc <- 0.10
+
+# we can use use `slider` to calculate the percentile value to remove
+ts_data <- ts_data %>% 
+  mutate(perc_remove = slide_dbl(co2_conc, 
+                                 ~quantile(.x, probs = perc, na.rm = TRUE), 
+                                 .before = (time_min*60)/2, 
+                                 .after = (time_min*60)/2), 
+         co2_adj_perc = co2_conc - perc_remove) 
+
+ts_data
+```
+
+
+## Loess Smoother
+<!-- ALSO NOT IN BRANTLEY, BUT SUGGESTED BY LIANNE. IT SEEMS LIKE I'M DOING
+SOMETHING WRONG OR MISSING SOMETHING...-->
+
+Another way to remove trends in tmeseries data is to fit a smoother to the data and subtract the fitted values from the observations. 
+
+```{r loess.smoother}
+#-----loess smoother-----
+
+# specify loess model
+mdl <- loess(co2_conc ~ seq_along(time), data = ts_data, span = 0.1)
+
+# add predictions and adjusted concentrations to ts_data
+ts_data <- ts_data %>% 
+  bind_cols(loess = predict(mdl, ts_data)) %>% 
+  mutate(co2_adj_loess = co2_conc-loess)
+
+```
+
+## Plot $CO_2$ Residuals
+
+```{r co2.residuals}
+#-----co2 residuals-----
+
+# we're going to cheat again and plot the series separately instead of from a
+# combined dataframe
+
+ggplot(ts_data) + 
+  
+  # plot the original data
+  #geom_line(aes(x = datetime, y = co2_conc), color = "darkgray") +
+  
+  # plot the percentile-adjusted data
+  geom_line(aes(x = datetime, y = co2_adj_perc), color = "blue") +
+  
+  # plot the loess-adjusted data
+  geom_line(aes(x = datetime, y = co2_adj_loess), color = "red") + 
+  
+  # add reference line
+  geom_hline(yintercept = 0, color = "black") +
+  
+  # labels
+  labs(x = "Time", y = "Residual CO2 (ppm)") +
+  
+  # theme
+  theme_bw()
+
+```
+
+# Practice
+
+1. Choose a new pollutant. Investigate the autocorrelation: 
+  a) plot the 1-second autocorrelation plot
+  b) choose a new timescale
+  c) check the autocorrelation with the new timescale
+
+
+# Code Appendix
+
+## Session Information
+
+```{r session.info}
+#-----session info: beginning of Code Appendix-----
+
+sessionInfo()
+
+```
+
+## Code in the R Markdown file
+
+```{r appendix.code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
+#-----appendix code-----
+
+```
+
+## User-written functions loaded in the R Markdown environment
+
+```{r functions.used.in.this.Rmd, eval = TRUE}
+#-----functions used in this Rmd-----
+
+# Show the names of all functions used (loaded in the current environment)
+lsf.str()
+
+# Show the definitions of all functions loaded into the current environment  
+lapply(c(lsf.str()), getAnywhere)
 
 ```
