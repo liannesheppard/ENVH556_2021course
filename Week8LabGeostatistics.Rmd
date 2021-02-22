@@ -970,24 +970,26 @@ g <- ggmap(map, darken = c(0.5, "white")) + theme_void()
 # Plot the map
 g + ggtitle("Sample Map of Los Angeles for \n the area covered by the snapshot data")
 
-# Add snapshot locations to the map will colors for values
+# Add snapshot locations to the map with colors for values
 # Note: need to use a data.frame for this, not a spatial data object
 
-# For some reason, geom_sf() did not work for this (bug?), so needed to use geom_point
-# and manually add the extracted XY coordinates
+# For some reason, geom_sf() did not work for this (bug?), so needed to use
+# geom_point and manually add the extracted XY coordinates
 # https://stackoverflow.com/questions/60066424/how-to-align-ggmap-crs-of-google-map-longitude-latitude
 
 # NOx on native scale
-g + geom_point(data=fall,aes(x = st_coordinates(fall)[,'X'],
-                           y = st_coordinates(fall)[,'Y'],
-                           col = exp(ln_nox)), alpha = 0.8) + 
+g + geom_point(data=fall, 
+               aes(x = st_coordinates(fall)[,'X'],
+                   y = st_coordinates(fall)[,'Y'],
+                   col = exp(ln_nox)), alpha = 0.8) + 
     scale_color_gradientn(name = "NOx (ppb)", colors=rainbow(4,rev=TRUE)) + 
     ggtitle("Map of Los Angeles \n with the fall snapshot data")
 
 # NOx on log scale
-g + geom_point(data=fall,aes(x = st_coordinates(fall)[,'X'],
-                           y = st_coordinates(fall)[,'Y'],
-                           col = ln_nox), alpha = 0.8) + 
+g + geom_point(data=fall, 
+               aes(x = st_coordinates(fall)[,'X'],
+                   y = st_coordinates(fall)[,'Y'],
+                   col = ln_nox), alpha = 0.8) + 
   scale_color_gradientn(name='ln(NOx)', colors=rainbow(4,rev=TRUE)) +
   ggtitle("ln(NOx) Concentrations (ln(ppb))") +
   theme_bw()
