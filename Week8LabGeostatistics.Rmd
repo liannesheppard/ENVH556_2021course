@@ -1113,22 +1113,24 @@ predictions.
 fall.CVcluster.ok <- krige.cv(ln_nox~1,
     st_transform(fall,lambert_proj),
     model = vf.fit,
-    nfold = fall$cluster,
-    )
+    nfold = fall$cluster)
 
 # clusterwise cross-validation of UK model with covariates
 fall.CVcluster.uk <- krige.cv(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
     st_transform(fall,lambert_proj),
     model = vfc.fit,
-    nfold = fall$cluster,
-    )
+    nfold = fall$cluster)
+
+# bubble plots -- Note, this could be improved by having these plots as 2 panels
+# of same plot, with bubble size and scale held constant
+krige.cv.bubble(st_transform(fall.CVcluster.ok,latlong_proj),'ln(NOx) OK: clusterwise CV residuals')
+
+krige.cv.bubble(st_transform(fall.CVcluster.uk,latlong_proj),'ln(NOx) UK: clusterwise CV residuals')
 
 # calculate and compile CV stats
 bind_rows(
-
-krige.cv.stats(fall.CVcluster.ok, "clusterwise CV of OK model with covariates"),
-krige.cv.stats(fall.CVcluster.uk, "clusterwise CV of UK model with covariates")
-
+  krige.cv.stats(fall.CVcluster.ok, "clusterwise CV of OK model with covariates"),
+  krige.cv.stats(fall.CVcluster.uk, "clusterwise CV of UK model with covariates")
 )
 
 ```
