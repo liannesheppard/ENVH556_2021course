@@ -55,7 +55,7 @@ data_dir <- file.path(project_path, "Datasets", "mobile_monitoring")
 <!-- THINGS TO ADD/MODIFY/REFRAME IN LAB:
 
 # Time alignment before combining dataset
-(all instruments are one 1-sec interval currently...)
+(all instruments are 1-sec interval currently...)
 
 # Spatial Smoothing
 average by distance covered?
@@ -81,16 +81,26 @@ facility in importing and merging data of varying time scales, smoothing
 approaches, and some analysis tools to reduce the complexity of these data. In
 addition, as with all the labs in this course, you should focus on writing up a
 coherent lab report that addresses the scientific context and scientific
-questions that can be answered using variance components.
+questions.
 
 In this lab exercise we will use data collected as part of the MOV-UP mobile
 monitoring campaign. This data was collected on 1 second and 10 second time
 scales. The lab will walk you through the steps of importing the raw instrument
-data. Instruments included in the lab include a P-Trak particle counting
-instrument, a CPC instrument, a GPS tracker, a black carbon aethelometer and a
-NanoScan particle sizing spectrometer. The full suite of instruments and their
-characteristics of the platform used in this study can be found in [Xiang et
-al., 2020](https://doi.org/10.1021/acs.est.0c00612).
+data. The have provided data from the following instruments: 
+
+  * GPS tracker
+  * particle counter (P-Trak, model 8525, TSI Inc., MN)
+  * condensation particle counter (CPC, model 3007, TSI Inc., MN)
+  * black carbon aethelometer (microAeth AE51) 
+  * particle sizing spectrometer (NanoScan)
+  * carbon dioxide ($CO_2$) (SenseAir K-30-FS)
+
+The full suite of instruments and their characteristics of the platform used in
+this study can be found in [Riley et al.,
+2014](https://doi.org/10.1016/j.atmosenv.2014.09.018), [Larson et al.,
+2017](https://doi.org/10.1016/j.atmosenv.2016.12.037), and [Xiang et 
+al.,2020](https://doi.org/10.1021/acs.est.0c00612). The remainder of the code in this week's lab uses the GPS, P-Trak, and $CO_2$ measurements.
+
 
 # Dates and Times
 
@@ -118,6 +128,9 @@ data.
 
 # Identify Files of Interest, Read Files & Wrangle
 
+Here, we'll focus on data from Car 1 (there were 2 cars), for your assignment,
+consider exploring data from a different car.
+
 ```{r gather.file.names.for.import}
 #-----gather file names for import-----
 
@@ -128,17 +141,17 @@ filenames <- list.files(data_dir) %>% str_subset("car1")
 
 ## GPS
 
-```{r gps}
+```{r gps, message=FALSE}
 #-----gps-----
 
 # Get GPS file name  
 gps_file <- str_subset(filenames, "GPS")
 
-# read data
+# read GPS data
 gps <- read_csv(file.path(data_dir, gps_file)) %>%
    
    # set column names
-   setNames(c("date", "time", "latitude", "longitude", "altitude", "speed")) %>% 
+   set_names(c("date", "time", "latitude", "longitude", "altitude", "speed")) %>% 
    
    # create datetime column
    mutate(datetime = as.POSIXct(paste(date, time), tz = "US/Pacific") )
@@ -150,7 +163,10 @@ gps
 
 ## P-Trak
 
-```{r p.trak}
+<!-- Elena & Lianne, can one of you add a sentence or two here about the
+importance/reasoning behind the screen and not-screened P-Trak -->
+
+```{r p.trak, message=FALSE}
 #-----p-trak-----
 
 # get p-trak not-screened file names
@@ -162,7 +178,7 @@ ptrak_noscreen_file <- filenames %>%
 ptrak_noscreen <-  read_tsv(file.path(data_dir, ptrak_noscreen_file), skip = 29) %>% 
    
    # name columns
-   setNames(c("date","time", "ptrak_noscreen_conc")) %>% 
+   set_names(c("date","time", "ptrak_noscreen_conc")) %>% 
    
    # modify date column and create datetime column
    mutate(date = as.Date(date, format = "%m/%d/%Y"), 
@@ -177,7 +193,7 @@ ptrak_screen_file <- filenames %>%
 ptrak_screen <-  read_tsv(file.path(data_dir, ptrak_screen_file), skip = 29) %>% 
    
    # name columns
-   setNames(c("date","time", "ptrak_screen_conc")) %>% 
+   set_names(c("date","time", "ptrak_screen_conc")) %>% 
    
    # modify date column and create datetime column
    mutate(date = as.Date(date, format = "%m/%d/%Y"), 
@@ -190,9 +206,9 @@ ptrak_screen
 
 ```
 
-## Carbon Dioxide ($CO_2$)
+## Carbon Dioxide
 
-```{r co2}
+```{r co2, message=FALSE}
 #-----co2-----
 
 # get CO2 file name
@@ -203,8 +219,8 @@ co2 <- read_tsv(file.path(data_dir, co2_file), skip = 1,
                 col_types = cols(`System_Time_(h:m:s)` = col_character()) ) %>% 
    
    # name columns
-   setNames(c("date", "time", "co2_conc", "h2o_conc", "temp", "pressure", 
-              "co2_absorp",  "flow") ) %>% 
+   set_names(c("date", "time", "co2_conc", "h2o_conc", "temp", "pressure", 
+              "co2_absorp",  "flow", "X9") ) %>% 
    
    # select columns of interest
    select(date, time, co2_conc) %>% 
@@ -224,7 +240,7 @@ co2
 ```
 
 
-# Merge Instrument Data
+# Merge & Inspect Instrument Data
 
 ```{r merge.datasets}
 #-----merge datasets-----
@@ -239,7 +255,7 @@ all_data <- reduce(instrument_list, full_join) %>%
    # reorder columns so datetime is first
    relocate(datetime) %>% 
    
-   # ensure data are arranged in datetime order
+   # arrange data in datetime order
    arrange(datetime)
 
 # show data
@@ -247,8 +263,6 @@ all_data
 
 ```
 
-
-## Inspect Merged Data
 
 ## Missing Data
 
@@ -276,7 +290,7 @@ lapply(all_data, function(i){
 
 ## Plot Data 
 
-Let's make a quick visualization of our data to see what we're working with.
+Let's make a quick visualization to get an idea of the data we're working with.
 What features do you see?
 
 ```{r plot.data}
@@ -308,7 +322,7 @@ Our data appeared to be on a similar 1-second time interval. Let's confirm:
 ```{r time.stamps}
 #-----time stamps
 
-# we'll use our instrument data list
+# we'll use the instrument data list
 lapply(instrument_list, function(i){
    
    # get vector of datetimes
@@ -323,13 +337,13 @@ lapply(instrument_list, function(i){
 }) %>% 
    
    # use list names
-   setNames(names(instrument_list))
+   set_names(names(instrument_list))
 
 ```
 
 It seems that some of our missingness is due to instrument reporting. Some
 measurements did not occur at 1-second intervals. From this we can also see
-there are duplicate measurements for each instruments (difference of zero
+there are duplicate measurements for some instruments (difference of zero
 seconds).
 
 Lastly, it appears that the GPS instrument was not turned on at the same time as
@@ -340,8 +354,8 @@ before the measurement campaign started.
 Let's drop data missing the GPS variables for convenience, but is this the best
 thing to under all circumstances and for all variables?
 
-```{r drop.missing}
-#-----drop missing-----
+```{r drop.missing.gps}
+#-----drop missing gps-----
 
 all_data <- drop_na(all_data, latitude, longitude)
 
@@ -356,8 +370,8 @@ There are many `R` standards for timeseries data: `ts`, `xts`, `data.frame`,
 package `tsbox` has many useful functions for converting between these
 timeseries formats.
 
-We've focused most of our effort on `tidyverse` tools this term, so let's focus
-on the `tsibble`, `feasts`, and `slider` package functions.
+We've focused most of our effort on `tidyverse` tools this term, so let's
+concentrate on the `tsibble`, `feasts`, and `slider` package functions.
 
 ```{r try.tsibble}
 #-----try tsibble----
@@ -381,19 +395,16 @@ ts_data <- all_data %>%
   distinct() %>% 
   as_tsibble(index = datetime)
 
-# show dataframe
-ts_data
-
 ```
 
 Let's also fill the gaps in time. In other words, the index column `datetime`
-needs to be unique and complete. Adding these new time rows introduces NAs to
-the data, so you'll then have a choice about if and how to fill the non-index
-data in. `tidyr::fill()` can help with this task, and the choice may be more or
-less important depending on the timescale you're working on, the amount of
-missingness, and if there are consecutive measurements mising. Given the small
-amount of missing and the one second timescale, it's not unreasonable to
-introduce a few rows with NAs here.
+needs to be unique and complete. Adding these new time rows introduces
+"explicit" NAs to the data, so you'll then have a choice about if and how to
+fill the non-time data in. `tidyr::fill()` can help with this task, and the
+choice may be more or less important depending on the timescale you're working
+on, the amount of missingness, and if there are consecutive measurements
+missing. Given the small amount of missing and the one second timescale, it's
+not unreasonable to introduce a few rows with NAs here.
 
 ```{r fill.ts}
 #-----fill ts-----
@@ -405,6 +416,7 @@ ts_data <- fill_gaps(ts_data)
   # # effects.
   # fill(co2_conc, .direction = "down")
 
+# show dataframe
 ts_data
 
 ```
@@ -413,8 +425,10 @@ ts_data
 
 Timeseries data is often correlated in time - measurements taken close in time
 to one another are more similar than measurements taken farther apart. An
-autocorrelation plot helps identify at what lag (or time interval) data are
-less correlated.
+autocorrelation plot helps identify at what lag (or time interval) data are less
+correlated. In the following plot, the blue lines indicate bounds on the
+autocorrelation of these data. At what time do the $CO_2$ appear less
+correlated?
 
 ```{r autocorrelation}
 #-----autocorrelation-----
@@ -506,7 +520,11 @@ ts_new
 #ts_new %>% ACF(co2_conc) %>% autoplot()
 ```
 
-All our example data are on the 1-second timescale; however, it is common to have multiple timescales in a suite of direct-reading instruments. Using the techniques above, you'll be able to average different time intervals to a common schedule. Once the measurements are on a shared timescale, they can be merged/joined as we have shown in the "Merge Instrument Data" section.
+All our example data are on the 1-second timescale; however, it is common to
+have multiple timescales in a suite of direct-reading instruments. Using the
+techniques above, you'll be able to average different time intervals to a common
+schedule. Once the measurements are on a shared timescale, they can be
+merged/joined as we have shown in the "Merge & Inspect Instrument Data" section.
 
 ## Plot Different Timescales
 
@@ -521,16 +539,21 @@ Let's inspect the timeseries of our different averages:
 ggplot() + 
   
   # plot original 1-second data
-  geom_line(data = ts_data, aes(x = datetime, y = co2_conc), color = "blue") + 
+  geom_line(data = ts_data, aes(x = datetime, y = co2_conc, color = "blue")) + 
   
   # plot `slider` 1-min period averages
-  geom_line(data = ts_data, aes(x = datetime, y = co2_conc_one), color = "black") +
+  geom_line(data = ts_data, aes(x = datetime, y = co2_conc_one, color = "black")) +
   
   # plot `slider` 2-min moving averages
-  geom_line(data = ts_data, aes(x = datetime, y = co2_conc_two), color = "red") +
+  geom_line(data = ts_data, aes(x = datetime, y = co2_conc_two, color = "red")) +
   
   # plot `tsibble` 5-minute block averages
-  geom_line(data = ts_new, aes(x = datetime, y = co2_conc), color = "darkgreen") + 
+  geom_line(data = ts_new, aes(x = datetime, y = co2_conc, color = "darkgreen")) +  
+  # specify legend values manually
+  scale_color_identity(name = "Time Average", 
+                       breaks = c("blue", "black", "red", "darkgreen"), 
+                       labels = c("1-sec", "1-min", "2-min", "5-min"), 
+                       guide = "legend") +
   
   # labels
   labs(x = "Time", 
@@ -538,7 +561,9 @@ ggplot() +
        ) +
   
   # theme
-  theme_bw()
+  theme_bw() + 
+  theme(legend.position = "bottom")
+
 ```
 
 
@@ -614,9 +639,9 @@ map_times <- ts_data %>%
 
 ```
 
-## Map CO2 Concentrations
+## Map Carbon Dioxide Concentrations
 
-```{r map.concentration}
+```{r map.concentration, warning=FALSE}
 #-----map concentrations----
 
 # map concentrations
@@ -647,7 +672,8 @@ map_co2
 
 
 ## Map P-Trak Ratios
-<!-- THIS IS NOT IN BRANTLEY, BUT IS IT SOMETHING TO KEEP? IT LIKELY NEEDS 
+<!-- Lianne & Elena, 
+THIS IS NOT IN BRANTLEY, BUT IS IT SOMETHING TO KEEP? IT LIKELY NEEDS
 MODIFICATION AS I WAS JUST FIGURING OUT/DRAFTING SOME CODE -->
 
 As the $CO_2$ map shows, the data we've collected represent concentrations over 4 hours, meaning some of the variability we're observing could be a mix of spatial (i.e. the variability we see in the map) and temporal (i.e. the variability observed in timeseries plots) processes.
@@ -682,40 +708,129 @@ map_ratios
 
 ```
 
+# Calculating Background & Identifying Peak Concentrations
 
-## Remove a Percentile of the Data 
-<!-- IS THIS PLUME DETECTION OR BACKGROUND CHARACTERIZATION?? -->
+As we've seen, mobile monitoring data has a mix of temporal and spatial
+variability. In an effort to disentangle temporal confounding from spatial
+analysis, we can calculate the background concentration of a pollutant, then
+subtract it from the observed concentrations. Peak identification can then be
+performed on the background adjusted data to identify single or multi-pollutant
+extreme features (for example, departures above a particular quantile of single
+pollutant features vs departure above background of a multivariate
+representation such as a PCA feature).
 
-One method to do that is to subtract a percentile of the data... 
+## Calculating Background as a Percentile of the Data 
 
-```{r remove.moving.percentile}
-#-----remove moving percentile-----
+[Brantley et al., 2014](https://amt.copernicus.org/articles/7/2169/2014/)
+summarize a number of methods to calculate background concentrations, including
+those of [Bukowiecki et al.,](https://doi.org/10.1016/S1352-2310(02)00694-5),
+which includes taking the 5^th^ percentile of 1 or 5 min averages.
+
+```{r calculate background.as.moving.percentile}
+#-----calculate background as moving percentile-----
 
 # specify the time in minutes from which to calculate the percentile
-time_min <- 10
+time_min <- 5
 
-# specify the percentile to remove
-perc <- 0.10
+# specify the percentile considered to be background
+perc <- 0.05
 
-# we can use use `slider` to calculate the percentile value to remove
+# we can use use `slider` to calculate the percentile equal to background
 ts_data <- ts_data %>% 
-  mutate(perc_remove = slide_dbl(co2_conc, 
+  mutate(background = slide_dbl(co2_conc, 
                                  ~quantile(.x, probs = perc, na.rm = TRUE), 
                                  .before = (time_min*60)/2, 
                                  .after = (time_min*60)/2), 
-         co2_adj_perc = co2_conc - perc_remove) 
+         co2_adj = co2_conc - background) 
 
-ts_data
+```
+
+Here, we've taken `r time_min` minutes as the time interval and the `r 
+perc*100`^th^ percentile of the data to calculate the background $CO_2$
+concentration.
+
+### Plot Carbon Dioxide without Background
+
+```{r plot.co2.minus.background}
+#-----plot co2 minus background-----
+
+ggplot(ts_data) + 
+  
+  # plot the percentile-adjusted data
+  geom_line(aes(x = datetime, y = co2_adj), color = "blue") +
+  
+  # plot the loess-adjusted data
+  #geom_line(aes(x = datetime, y = co2_adj_loess), color = "red") + 
+  
+  # add reference line
+  geom_hline(yintercept = 0, color = "black", linetype = "dashed") +
+  
+  # labels
+  labs(x = "Time", y = "Residual CO2 (ppm)") +
+  
+  # theme
+  theme_bw()
+
 ```
 
 
-## Loess Smoother
-<!-- ALSO NOT IN BRANTLEY, BUT SUGGESTED BY LIANNE. IT SEEMS LIKE I'M DOING
-SOMETHING WRONG OR MISSING SOMETHING...-->
+## Identifying Peak Concentrations
 
-Another way to remove trends in tmeseries data is to fit a smoother to the data and subtract the fitted values from the observations. 
+<!-- Lianne & Elena, 
+I'm still working on this section. I think I need to read a bit through the
+papers mentioned below to implement the minimum and percentile peak detection
+methods -->
 
-```{r loess.smoother}
+With background removed from the $CO_2$ concentrations, we can now use the
+adjusted data to identify concentration peaks. Concentration peaks indicate
+potential sources of the pollutant. In this case, a $CO_2$ peak could be a large
+vehicle like a truck.
+
+[Brantley et al., 2014](https://amt.copernicus.org/articles/7/2169/2014/) also
+summarize methods to identify peak concentrations. Here, we'll demonstrate a
+rolling minimum ([Kolb et al., 2004](https://doi.org/10.1021/es030718p)) and the
+rolling 25^th^ percentile of the data ([Choi et al.,
+2012](https://doi.org/10.1016/j.atmosenv.2012.07.084)).
+
+```{r id.peaks}
+#-----id peaks-----
+
+# specify the time in minutes from which to calculate the percentile
+time_min <- 5
+
+# specify the percentile considered to be background
+perc <- 0.25
+
+# we can use use `slider` to calculate these rolling statistics
+ts_data <- ts_data %>% 
+  mutate(co2_peak_min = slide_dbl(co2_adj, 
+                                 ~min(.x, na.rm = TRUE), 
+                                 .before = (time_min*60)/2, 
+                                 .after = (time_min*60)/2), 
+         co2_peak_perc = slide_dbl(co2_adj, 
+                                   ~quantile(.x, probs = perc, na.rm = TRUE), 
+                                   .before = (time_min*60)/2, 
+                                   .after = (time_min*60)/2), 
+         ) 
+
+```
+
+
+
+
+
+
+
+
+
+## Loess Smoother {-}
+<!-- Lianne & Elena, 
+ALSO NOT IN BRANTLEY, BUT SUGGESTED BY LIANNE. IT SEEMS LIKE I'M DOING
+SOMETHING WRONG OR MISSING SOMETHING... MOVED HERE FOR NOW, BUT DROP?-->
+
+Another way to remove background in mobile monitoring data is to fit a smoother to the data and subtract the fitted values from the observations. 
+
+```{r loess.smoother, eval=FALSE, include=FALSE}
 #-----loess smoother-----
 
 # specify loess model
@@ -728,42 +843,16 @@ ts_data <- ts_data %>%
 
 ```
 
-## Plot $CO_2$ Residuals
 
-```{r co2.residuals}
-#-----co2 residuals-----
-
-# we're going to cheat again and plot the series separately instead of from a
-# combined dataframe
-
-ggplot(ts_data) + 
-  
-  # plot the original data
-  #geom_line(aes(x = datetime, y = co2_conc), color = "darkgray") +
-  
-  # plot the percentile-adjusted data
-  geom_line(aes(x = datetime, y = co2_adj_perc), color = "blue") +
-  
-  # plot the loess-adjusted data
-  geom_line(aes(x = datetime, y = co2_adj_loess), color = "red") + 
-  
-  # add reference line
-  geom_hline(yintercept = 0, color = "black") +
-  
-  # labels
-  labs(x = "Time", y = "Residual CO2 (ppm)") +
-  
-  # theme
-  theme_bw()
-
-```
 
 # Practice
 
+<!-- Lianne & Elena, Please make suggestions below -->
+
 1. Choose a new pollutant. Investigate the autocorrelation: 
-  a) plot the 1-second autocorrelation plot
-  b) choose a new timescale
-  c) check the autocorrelation with the new timescale
+    a. plot the 1-second autocorrelation plot
+    b. choose a new timescale
+    c. check the autocorrelation with the new timescale
 
 
 # Code Appendix
