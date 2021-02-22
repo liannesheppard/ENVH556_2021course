@@ -634,7 +634,8 @@ pl4 <- plot(lzn.kr["se"], main = "UK prediction error")
 
 #### Cross-validation using the built-in CV function `krige.cv`
 
-`gstat` uses the function `krige.cv` to do kriging with cross-validation. If you pass it the number of folds as a scalar and then it randomly divides the data
+`gstat` uses the function `krige.cv` to do kriging with cross-validation. If you
+pass it the number of folds as a scalar and then it randomly divides the data
 into that number of folds.  The default is leave one out (LOO) which is a scalar
 of the length of the data.  One can also pass to `nfolds` a vector of the length
 the data with values to indicate the groups each observation belongs in (e.g.
@@ -663,7 +664,7 @@ krige.cv.bubble <- function(cv.out, plot_title){
 }
 
 # Define function for calculating the MSE, RMSE, MSE-based R2 from krige.cv output
-krige.cv.stats <- function(krige.cv.output){
+krige.cv.stats <- function(krige.cv.output, description){
   d <- krige.cv.output
   # mean of observations
   mean_observed <- mean(d$observed)
@@ -671,9 +672,14 @@ krige.cv.stats <- function(krige.cv.output){
   MSE_pred <- mean((d$observed - d$var1.pred)^2)
   # MSE of observations (for R2 denominator)
   MSE_obs <- mean((d$observed - mean_observed)^2)
-  # print the results not rounded
-  cat(paste("RMSE:  ", sqrt(MSE_pred)),'\n')
-  cat(paste("MSE-based R2:  ", max(1 - MSE_pred/MSE_obs, 0)),'\n')
+  # # print the results not rounded
+  # cat(paste("RMSE:  ", sqrt(MSE_pred)),'\n')
+  # cat(paste("MSE-based R2:  ", max(1 - MSE_pred/MSE_obs, 0)),'\n')
+  
+  # make dataframe of performance results
+  tibble(Description = description, 
+         RMSE = round(sqrt(MSE_pred), 4), 
+         MSE_based_R2 = round(max(1 - MSE_pred/MSE_obs, 0), 4) )
 }
 
 ```
@@ -685,18 +691,12 @@ krige.cv.stats <- function(krige.cv.output){
 # nmax defaults to all observations used for kriging; this sets it at 40
 meuse.CV5 <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5)
 
-# performance statistics
-krige.cv.stats(meuse.CV5)
-
 # plot the residuals
 krige.cv.bubble(meuse.CV5,"log(zinc) OK results: 5-fold CV residuals")
 
 
 # ordinary kriging, LOOCV
 meuse.CVLOO <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40)
-
-# performance statistics
-krige.cv.stats(meuse.CVLOO)
 
 # plot the residuals
 krige.cv.bubble(meuse.CVLOO, "log(zinc) OK results: LOO CV residuals")
@@ -707,9 +707,6 @@ meuse.CV5uk <-
   krige.cv( log(zinc) ~ sqrt(dist), meuse,
     model = m.uk, nmax = 40, nfold = 5 )
 
-# performance statistics
-krige.cv.stats(meuse.CV5uk)
-
 # plot the residuals
 krige.cv.bubble(meuse.CV5uk,"log(zinc) UK on sqrt(dist): 5-fold CV residuals")
 
@@ -718,11 +715,19 @@ krige.cv.bubble(meuse.CV5uk,"log(zinc) UK on sqrt(dist): 5-fold CV residuals")
 meuse.CVLOOuk <- krige.cv(log(zinc)~sqrt(dist), meuse, 
                         model = m.uk, nmax = 40)
 
-# performance statistics
-krige.cv.stats(meuse.CVLOOuk)
-
 # plot the residuals
 krige.cv.bubble(meuse.CVLOOuk,"log(zinc) UK on sqrt(dist): LOO CV residuals")
+
+
+# calculate and compare performance statistics across CVs
+bind_rows(
+
+  krige.cv.stats(meuse.CV5, "log(zinc) OK: 5-fold CV"),
+  krige.cv.stats(meuse.CVLOO, "log(zinc) OK: LOO CV"),
+  krige.cv.stats(meuse.CV5uk, "log(zinc) UK on sqrt(dist): 5-fold CV"),
+  krige.cv.stats(meuse.CVLOOuk, "log(zinc) UK on sqrt(dist): LOO CV"),
+
+)
 
 ```
 
