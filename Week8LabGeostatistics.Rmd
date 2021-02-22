@@ -646,7 +646,7 @@ the data with values to indicate the groups each observation belongs in (e.g.
 the cluster variable in the snapshot dataset).
 
 First we define two functions to use later:  `krige.cv.bubble` - a bubble plot
-for kriging residuals, and `getMSE` - a function to produce prediction model
+for kriging residuals, and `krige.cv.stats` - a function to produce prediction model
 performance statistics.  Then we use ordinary kriging with cross-validation,
 followed by universal kriging with cross-validation.  We first conduct 5-fold
 cross-validation, followed by LOO.  We observe that for OK the LOO has better
