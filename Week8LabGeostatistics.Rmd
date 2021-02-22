@@ -71,7 +71,11 @@ pacman::p_load(tidyverse, knitr, dplyr, maps, ggmap, stars,
   # As of February 2021, an important bugfix has not yet made it onto Cran.
   # The next time this course is taught, this could be removed and `gstat` added
   # to the list of packages in `p_load()` above.
-pacman::p_load_gh('r-spatial/gstat')
+if (utils::packageVersion('gstat') < package_version('2.0.7')){
+  pacman::p_load_gh('r-spatial/gstat', force = TRUE)
+} else {
+  library(gstat)
+}
 
 # Note: this lab will only knit if the latest version of ggmap is installed.  
   # The following line does this, but needs to be run at the console before
