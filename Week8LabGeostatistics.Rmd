@@ -1108,7 +1108,7 @@ predictions.
 
 
 ```{r krige.cv in LA, warning=FALSE}
-#-----
+#-----krige cv in LA-----
 
 # clusterwise cross-validation of OK model with covariates
 fall.CVcluster.ok <- krige.cv(ln_nox~1,
@@ -1116,9 +1116,6 @@ fall.CVcluster.ok <- krige.cv(ln_nox~1,
     model = vf.fit,
     nfold = fall$cluster,
     )
-#stats
-krige.cv.stats(fall.CVcluster.ok)
-
 
 # clusterwise cross-validation of UK model with covariates
 fall.CVcluster.uk <- krige.cv(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
@@ -1126,8 +1123,14 @@ fall.CVcluster.uk <- krige.cv(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C +
     model = vfc.fit,
     nfold = fall$cluster,
     )
-#stats
-krige.cv.stats(fall.CVcluster.uk)
+
+# calculate and compile CV stats
+bind_rows(
+
+krige.cv.stats(fall.CVcluster.ok, "clusterwise CV of OK model with covariates"),
+krige.cv.stats(fall.CVcluster.uk, "clusterwise CV of UK model with covariates")
+
+)
 
 ```
 
