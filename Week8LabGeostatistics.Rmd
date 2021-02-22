@@ -722,12 +722,15 @@ krige.cv.bubble(meuse.CVLOOuk,"log(zinc) UK on sqrt(dist): LOO CV residuals")
 # calculate and compare performance statistics across CVs
 bind_rows(
 
-  krige.cv.stats(meuse.CV5, "log(zinc) OK: 5-fold CV"),
-  krige.cv.stats(meuse.CVLOO, "log(zinc) OK: LOO CV"),
-  krige.cv.stats(meuse.CV5uk, "log(zinc) UK on sqrt(dist): 5-fold CV"),
-  krige.cv.stats(meuse.CVLOOuk, "log(zinc) UK on sqrt(dist): LOO CV"),
+  krige.cv.stats(meuse.CV5, "OK: 5-fold CV"),
+  krige.cv.stats(meuse.CVLOO, "OK: LOO CV"),
+  krige.cv.stats(meuse.CV5uk, "UK on sqrt(dist): 5-fold CV"),
+  krige.cv.stats(meuse.CVLOOuk, "UK on sqrt(dist): LOO CV"),
 
-)
+) %>% 
+  
+  # put into table
+  kable(caption = "Summary of kriging cross-validation results for log(zinc).")
 
 ```
 
