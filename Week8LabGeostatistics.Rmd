@@ -80,8 +80,10 @@ pacman::p_load_gh('r-spatial/gstat')
 
 ```
 
-<!-- TODO:  Get the datasets to Brian's directory
-The reason for the changes on 3/5/19 had to do with needing lambert coordinates and maybe using a smaller grid for the predictions -->
+<!-- TODO:  Get the datasets to Brian's directory The reason for the changes on
+3/5/19 had to do with needing lambert coordinates and maybe using a smaller grid
+for the predictions -->
+
 ```{r read.data.from.a.directory, eval=TRUE, echo=FALSE, include=FALSE}
 #-----read data from a directory-----
 # Download the data file from a local directory
@@ -110,14 +112,16 @@ if (file.exists(grid.path)) {
 
 The purpose of this lab is to learn about geostatistical models and further
 solidify your understanding of regression for prediction.  We will use the same
-MESA Air snapshot data described in Mercer et al 2011 that we used earlier in
+MESA Air snapshot data described in [Mercer et al
+2011](https://doi.org/10.1016/j.atmosenv.2011.05.043) that we used earlier in
 the quarter.  As a side benefit you will also get exposure to the most modern
 tools for handling spatial data in R and learn how to create maps and add your
 data to them.  The secondary intent of this lab is to help you learn to use
 geographic data in R as productively as possible while recognizing there is much
 more to learn and develop.
 
-**Credit**:  Brian High, Chris Zuidema, and Dave Slager have provided an enormous amount of support in developing this lab.
+**Credit**:  Brian High, Chris Zuidema, and Dave Slager have provided an
+enormous amount of support in developing this lab.
 
 **A brief history of the evolution of this lab**:  Originally developed in 2019,
 this lab and its geostatistical examples were based on `geoR`.  The `geoR`
@@ -144,15 +148,17 @@ overview resources:
 R](https://geocompr.robinlovelace.net/index.html) by Robin Lovelace.  Its
 [introductory chapter](https://geocompr.robinlovelace.net/intro.html) gives a
 great overview of the "what" and "why" of geocomputation.  It also has a good
-overview of [R's spatial ecosystem](https://geocompr.robinlovelace.net/intro.html#rs-spatial-ecosystem), and a very
-nice overview of the history of spatial data in R, which Lovelace calls [The
-history of
+overview of [R's spatial
+ecosystem](https://geocompr.robinlovelace.net/intro.html#rs-spatial-ecosystem),
+and a very nice overview of the history of spatial data in R, which Lovelace
+calls [The history of
 R-spatial](https://geocompr.robinlovelace.net/intro.html#the-history-of-r-spatial).
 In particular, it puts into historical context the tools we are using in this
 lab with the current state of the art.
 
 * Roger Bivand has done an incredible amount of work with spatial data in R. His
-book, [Spatial Data Analysis in R](https://asdar-book.org/) was published in 2013.  (The link is actually to the scripts and datasets to reproduce the
+book, [Spatial Data Analysis in R](https://asdar-book.org/) was published in
+2013.  (The link is actually to the scripts and datasets to reproduce the
 examples in his book.)  It is available for download from the UW library and
 there is a copy on the course website. In particular, I recommend Chapter 1 for
 an overview of ideas, Chapter 4 for the quickest start to using spatial data
@@ -166,21 +172,32 @@ underlying spatial data and links it to many modern packages of theirs (e.g.
 
 ### Spatial data in R:  `sf` and `sp`
 
-The `sf` or Simple Features package is the more modern way to reference spatial data in R.  We use `sf` in this lab.  The alternative is `sp` and we include a few references to it for completeness.
+The `sf` or Simple Features package is the more modern way to reference spatial
+data in R.  We use `sf` in this lab.  The alternative is `sp` and we include a
+few references to it for completeness.
 
 See also the introduction to the snapshot data section below for a discussion on
 distance calculations.
 
-* Jesse Sadler gives a good overview in his [Introduction to GIS with R:  Spatial data with the sp and sf packages](https://www.jessesadler.com/post/gis-with-r-intro/)
+* Jesse Sadler gives a good overview in his [Introduction to GIS with R:
+Spatial data with the sp and sf
+packages](https://www.jessesadler.com/post/gis-with-r-intro/)
 
-* R-bloggers post [Should I learn sf or sp for spatial R programming?](https://www.r-bloggers.com/2018/03/should-i-learn-sf-or-sp-for-spatial-r-programming/)
-* Moving from `sp` to `sf`: See this [Nick Bearman blog](https://www.nickbearman.me.uk/2019/04/spatial-r-moving-from-sp-to-sf/) for some good perspective. 
+* R-bloggers post [Should I learn sf or sp for spatial R
+programming?](https://www.r-bloggers.com/2018/03/should-i-learn-sf-or-sp-for-spatial-r-programming/)
+
+* Moving from `sp` to `sf`: See this [Nick Bearman
+blog](https://www.nickbearman.me.uk/2019/04/spatial-r-moving-from-sp-to-sf/) for
+some good perspective.
 
 * `sp`: This RPub describes [Spatial Data
 Objects](https://rpubs.com/NateByers/spatialobjects) including `Spatial`,
 `SpatialPoints`, and `SpatialPointsDataFrame`.
 
-* `sf`: See the very accessible Ed Pebesma overview of [Simple Features for R](https://r-spatial.github.io/sf/articles/sf1.html#what-is-a-feature-) and to digu further, [here](https://r-spatial.github.io/sf/articles/) is the index to all his `sf` vignettes.
+* `sf`: See the very accessible Ed Pebesma overview of [Simple Features for
+R](https://r-spatial.github.io/sf/articles/sf1.html#what-is-a-feature-) and to
+dig further, [here](https://r-spatial.github.io/sf/articles/) is the index to
+all his `sf` vignettes.
 
 ### R packages for geostatistics and spatial data
 
@@ -217,8 +234,8 @@ Thus predicting a known value always returns that value, with zero prediction
 error.  This is also the cause of errors with duplicate observations at the same
 location. Think of this property of kriging as an enforced need to do
 cross-validation to evaluate your predictions.  Apparently with the `gstat`
-package you can do smoothing instead of kriging by specifying an "Err"
-variogram instead of a "Nug" nugget effect.
+package you can do smoothing instead of kriging by specifying an "Err" variogram
+instead of a "Nug" nugget effect.
 
 ### Brief discussion of variograms
 
@@ -267,13 +284,14 @@ Meuse river.
 
 ### Summary & learn about the data
 
-The following section was structured after the examples [here](https://rpubs.com/liem/63374) as
-well as a more updated version that uses `tidyverse` and `ggplot` commands called
-[Meuse
-Tutorial](https://rstudio-pubs-static.s3.amazonaws.com/134781_28af3676f8b943749ebfa536b3897cac.html).  However, this implementation uses `sf`.
+The following section was structured after the examples
+[here](https://rpubs.com/liem/63374) as well as a more updated version that uses
+`tidyverse` and `ggplot` commands called [Meuse
+Tutorial](https://rstudio-pubs-static.s3.amazonaws.com/134781_28af3676f8b943749ebfa536b3897cac.html).
+However, this implementation uses `sf`.
 
 ```{r basics with meuse dataset - summary + EDA}
-# ------------ basics with meuse dataset - summary -----------
+#-----basics with meuse dataset - summary + EDA-----
 # load the data
 data(meuse)
 
