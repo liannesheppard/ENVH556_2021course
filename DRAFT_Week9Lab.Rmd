@@ -39,10 +39,6 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 pacman::p_load(knitr, dplyr, tidyr, readr, stringr, ggplot2, 
                lubridate, purrr, tsibble, feasts, slider, ggmap, ggrepel)
 
-# load functions from function library
-#source(file.path("function_library", "read_data.R"))
-#source(file.path("function_library", "get_external_data.R"))
-
 ```
 
 ```{r directory.organization.read.data, echo=FALSE, warning=FALSE}
@@ -62,7 +58,7 @@ data_dir <- file.path(project_path, "Datasets", "mobile_monitoring")
 (all instruments are one 1-sec interval currently...)
 
 # Spatial Smoothing
-average by distance covered
+average by distance covered?
 
 # Removing the Influence of Local Exhaust Plumes
 rolling 25th percentile method used by Choi et al. (2012)
@@ -228,7 +224,7 @@ co2
 ```
 
 
-# Merge Instrument Data Files
+# Merge Instrument Data
 
 ```{r merge.datasets}
 #-----merge datasets-----
@@ -331,7 +327,7 @@ lapply(instrument_list, function(i){
 
 ```
 
-It appears that some of our missingness is due to instrument reporting. Some
+It seems that some of our missingness is due to instrument reporting. Some
 measurements did not occur at 1-second intervals. From this we can also see
 there are duplicate measurements for each instruments (difference of zero
 seconds).
@@ -341,8 +337,8 @@ the other instruments (there is no GPS data at the beginning of the dataframe).
 This may be due to the fact that the instruments were turned on for "warm-up"
 before the measurement campaign started.
 
-Let's drop data missing the GPS variables for convenience, but is this the best thing to
-under all circumstances and for all variables?
+Let's drop data missing the GPS variables for convenience, but is this the best
+thing to under all circumstances and for all variables?
 
 ```{r drop.missing}
 #-----drop missing-----
@@ -392,11 +388,12 @@ ts_data
 
 Let's also fill the gaps in time. In other words, the index column `datetime`
 needs to be unique and complete. Adding these new time rows introduces NAs to
-the data, so you'll then have a choice about it and how to fill that data in.
-`tidyr::fill()` can help with this task, and the choice may be more or less
-important depending on the timescale you're working on. Given the small amount
-of missing and the one second timescale, it's not unreasonable to introduce a
-few rows with NAs here.
+the data, so you'll then have a choice about if and how to fill the non-index
+data in. `tidyr::fill()` can help with this task, and the choice may be more or
+less important depending on the timescale you're working on, the amount of
+missingness, and if there are consecutive measurements mising. Given the small
+amount of missing and the one second timescale, it's not unreasonable to
+introduce a few rows with NAs here.
 
 ```{r fill.ts}
 #-----fill ts-----
@@ -409,6 +406,7 @@ ts_data <- fill_gaps(ts_data)
   # fill(co2_conc, .direction = "down")
 
 ts_data
+
 ```
 
 # Temporal Autocorrelation
@@ -417,7 +415,6 @@ Timeseries data is often correlated in time - measurements taken close in time
 to one another are more similar than measurements taken farther apart. An
 autocorrelation plot helps identify at what lag (or time interval) data are
 less correlated.
-
 
 ```{r autocorrelation}
 #-----autocorrelation-----
@@ -436,7 +433,9 @@ longer timescales. One package that helps with averaging tasks is `slider`.
 
 For the first average we'll use the timescale period (minutes) to calculate
 1-minute averages. Though with other data, this could also be months, weeks,
-years, etc. This is a "block average". For the second average
+years, etc. This is a "block average" based on an attribute of the data. For
+example, if you wanted monthly averages, this method would be "aware" of the
+fact there are a different number of days in each month. For the second average
 (2-minutes) we'll demonstrate a moving ("sliding" or "rolling") average, where a
 number of neighbors before and after a value of interest are used to compute an
 average.
@@ -497,7 +496,7 @@ ts_new <- ts_data %>%
   # summarise the mean of rows across all dataframe columns
   summarise(across(where(is.numeric), mean, na.rm = TRUE ), .groups = "drop") %>% 
   
-  # rename to get "datetime" back
+  # rename to get "datetime" variable name back
   rename(datetime = datetime_new)
   
 # show dataframe
@@ -506,6 +505,8 @@ ts_new
 # check 5-minute average autocorrelation
 #ts_new %>% ACF(co2_conc) %>% autoplot()
 ```
+
+All our example data are on the 1-second timescale; however, it is common to have multiple timescales in a suite of direct-reading instruments. Using the techniques above, you'll be able to average different time intervals to a common schedule. Once the measurements are on a shared timescale, they can be merged/joined as we have shown in the "Merge Instrument Data" section.
 
 ## Plot Different Timescales
 
@@ -593,20 +594,22 @@ basemap <- ggmap(map, darken = c(0.5, "white")) + theme_void()
 
 ```
 
-We're focusing on time-varying data in this lab, so to help our visualization,
-let's collect the times of some of our measurements.
+To help represent the time-varying nature of the data in this lab, let's collect
+the times of some of our measurements to help our visualization.
 
 ```{r get time stamps}
 #-----get time stamps-----
 
 map_times <- ts_data %>% 
+  
+  # convert to `tibble` because we're breaking up our `tsibble`
   as_tibble() %>%
   
   # filter to rows with :00, :15, :30, and :45 minute times
   filter(str_detect(time, pattern = ":00:00|:15:00|:30:00|:45:00")) %>% 
   
-  # make a map_time variable, dropping the seconds (the `$` indicates the
-  # character pattern should be at the end of the string)
+  # make a map_time variable, dropping the seconds 
+  # (`$` indicates the character pattern should be at the end of the string)
   mutate(map_time = str_remove(time, pattern = ":00$"))
 
 ```
@@ -645,7 +648,7 @@ map_co2
 
 ## Map P-Trak Ratios
 <!-- THIS IS NOT IN BRANTLEY, BUT IS IT SOMETHING TO KEEP? IT LIKELY NEEDS 
-MODIFICATION AS I WAS JUST FIGURING OUT?DRAFTING SOME CODE -->
+MODIFICATION AS I WAS JUST FIGURING OUT/DRAFTING SOME CODE -->
 
 As the $CO_2$ map shows, the data we've collected represent concentrations over 4 hours, meaning some of the variability we're observing could be a mix of spatial (i.e. the variability we see in the map) and temporal (i.e. the variability observed in timeseries plots) processes.
 
@@ -730,7 +733,7 @@ ts_data <- ts_data %>%
 ```{r co2.residuals}
 #-----co2 residuals-----
 
-# we're going to cheat again and plot the series seperately instead of from a
+# we're going to cheat again and plot the series separately instead of from a
 # combined dataframe
 
 ggplot(ts_data) + 
@@ -744,8 +747,13 @@ ggplot(ts_data) +
   # plot the loess-adjusted data
   geom_line(aes(x = datetime, y = co2_adj_loess), color = "red") + 
   
+  # add reference line
   geom_hline(yintercept = 0, color = "black") +
+  
+  # labels
   labs(x = "Time", y = "Residual CO2 (ppm)") +
+  
+  # theme
   theme_bw()
 
 ```
