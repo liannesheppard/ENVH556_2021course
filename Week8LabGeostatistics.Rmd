@@ -1047,15 +1047,18 @@ these data is a sensible choice.)
 vf <- variogram(ln_nox~1, st_transform(fall,lambert_proj), cutoff = 31000)
 
 # Then fit a variogram model, offering to the function several different model
-# options (exponential, spherical, and Matern):
-# TODO:  Note that none of the variogram models appears to converge.
-# Investigate.  Still true? Was it the cutoff was too short?
-# [CZ: this is working for me as-is]
+# options (exponential, spherical, and Matern): 
+# TODO:  Note that none of the variogram models appears to converge. Investigate.
+# Still true? Was it the cutoff was too short?
+# [CZ: Lianne & Dave, this is working for me. you too? if so, remove "TODO"
+# note above?]
 vf.fit <- fit.variogram(vf, vgm(c("Exp", "Sph", "Mat")))
 
 # Find out which variogram model was selected
 # Observe that it was the spherical with a range of 25,790 m, a partial sill of
 # 0.1091, and a nugget of 0.0188.
+# [CZ: Lianne & Dave, I get different numbers than in the comment above. Edit or
+# remove? I also don't see a nugget anymore in the output...]
 vf.fit
 
 # Plot the empirical variogram with the overlaid fit
@@ -1075,6 +1078,8 @@ vfc.fit <- fit.variogram(vfc, vgm(c("Exp", "Sph", "Mat")))
 # Find out which variogram model was selected
 # Observe that it was the spherical with a range of 47,050 m, a partial sill of
 # 0.0302, and a nugget of 0.01704.
+# [CZ: Lianne & Dave, I get different numbers than in the comment above. Edit or
+# remove? I also don't see a nugget anymore in the output...]
 vfc.fit <- fit.variogram(vfc, vgm(c("Exp", "Sph", "Mat")))
 
 # Plot the empirical variogram with the overlaid fit
@@ -1082,10 +1087,13 @@ plot(vfc, vfc.fit)
 
 # Mercer used an exponential variogram, so refit the variogram using that:
 vfc.fit <- fit.variogram(vfc, vgm("Exp"))
+
 # Observe that the exponential has a range of 79,356 m, a partial sill of
 # 0.0749, and a nugget of 0.01798.  This differs from what was reported by
 # Mercer.
+# [CZ: Lianne & Dave, Again, no nugget in the output here...]
 vfc.fit 
+
 # Plot the empirical variogram with the overlaid fit.  Observe the exponential
 # and spherical fits are almost indistinguishable.
 plot(vfc, vfc.fit)
@@ -1100,6 +1108,7 @@ predictions.
 
 
 ```{r krige.cv in LA, warning=FALSE}
+#-----
 
 # clusterwise cross-validation of OK model with covariates
 fall.CVcluster.ok <- krige.cv(ln_nox~1,
