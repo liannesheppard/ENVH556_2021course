@@ -898,23 +898,30 @@ ggplot(data=fall) +
   theme_bw()
 
 # now produce a bubble plot -- doesn't look great here
+# [CZ: Lianne & Dave, this is not running for me... anyone else? remove since
+# we've got a bubble plot below that works?]
 #bubble(fall, "ln_nox", col="blue", main = "ln(NOx) Concentrations (ln(ppb)")
 
-# we can also produce a similar plot of the data with ggplot
+# we can also produce a bubble plot of the data with ggplot
 ggplot(data=fall) +
   geom_sf(data=fall,aes(size=ln_nox), color='blue', alpha=1/2) +
   ggtitle("ln(NOx) Concentrations (ln(ppb)") +
   theme_bw()
 
-# [Lianne, here is an option, not sure it is better. The ln_nox really scruntches up the scale]
-  # (DLS -- leaving this code from Chris in here for now, fairly similar to above -- DLS)
-  #ggplot(data=fall) + 
-  #geom_sf(aes(color = exp(ln_nox)), alpha = 0.4) +
-  #scale_color_continuous(type = "viridis") +
-  #labs(title = "NOx Concentrations (ppb)", 
-  #     color = "NOx (ppb)") + 
-  #coord_equal() + 
-  #theme_bw()
+# [CZ: Lianne, here is an option, not sure it is better. The ln_nox really
+# scruntches up the scale]
+  # (DLS -- leaving this code from Chris in here for now, fairly similar to
+  # above -- DLS) 
+  # CZ: this is no longer working for me either... was there a class change or
+  # something? either way, it can probably be removed since there are 2 working
+  # plots here.
+  ggplot(data=fall) +
+  geom_sf(aes(color = exp(ln_nox)), alpha = 0.4) +
+  scale_color_continuous(type = "viridis") +
+  labs(title = "NOx Concentrations (ppb)",
+      color = "NOx (ppb)") +
+  coord_equal() +
+  theme_bw()
 ```
 
 ### Mapping the data
