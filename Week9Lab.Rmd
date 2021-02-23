@@ -757,16 +757,16 @@ concentration.
 ggplot(ts_data) + 
   
   # plot the percentile-adjusted data
-  geom_line(aes(x = datetime, y = co2_adj), color = "blue") +
+  geom_line(aes(x = datetime, y = co2_adj)) +
   
   # plot the loess-adjusted data
   #geom_line(aes(x = datetime, y = co2_adj_loess), color = "red") + 
   
   # add reference line
-  geom_hline(yintercept = 0, color = "black", linetype = "dashed") +
+  geom_hline(yintercept = 0, color = "gray", linetype = "dashed") +
   
   # labels
-  labs(x = "Time", y = "Residual CO2 (ppm)") +
+  labs(x = "Time", y = "CO2 Minus Background (ppm)") +
   
   # theme
   theme_bw()
@@ -777,9 +777,9 @@ ggplot(ts_data) +
 ## Identifying Peak Concentrations
 
 <!-- Lianne & Elena, 
-I'm still working on this section. I think I need to read a bit through the
+I'm still working on this section. I read through the
 papers mentioned below to implement the minimum and percentile peak detection
-methods -->
+methods, but it still isn't clear to me how to implement -->
 
 With background removed from the $CO_2$ concentrations, we can now use the
 adjusted data to identify concentration peaks. Concentration peaks indicate
