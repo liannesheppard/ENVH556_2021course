@@ -174,6 +174,13 @@ Science](https://keen-swartz-3146c4.netlify.app/) that explains the concepts
 underlying spatial data, links it to many modern packages of theirs (e.g.
 `sf`, `lwgeom`, and `stars`), and accompanies this with `tidyverse`.
 
+* **Coordinate Reference Systems and Projections**:  These can be confusing to the uninitiated.  Here are a few resources:
+    - [A brief and compact overview of coordinate reference
+systems](https://www.nceas.ucsb.edu/sites/default/files/2020-04/OverviewCoordinateReferenceSystems.pdf).
+    - Nick Eubank's overview of [Projections and Coordinate Reference Systems](http://www.nickeubank.com/wp-content/uploads/2018/02/CoordinateSystems_And_Projections.pdf).
+
+
+
 ### Spatial data in R:  `sf` and `sp`
 
 The `sf` or "simple features" package is the more modern way to reference
@@ -785,6 +792,7 @@ between two locations. This function can be used to create a distance matrix.
 * The `geosphere` package has multiple distance formulas for two points with
 latitude and longitude coordinates.  See this [stackoverflow
 comment](https://stackoverflow.com/questions/31668163/geographic-geospatial-distance-between-2-lists-of-lat-lon-points-coordinates).
+
 
 ### Snapshot data set-up
 
