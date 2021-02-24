@@ -64,18 +64,8 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
   # sp: spatial data methods -- will eventually be superseded by `sf`
   # rgdal:  projections, coordinate systems
   # downloader: download files over HTTP and HTTPS
-pacman::p_load(tidyverse, knitr, dplyr, maps, ggmap, stars,
+pacman::p_load(tidyverse, knitr, dplyr, maps, ggmap, stars, gstat,
                funModeling, Hmisc, scales, akima, sp, rgdal, downloader, sf)
-
-# Install development version of gstat
-  # As of February 2021, an important bugfix has not yet made it onto Cran.
-  # The next time this course is taught, this could be removed and `gstat` added
-  # to the list of packages in `p_load()` above.
-if (utils::packageVersion('gstat') < package_version('2.0.7')){
-  pacman::p_load_gh('r-spatial/gstat', force = TRUE)
-} else {
-  library(gstat)
-}
 
 # Note: this lab will only knit if the latest version of ggmap is installed.  
   # The following line does this, but needs to be run at the console before
@@ -84,9 +74,10 @@ if (utils::packageVersion('gstat') < package_version('2.0.7')){
 
 ```
 
-<!-- TODO:  Get the datasets to Brian's directory The reason for the changes on
-3/5/19 had to do with needing lambert coordinates and maybe using a smaller grid
-for the predictions -->
+<!-- The reason for the changes on 3/5/19 had to do with needing lambert
+coordinates and maybe using a smaller grid for the predictions.  This is no
+longer necessary so the original .csv versions of the snapshot and la-grid
+should work -->
 
 ```{r read.data.from.a.directory, eval=TRUE, echo=FALSE, include=FALSE}
 #-----read data from a directory-----
@@ -173,6 +164,13 @@ Chapter 8 for methods for kriging.
 Science](https://keen-swartz-3146c4.netlify.app/) that explains the concepts
 underlying spatial data, links it to many modern packages of theirs (e.g.
 `sf`, `lwgeom`, and `stars`), and accompanies this with `tidyverse`.
+
+* **Coordinate Reference Systems and Projections**:  These can be confusing to the uninitiated.  Here are a few resources:
+    - [A brief and compact overview of coordinate reference
+systems](https://www.nceas.ucsb.edu/sites/default/files/2020-04/OverviewCoordinateReferenceSystems.pdf).
+    - Nick Eubank's overview of [Projections and Coordinate Reference Systems](http://www.nickeubank.com/wp-content/uploads/2018/02/CoordinateSystems_And_Projections.pdf).
+
+
 
 ### Spatial data in R:  `sf` and `sp`
 
@@ -662,6 +660,23 @@ approach.
 ```{r define CV functions}
 # ---- define CV functions ----
 
+# Define a wrapper function krige.cv2() that does not drop the projection
+# of the sf object. This repairs a bug in krige.cv()
+# Bug has been reported on github to gstat maintainers and fixed,
+# so this wrapper function probably won't be needed next time course is taught
+# (should be able to change krige.cv2() calls to krige.cv() in all cases)
+krige.cv2 <- function(formula, locations, model = NULL, ..., beta = NULL, 
+	nmax = Inf, nmin = 0, maxdist = Inf, nfold = nrow(locations), 
+	verbose = interactive(), debug.level = 0){
+  # Repeating the exact arguments from krige.cv source code
+  krige.cv1 <- krige.cv(formula = formula, locations = locations, model = model, ..., beta = beta,
+	nmax = nmax, nmin = nmin, maxdist = maxdist, nfold = nfold,
+	verbose = verbose, debug.level = debug.level)
+  # force projection to that of the function input
+  st_crs(krige.cv1) <- st_crs(locations)
+  return(krige.cv1)
+}
+
 # Define function to create a bubble plot for kriging residuals
 krige.cv.bubble <- function(cv.out, plot_title){
   ggplot(data=cv.out) +
@@ -698,14 +713,14 @@ krige.cv.stats <- function(krige.cv.output, description){
 
 # ordinary kriging, 5-fold cross-validation 
 # nmax defaults to all observations used for kriging; this sets it at 40
-meuse.CV5 <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5)
+meuse.CV5 <- krige.cv2(log(zinc)~1, meuse, model = v.fit, nmax = 40, nfold=5)
 
 # plot the residuals
 krige.cv.bubble(meuse.CV5,"log(zinc) OK results: 5-fold CV residuals")
 
 
 # ordinary kriging, LOOCV
-meuse.CVLOO <- krige.cv(log(zinc)~1, meuse, model = v.fit, nmax = 40)
+meuse.CVLOO <- krige.cv2(log(zinc)~1, meuse, model = v.fit, nmax = 40)
 
 # plot the residuals
 krige.cv.bubble(meuse.CVLOO, "log(zinc) OK results: LOO CV residuals")
@@ -713,7 +728,7 @@ krige.cv.bubble(meuse.CVLOO, "log(zinc) OK results: LOO CV residuals")
 
 # universal kriging, 5-fold cross-validation 
 meuse.CV5uk <-
-  krige.cv( log(zinc) ~ sqrt(dist), meuse,
+  krige.cv2( log(zinc) ~ sqrt(dist), meuse,
     model = m.uk, nmax = 40, nfold = 5 )
 
 # plot the residuals
@@ -721,7 +736,7 @@ krige.cv.bubble(meuse.CV5uk,"log(zinc) UK on sqrt(dist): 5-fold CV residuals")
 
 
 # universal kriging, LOOCV
-meuse.CVLOOuk <- krige.cv(log(zinc)~sqrt(dist), meuse, 
+meuse.CVLOOuk <- krige.cv2(log(zinc)~sqrt(dist), meuse, 
                         model = m.uk, nmax = 40)
 
 # plot the residuals
@@ -785,6 +800,7 @@ between two locations. This function can be used to create a distance matrix.
 * The `geosphere` package has multiple distance formulas for two points with
 latitude and longitude coordinates.  See this [stackoverflow
 comment](https://stackoverflow.com/questions/31668163/geographic-geospatial-distance-between-2-lists-of-lat-lon-points-coordinates).
+
 
 ### Snapshot data set-up
 
@@ -952,8 +968,7 @@ g <- ggmap(map, darken = c(0.5, "white")) + theme_void()
 g + ggtitle("Sample Map of Los Angeles for \n the area covered by the snapshot data")
 
 # Add snapshot locations to the map with colors for values
-
-# geom_sf() does not work below (bug?), so needed to use
+# Note: geom_sf() does not work below (bug?), so needed to use
 # geom_point and manually add extracted XY coordinates
 # https://stackoverflow.com/questions/60066424/how-to-align-ggmap-crs-of-google-map-longitude-latitude
 
@@ -1089,18 +1104,17 @@ predictions.
 #-----krige cv in LA-----
 
 # clusterwise cross-validation of OK model with covariates
-fall.CVcluster.ok <- krige.cv(ln_nox~1,
+fall.CVcluster.ok <- krige.cv2(ln_nox~1,
     st_transform(fall,lambert_proj),
     model = vf.fit,
     nfold = fall$cluster)
 
 # clusterwise cross-validation of UK model with covariates
-fall.CVcluster.uk <- krige.cv(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
+fall.CVcluster.uk <- krige.cv2(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C + Int_3000 + D2Comm,
     st_transform(fall,lambert_proj),
     model = vfc.fit,
     nfold = fall$cluster)
 
-# TODO:  Fix bubble plots
 # bubble plots -- Note, this could be improved by having these plots as 2 panels
 # of same plot, with bubble size and scale held constant
 krige.cv.bubble(st_transform(fall.CVcluster.ok,latlong_proj),'ln(NOx) OK: clusterwise CV residuals')
