@@ -671,8 +671,8 @@ krige.cv2 <- function(formula, locations, model = NULL, ..., beta = NULL,
   krige.cv1 <- krige.cv(formula = formula, locations = locations, model = model, ..., beta = beta,
 	nmax = nmax, nmin = nmin, maxdist = maxdist, nfold = nfold,
 	verbose = verbose, debug.level = debug.level)
-  # force projection to that of the function input
-  st_crs(krige.cv1) <- st_crs(locations)
+  # force projection to that of the function input if projection is NA
+  if (is.na(st_crs(krige.cv1))) {st_crs(krige.cv1) <- st_crs(locations)}
   return(krige.cv1)
 }
 
