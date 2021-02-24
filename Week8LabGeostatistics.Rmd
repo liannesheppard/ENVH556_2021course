@@ -74,9 +74,10 @@ pacman::p_load(tidyverse, knitr, dplyr, maps, ggmap, stars, gstat,
 
 ```
 
-<!-- TODO:  Get the datasets to Brian's directory The reason for the changes on
-3/5/19 had to do with needing lambert coordinates and maybe using a smaller grid
-for the predictions -->
+<!-- The reason for the changes on 3/5/19 had to do with needing lambert
+coordinates and maybe using a smaller grid for the predictions.  This is no
+longer necessary so the original .csv versions of the snapshot and la-grid
+should work -->
 
 ```{r read.data.from.a.directory, eval=TRUE, echo=FALSE, include=FALSE}
 #-----read data from a directory-----
@@ -967,9 +968,7 @@ g <- ggmap(map, darken = c(0.5, "white")) + theme_void()
 g + ggtitle("Sample Map of Los Angeles for \n the area covered by the snapshot data")
 
 # Add snapshot locations to the map with colors for values
-# TODO:  drop next line?
 # Note: need to use a data.frame for this, not a spatial data object
-
 # For some reason, geom_sf() did not work for this (bug?), so needed to use
 # geom_point and manually add the extracted XY coordinates
 # https://stackoverflow.com/questions/60066424/how-to-align-ggmap-crs-of-google-map-longitude-latitude
@@ -1117,7 +1116,6 @@ fall.CVcluster.uk <- krige.cv2(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C 
     model = vfc.fit,
     nfold = fall$cluster)
 
-# TODO:  Fix bubble plots
 # bubble plots -- Note, this could be improved by having these plots as 2 panels
 # of same plot, with bubble size and scale held constant
 krige.cv.bubble(st_transform(fall.CVcluster.ok,latlong_proj),'ln(NOx) OK: clusterwise CV residuals')
