@@ -394,14 +394,14 @@ st_crs(meuse)
 # View a summary description of our projected data frame
 meuse
 
-# bounding box
-st_bbox(meuse)
-
 # The original data.frame columns (except for X and Y, which are now `geometry`),
-# can still be accessed in the usual way
-head(meuse)
+# can still be accessed in the usual way. (head() gives the same result as meuse above so is commented out.)
+#head(meuse)
 head(meuse$zinc)
 colnames(meuse)
+
+# bounding box
+st_bbox(meuse)
 
 # To extract the original XY coordinates
 st_coordinates(meuse) %>% head()
@@ -916,7 +916,7 @@ la_grid <- la_grid[st_within(la_grid,land) %>% sapply(length) > 0,]
 
 ```
 
-Now plot the snapshot data using the same plotting code similar to that applied
+Now plot the snapshot data using ggplot code similar to that applied
 to the `meuse` data.  This is without any map outline.
 
 
@@ -932,7 +932,7 @@ ggplot(data=fall) +
   ggtitle("ln(NOx) Concentrations (ln(ppb)") +
   theme_bw()
 
-# we show a similar color and size varying bubble plot of the data with ggplot
+# we show a similar color and size varying bubble plot of the data
 ggplot(data=fall) +
   geom_sf(data=fall, aes(size=ln_nox, color=ln_nox)) +
   scale_color_gradientn(colors=rainbow(4, rev=TRUE)) +
@@ -1045,11 +1045,10 @@ prediction quality using cross-validation, and then produce predictions at the
 grid locations for later use.
 
 **Step 1**:  Estimate the variograms and geostatistical model parameters
-(partial sill, range, nugget).  In the following chunk we fit two sets of models
-for didactic purposes only:  an OK model with no trend (i.e. no covariates in a
+(partial sill, range, nugget).  In the following chunk we also include an OK model
+for didactic purposes only.  The models are an OK model with no trend (i.e. no covariates in a
 LUR), and a UK model with trend (i.e. the covariates in the common model).  We
-plot the variogram fits to both models for comparison.  (Note:  this comparison
-is for educationa/practice purposes only.  Scientifically we don't think an OK
+plot the variogram fits to both models for comparison.  (Note:  Scientifically we don't think an OK
 model of these data is a sensible choice.)
 
 ```{r fall estimate variogram}
@@ -1139,6 +1138,7 @@ fall.CVcluster.uk <- krige.cv2(ln_nox ~ D2A1 + A1_50 + A23_400 + Pop_5000 + D2C 
 # of same plot, with bubble size and scale held constant
 krige.cv.bubble(st_transform(fall.CVcluster.ok,latlong_proj),'ln(NOx) OK: clusterwise CV residuals')
 
+# bubble plot of UK residuals
 krige.cv.bubble(st_transform(fall.CVcluster.uk,latlong_proj),'ln(NOx) UK: clusterwise CV residuals')
 
 # calculate and compile CV stats
@@ -1171,8 +1171,9 @@ kc_la
 ### Plotting the predictions
 
 Display the predictions on a map.  First we need to join the predictions with
-the original grid in order to get the longitude and latitude coordinates.  The
-second visible chunk adds our predictions to a Stamen map.  All plots show the aree restricted to the subset of the grid we created above.  The second plot shows
+the original grid in order to get the longitude and latitude coordinates.  At
+the end of the chunk we add our predictions to a Stamen map.  These are
+restricted to the subset of the grid we created above.  The second plot shows
 interpolated predictions.
 
 
@@ -1214,7 +1215,6 @@ g + geom_point(data=new_grid,aes(x = st_coordinates(new_grid)[,'X'],
                            col = NOx), alpha = 0.2) + 
     scale_color_gradientn(name = "NOx (ppb)", colors=rainbow(4,rev=TRUE)) + 
     ggtitle("Map of Los Angeles \n with fall UK predictions overlaid as points")
-
 
 ```
 
