@@ -81,25 +81,45 @@ should work -->
 
 ```{r read.data.from.a.directory, eval=TRUE, echo=FALSE, include=FALSE}
 #-----read data from a directory-----
-# Download the data file from a local directory
 
-datapath <- "Datasets"
-dir.create(datapath, showWarnings=FALSE, recursive = TRUE)
+# specify working directory
+project_path <- getwd()
 
+# create "Datasets" directory if one does not already exist    
+dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
+
+# specify data path
+data_path <- file.path(project_path,"Datasets")
+
+# specify the file names and paths
 snapshot.file <- "snapshot_3_5_19.csv"
+snapshot.path <- file.path(data_path, snapshot.file)
 grid.file <- "la_grid_3_5_19.csv"
-snapshot.path <- file.path(datapath, snapshot.file)
-grid.path <- file.path(datapath, grid.file)
+grid.path <- file.path(data_path, grid.file)
 
-# note:  updated shapshot data not on website yet
+# Download the file if it is not already present
+if (!file.exists(snapshot.path)) {
+    url <- paste("https://faculty.washington.edu/sheppard/envh556/Datasets", 
+                 snapshot.file, sep = '/')
+    download.file(url = url, destfile = snapshot.path)
+}
+if (!file.exists(grid.path)) {
+    url <- paste("https://faculty.washington.edu/sheppard/envh556/Datasets", 
+                 grid.file, sep = '/')
+    download.file(url = url, destfile = grid.path)
+}
+
+# Output a warning message if the file cannot be found
 if (file.exists(snapshot.path)) {
     snapshot <- read_csv(file = snapshot.path)
 } else warning(paste("Can't find", snapshot.file, "!"))
 
-# note:  la_grid not on website yet
 if (file.exists(grid.path)) {
     la_grid <- read_csv(file = grid.path)
 } else warning(paste("Can't find", grid.file, "!"))
+
+# remove temporary variables
+rm(url, file_name, file_path, data_path)
 
 ```
 
