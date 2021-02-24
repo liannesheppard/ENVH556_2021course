@@ -968,9 +968,8 @@ g <- ggmap(map, darken = c(0.5, "white")) + theme_void()
 g + ggtitle("Sample Map of Los Angeles for \n the area covered by the snapshot data")
 
 # Add snapshot locations to the map with colors for values
-# Note: need to use a data.frame for this, not a spatial data object
-# For some reason, geom_sf() did not work for this (bug?), so needed to use
-# geom_point and manually add the extracted XY coordinates
+# Note: geom_sf() does not work below (bug?), so needed to use
+# geom_point and manually add extracted XY coordinates
 # https://stackoverflow.com/questions/60066424/how-to-align-ggmap-crs-of-google-map-longitude-latitude
 
 # NOx on native scale
