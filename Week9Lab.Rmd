@@ -47,25 +47,33 @@ pacman::p_load(knitr, dplyr, tidyr, readr, stringr, ggplot2,
 # specify working directory
 project_path <- getwd()
 
-# create "Datasets" and "mobile_monitoring" directories if the do not already exist  
-# TODO:  do we need both lines or just the second one?
-dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
-dir.create(file.path(project_path, "Datasets", "mobile_monitoring"), showWarnings=FALSE, recursive = TRUE)
-
 # specify data directory
 data_dir <- file.path(project_path, "Datasets", "mobile_monitoring")
 
-# TODO:  add code to download multiple files at once.  Here is the code for a single file named "snapshot.file":
-# # Specify file name and path:
-# snapshot.file <- "snapshot_3_5_19.csv"
-# snapshot.path <- file.path(data_path, snapshot.file)
-# # Download the file if it is not already present
-# if (!file.exists(snapshot.path)) {
-#     url <- paste("https://faculty.washington.edu/sheppard/envh556/Datasets", 
-#                  snapshot.file, sep = '/')
-#     download.file(url = url, destfile = snapshot.path)
-# }
+# Download files if not already present
+if (!dir.exists(data_dir)) {
+    
+  # create "Datasets" and "mobile_monitoring" directories if the do not already exist
+  dir.create(file.path(project_path, "Datasets", "mobile_monitoring"), 
+           showWarnings = FALSE, recursive = TRUE)
 
+  # specify URL
+  url <- "https://faculty.washington.edu/sheppard/envh556/Datasets/mobile_monitoring/Jul19MOV-UP.zip"
+  
+  # name destination file
+  dest <- file.path(data_dir, "Jul10MOV-UP.zip")
+  
+  # download zip
+  download.file(url = url, destfile = dest)
+  
+  # unzip file
+  unzip(zipfile = dest, exdir = data_dir)
+
+  # delete zip files (optional)
+  unlink(dest)
+  unlink(str_subset("__MACOSX", list.files(data_dir)), recursive = TRUE)
+  
+  }
 ```
 
 <!-- TODO:  THINGS TO ADD/MODIFY/REFRAME IN LAB:
