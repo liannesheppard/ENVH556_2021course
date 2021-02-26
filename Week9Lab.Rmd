@@ -142,6 +142,8 @@ each instrument. In addition, the time scale of each instrument can be
 different, and it is necessary to ensure a common time base prior to merging the
 data.
 
+(DLS comment: Mention time zones, international date line, and daylight savings?)
+
 # Identify Files of Interest, Read Files & Wrangle
 
 Here, we'll focus on data from Car 1 (there were 2 cars), for your assignment,
@@ -191,6 +193,10 @@ ptrak_noscreen_file <- filenames %>%
    str_subset("scrnd|Scrnd|Screened|screen", negate = TRUE)
 
 # read data
+## Best practice is not to hard-code header lengths
+## The `skip=<string>` argument in data.table::fread is very handy for this
+## See: https://github.com/kaufman-lab/trap_data_mgmt/blob/master/data_import_lib.R
+## For examples of how Elena, Brian, and Dave have dealt with instrument files
 ptrak_noscreen <-  read_tsv(file.path(data_dir, ptrak_noscreen_file), skip = 29) %>% 
    
    # name columns
@@ -242,6 +248,8 @@ co2 <- read_tsv(file.path(data_dir, co2_file), skip = 1,
    select(date, time, co2_conc) %>% 
    
    # address time parsing (some minute values have only one digit)
+  ## Lubridate should be able to handle this part more or less automatically
+  ## See examples in trap_data_mgmt repo
    separate(time, into = c("h", "m", "s"), sep = ":") %>% 
    mutate(m = if_else(str_count(m) == 1, paste0("0", m), m)) %>% 
    unite(c(h, m, s), col = "time", sep = ":") %>% 
@@ -301,6 +309,8 @@ lapply(all_data, function(i){
    
    # bind list
    bind_rows(.id = "variable")
+
+## It might be nice somewhere in here to have a data availability vs. time plot
 
 ```
 
@@ -425,6 +435,9 @@ not unreasonable to introduce a few rows with NAs here.
 ```{r fill.ts}
 #-----fill ts-----
 
+
+## Could be nice to take a row count before and after to see how many were filled in
+
 ts_data <- fill_gaps(ts_data) 
   
   # # if you wanted to "fill" the new explicitly missing data here is an option
@@ -480,6 +493,10 @@ moving average, works nicely with `mutate()`.
 ```{r slider}
 #-----slider-----
 
+## For 1-minute averaging, it might be nice to either have a time-to-the-minute column
+## So that you can easily pare down your data later
+## Or to do a mutate/summarize() to the minute into a new table
+
 ts_data <- ts_data %>% 
   
   # left join new 1-minute period values
@@ -516,6 +533,8 @@ that the size of the dataframe decreases.
 
 ```{r new.timescale}
 #-----new timescales-----
+
+## This is really handy!
 
 ts_new <- ts_data %>% 
   
@@ -627,6 +646,10 @@ mapping chunk interactively without re-downloading the stamen map.)
 # define the bounding box for the map using make_bbox 
 bbox <- make_bbox(ts_data)
 
+## This takes a little while to download. Could do something like
+## if (!file.exists('map.rds')) {saveRDS('map.rds')} ... readRDS(''map.rds'')
+# in this area of the code to save time when re-running the script
+## Or, could decrease the zoom level a bit
 # make a map of the base layer of stamen tiles (without downloading messages)
 map <- get_stamenmap(bbox, zoom = 14, maptype = "terrain") %>% suppressMessages()
 
