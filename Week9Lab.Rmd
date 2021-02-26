@@ -1,6 +1,6 @@
 ---
 title: "Week 9 Lab:  Time Series Data and Analysis Strategies"
-author: "Elena Austin for ENVH 556"
+author: "Elena Austin and Chris Zuidema for ENVH 556"
 date: "Winter 2021; Updated `r format(Sys.time(), '%B %d, %Y')`"
 output: 
     html_document:
@@ -47,12 +47,28 @@ pacman::p_load(knitr, dplyr, tidyr, readr, stringr, ggplot2,
 # specify working directory
 project_path <- getwd()
 
+# create "Datasets" and "mobile_monitoring" directories if the do not already exist  
+# TODO:  do we need both lines or just the second one?
+dir.create(file.path(project_path,"Datasets"), showWarnings=FALSE, recursive = TRUE)
+dir.create(file.path(project_path, "Datasets", "mobile_monitoring"), showWarnings=FALSE, recursive = TRUE)
+
 # specify data directory
 data_dir <- file.path(project_path, "Datasets", "mobile_monitoring")
 
+# TODO:  add code to download multiple files at once.  Here is the code for a single file named "snapshot.file":
+# # Specify file name and path:
+# snapshot.file <- "snapshot_3_5_19.csv"
+# snapshot.path <- file.path(data_path, snapshot.file)
+# # Download the file if it is not already present
+# if (!file.exists(snapshot.path)) {
+#     url <- paste("https://faculty.washington.edu/sheppard/envh556/Datasets", 
+#                  snapshot.file, sep = '/')
+#     download.file(url = url, destfile = snapshot.path)
+# }
+
 ```
 
-<!-- THINGS TO ADD/MODIFY/REFRAME IN LAB:
+<!-- TODO:  THINGS TO ADD/MODIFY/REFRAME IN LAB:
 
 # Time alignment before combining dataset
 (all instruments are 1-sec interval currently...)
@@ -84,9 +100,9 @@ coherent lab report that addresses the scientific context and scientific
 questions.
 
 In this lab exercise we will use data collected as part of the MOV-UP mobile
-monitoring campaign. This data was collected on 1 second and 10 second time
+monitoring campaign. This data was collected on 1-second and 10-second time
 scales. The lab will walk you through the steps of importing the raw instrument
-data. The have provided data from the following instruments: 
+data. The MOV-UP study has collected data from the following instruments: 
 
   * GPS tracker
   * particle counter (P-Trak, model 8525, TSI Inc., MN)
