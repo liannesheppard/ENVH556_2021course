@@ -36,7 +36,7 @@ my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.
-pacman::p_load(knitr, dplyr, tidyr, readr, stringr, ggplot2, 
+pacman::p_load(knitr, dplyr, tidyr, readr, stringr, ggplot2, hms, 
                lubridate, purrr, tsibble, feasts, slider, ggmap, ggrepel)
 
 ```
@@ -53,11 +53,12 @@ data_dir <- file.path(project_path, "Datasets", "mobile_monitoring")
 # Download files if not already present
 if (!dir.exists(data_dir)) {
     
-  # create "Datasets" and "mobile_monitoring" directories if the do not already exist
+  # create "Datasets" and "mobile_monitoring" directories if they do not already
+  # exist
   dir.create(file.path(project_path, "Datasets", "mobile_monitoring"), 
-           showWarnings = FALSE, recursive = TRUE)
+             showWarnings = FALSE, recursive = TRUE)
 
-  # specify URL
+  # specify URL of zip file
   url <- "https://faculty.washington.edu/sheppard/envh556/Datasets/mobile_monitoring/Jul19MOV-UP.zip"
   
   # name destination file
@@ -122,8 +123,9 @@ data. The MOV-UP study has collected data from the following instruments:
 The full suite of instruments and their characteristics of the platform used in
 this study can be found in [Riley et al.,
 2014](https://doi.org/10.1016/j.atmosenv.2014.09.018), [Larson et al.,
-2017](https://doi.org/10.1016/j.atmosenv.2016.12.037), and [Xiang et 
-al.,2020](https://doi.org/10.1021/acs.est.0c00612). The remainder of the code in this week's lab uses the GPS, P-Trak, and $CO_2$ measurements.
+2017](https://doi.org/10.1016/j.atmosenv.2016.12.037), and [Xiang et
+al.,2020](https://doi.org/10.1021/acs.est.0c00612). The remainder of the code in
+this week's lab uses the GPS, P-Trak, and $CO_2$ measurements.
 
 
 # Dates and Times
@@ -149,6 +151,11 @@ date format, making it necessary to define date/time components specifically for
 each instrument. In addition, the time scale of each instrument can be
 different, and it is necessary to ensure a common time base prior to merging the
 data.
+
+In addition to date formats, you'll likely encounter dates with various time
+zones, daylight savings conventions, and perhaps even issues with simulataneous
+measurements on either side of the international date line. Accounting for these
+issues will make it easier to handle variables of the `datetime` class.
 
 # Identify Files of Interest, Read Files & Wrangle
 
@@ -244,19 +251,15 @@ co2 <- read_tsv(file.path(data_dir, co2_file), skip = 1,
    
    # name columns
    set_names(c("date", "time", "co2_conc", "h2o_conc", "temp", "pressure", 
-              "co2_absorp",  "flow", "X9") ) %>% 
+              "co2_absorp", "flow", "X9") ) %>% 
    
    # select columns of interest
    select(date, time, co2_conc) %>% 
    
-   # address time parsing (some minute values have only one digit)
-   separate(time, into = c("h", "m", "s"), sep = ":") %>% 
-   mutate(m = if_else(str_count(m) == 1, paste0("0", m), m)) %>% 
-   unite(c(h, m, s), col = "time", sep = ":") %>% 
-   mutate(time = parse_time(time)) %>%
-   
+   # address time parsing (some minute values have only one digit) and 
    # create datetime column
-   mutate(datetime = as.POSIXct(paste(date, time), tz = "US/Pacific") )
+   mutate(time = as_hms(time), 
+          datetime = as.POSIXct(paste(date, time), tz = "US/Pacific") )
 
 # show dataframe
 co2
