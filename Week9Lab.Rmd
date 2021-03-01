@@ -290,6 +290,26 @@ all_data
 
 ```
 
+```{r data.availability.plot}
+#-----data.availability.plot-----
+
+# Lianne, I looked into this because Dave suggested it, but it doesn't seem so
+# informative
+
+# create temporary dataframe for ggplot
+temp <- all_data %>% 
+  pivot_longer(cols = c(contains("conc"), latitude), 
+               names_to = "measurement")
+
+# make plot
+ggplot(data = temp, 
+       aes(x = datetime, y = measurement, color = factor(measurement)) ) +
+  geom_point() +
+  theme_bw()
+
+```
+
+
 
 ## Missing Data
 
@@ -436,12 +456,18 @@ not unreasonable to introduce a few rows with NAs here.
 ```{r fill.ts}
 #-----fill ts-----
 
+# count rows before filling
+paste("number of rows before filling gaps:", nrow(ts_data))
+
 ts_data <- fill_gaps(ts_data) 
   
   # # if you wanted to "fill" the new explicitly missing data here is an option
   # # (add a `%>%` to the function above). Note this could have downstream
   # # effects.
   # fill(co2_conc, .direction = "down")
+
+# count rows after filling
+paste("number of rows after filling gaps:", nrow(ts_data))
 
 # show dataframe
 ts_data
@@ -501,9 +527,13 @@ ts_data <- ts_data %>%
                      ~tibble(datetime = floor_date(.x$datetime),
                              co2_conc_one = mean(.x$co2_conc)
                              ) ),
-    by = "datetime" ) %>%
+    by = "datetime" ) %>% 
   
-  # use `slider` to calculate 2 minute moving averages (this works becuase we've
+  # add a datetime column with 1-minute precision to help if you choose to
+  # `group_by()` and `summarise()` 1-minute averages
+  mutate(datetime_one = ymd_hm(format(x, "%Y-%m-%d %H:%M"), tz = "US/Pacific")) %>%
+  
+  # use `slider` to calculate 2 minute moving averages (this works because we've
   # made sure our datetime index is unique and complete)
   mutate(co2_conc_two = slide_dbl(co2_conc, ~mean(.x, na.rm = TRUE), 
                              .before = 60, .after = 60) ) 
@@ -638,7 +668,7 @@ mapping chunk interactively without re-downloading the stamen map.)
 # define the bounding box for the map using make_bbox 
 bbox <- make_bbox(ts_data)
 
-# make a map of the base layer of stamen tiles (without downloading messages)
+# make a map of the base layer of stamen tiles (without showing messages)
 map <- get_stamenmap(bbox, zoom = 14, maptype = "terrain") %>% suppressMessages()
 
 # make the map image from the stamen map tiles
