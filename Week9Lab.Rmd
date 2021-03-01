@@ -176,6 +176,7 @@ simultaneous measurements on either side of the international date line.
 Accounting for these issues will make it easier to handle date and datetime
 variables.
 
+
 # Identify Files of Interest, Read Files & Wrangle
 
 Here, we'll focus on data from Car 1 (there were 2 cars), for your assignment,
@@ -213,7 +214,12 @@ gps
 
 ## P-Trak
 
-These instruments collect ultrafine particles (UFPs) at the 1 second time resolution.  An unscreened P-Trak collects particles in the range of 20 - 1,000 nm while the screened P-Track collects particles in the range of 50-1,000 nm.  Thus, having both allows some rudimentary understanding of particle size distributions.  Both instruments provide data in units of pt/cm$^#$.
+These instruments collect ultrafine particles (UFPs) at the 1 second time
+resolution. An unscreened P-Trak collects particles in the range of 20 - 1,000
+nm while the screened P-Track collects particles in the range of 50-1,000 nm.
+Thus, having both allows some rudimentary understanding of particle size
+distributions. The instruments measure particle number concentration, with units
+expressed as $particles/cm^3$, $1/cm^3$, $#/cm^3$, or $pt/cm^3$
 
 ```{r p.trak, message=FALSE}
 #-----p-trak-----
