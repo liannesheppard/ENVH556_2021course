@@ -194,8 +194,7 @@ gps
 
 ## P-Trak
 
-<!-- Elena & Lianne, can one of you add a sentence or two here about the
-importance/reasoning behind the screened and not-screened P-Trak -->
+These instruments collect ultrafine particles (UFPs) at the 1 second time resolution.  An unscreened P-Trak collects particles in the range of 20 - 1,000 nm while the screened P-Track collects particles in the range of 50-1,000 nm.  Thus, having both allows some rudimentary understanding of particle size distributions.  Both instruments provide data in units of pt/cm$^#$.
 
 ```{r p.trak, message=FALSE}
 #-----p-trak-----
