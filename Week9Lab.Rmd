@@ -195,7 +195,7 @@ gps
 ## P-Trak
 
 <!-- Elena & Lianne, can one of you add a sentence or two here about the
-importance/reasoning behind the screen and not-screened P-Trak -->
+importance/reasoning behind the screened and not-screened P-Trak -->
 
 ```{r p.trak, message=FALSE}
 #-----p-trak-----
@@ -450,8 +450,8 @@ needs to be unique and complete. Adding these new time rows introduces
 fill the non-time data in. `tidyr::fill()` can help with this task, and the
 choice may be more or less important depending on the timescale you're working
 on, the amount of missingness, and if there are consecutive measurements
-missing. Given the small amount of missing and the one second timescale, it's
-not unreasonable to introduce a few rows with NAs here.
+missing. Given the small amount of missing and the one-second timescale of the
+data, it's not unreasonable to introduce a few rows with NAs here.
 
 ```{r fill.ts}
 #-----fill ts-----
@@ -660,13 +660,18 @@ make_bbox <- function(.data, width_extra = 0.0001, height_extra = 0.00005){
 
 ```
 
-(I've split up getting the map objects from mapping them so you can run the
-mapping chunk interactively without re-downloading the stamen map.)
+In the following chunk we define the bounding box (extent of the mapping area),
+download the stamen map tiles (if they have not already been downloaded), and
+save it for later. If the map file has already been downloaded and saved, we can
+just load the `map.rds` file. This will save you some time and from
+unnecessarily repeating file downloads as you work to develop your code. Note if
+you've already downloaded and saved a `map.rds` file, then want to modify the
+underlying map somehow, you'll need to delete the `map.rds` file first.
 
 ```{r get.map.objects}
 #-----get map objects-----
 
-# define the bounding box for the map using make_bbox 
+# define the bounding box for the map using `make_bbox()` 
 bbox <- make_bbox(ts_data)
 
 # download stamen map if needed, otherwise just load it from a previous download
@@ -675,19 +680,19 @@ if (!file.exists(file.path(data_dir, "map.rds"))) {
   # make a map of the base layer of stamen tiles (without showing messages)
   map <- suppressMessages(get_stamenmap(bbox, zoom = 14, maptype = "terrain"))
   
-  # save map so you don't need to download it again
+  # save map to the mobile_monitoring data directory so you don't need to
+  # download it again
   saveRDS(map, file = file.path(data_dir, "map.rds") )
   
   }
 
-# read previously downloaded map
+# read map file
 map <- readRDS(file.path(data_dir, "map.rds"))
 
 # make the map image from the stamen map tiles
 basemap <- ggmap(map, darken = c(0.5, "white")) + theme_void()
 
 ```
-
 
 To help represent the time-varying nature of the data in this lab, let's collect
 the times of some of our measurements to help our visualization.
@@ -746,7 +751,10 @@ map_co2
 THIS IS NOT IN BRANTLEY, BUT IS IT SOMETHING TO KEEP? IT LIKELY NEEDS
 MODIFICATION AS I WAS JUST FIGURING OUT/DRAFTING SOME CODE -->
 
-As the $CO_2$ map shows, the data we've collected represent concentrations over 4 hours, meaning some of the variability we're observing could be a mix of spatial (i.e. the variability we see in the map) and temporal (i.e. the variability observed in timeseries plots) processes.
+As the $CO_2$ map shows, the data we've collected represent concentrations over
+4 hours, meaning some of the variability we're observing could be a mix of
+spatial (i.e. the variability we see in the map) and temporal (i.e. the
+variability observed in timeseries plots) processes.
 
 Next, we'll use the P-Trak data to explore the idea of pollutant ratios...
 
