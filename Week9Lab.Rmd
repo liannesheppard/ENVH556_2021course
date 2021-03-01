@@ -531,7 +531,8 @@ ts_data <- ts_data %>%
   
   # add a datetime column with 1-minute precision to help if you choose to
   # `group_by()` and `summarise()` 1-minute averages
-  mutate(datetime_one = ymd_hm(format(x, "%Y-%m-%d %H:%M"), tz = "US/Pacific")) %>%
+  mutate(datetime_one = ymd_hm(format(datetime, "%Y-%m-%d %H:%M"), 
+                               tz = "US/Pacific")) %>%
   
   # use `slider` to calculate 2 minute moving averages (this works because we've
   # made sure our datetime index is unique and complete)
@@ -668,13 +669,25 @@ mapping chunk interactively without re-downloading the stamen map.)
 # define the bounding box for the map using make_bbox 
 bbox <- make_bbox(ts_data)
 
-# make a map of the base layer of stamen tiles (without showing messages)
-map <- get_stamenmap(bbox, zoom = 14, maptype = "terrain") %>% suppressMessages()
+# download stamen map if needed, otherwise just load it from a previous download
+if (!file.exists(file.path(data_dir, "map.rds"))) {
+  
+  # make a map of the base layer of stamen tiles (without showing messages)
+  map <- suppressMessages(get_stamenmap(bbox, zoom = 14, maptype = "terrain"))
+  
+  # save map so you don't need to download it again
+  saveRDS(map, file = file.path(data_dir, "map.rds") )
+  
+  }
+
+# read previously downloaded map
+map <- readRDS(file.path(data_dir, "map.rds"))
 
 # make the map image from the stamen map tiles
 basemap <- ggmap(map, darken = c(0.5, "white")) + theme_void()
 
 ```
+
 
 To help represent the time-varying nature of the data in this lab, let's collect
 the times of some of our measurements to help our visualization.
