@@ -219,7 +219,7 @@ resolution. An unscreened P-Trak collects particles in the range of 20 - 1,000
 nm while the screened P-Track collects particles in the range of 50-1,000 nm.
 Thus, having both allows some rudimentary understanding of particle size
 distributions. The instruments measure particle number concentration, with units
-expressed as $particles/cm^3$, $1/cm^3$, $#/cm^3$, or $pt/cm^3$
+expressed as $particles/cm^3$, $pt/cm^3$, or $1/cm^3$
 
 ```{r p.trak, message=FALSE}
 #-----p-trak-----
