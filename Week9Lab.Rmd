@@ -144,18 +144,38 @@ You'll find it advantageous to convert everything to a standardized format,
 including the time zone. Consistently using a standardized date and time format
 will make it less likely that you'll interpret a date and time incorrectly.
 
-We suggest the International Organization for Standardization (ISO) date and
-time standard, which provides an unambiguous, well-known, and well-defined
-method of representing dates and times. Dates are often not stored in ISO 8601
-date format, making it necessary to define date/time components specifically for
-each instrument. In addition, the time scale of each instrument can be
-different, and it is necessary to ensure a common time base prior to merging the
-data.
+Date objects in `R` are of class `Date`, and compound date and time ("datetime")
+objects, are of class `POSIXct` (shown as `dttm` when a tibble is printed to the
+console). Let's take a look at  a `POSIXct` object and show its class: 
 
-In addition to date formats, you'll likely encounter dates with various time
-zones, daylight savings conventions, and perhaps even issues with simulataneous
-measurements on either side of the international date line. Accounting for these
-issues will make it easier to handle variables of the `datetime` class.
+```{r POSIXct.objects}
+#-----POSIXct objects-----
+
+# show POSIXct object
+Sys.time()
+
+# show class
+class(Sys.time())
+
+```
+
+Internally, date and datetime objects store the number of seconds (for
+`POSIXct`) or days (for `Date`) since January 1st 1970 at midnight: 
+`r as.numeric(Sys.time())` seconds and `r as.numeric(Sys.Date())` days. When
+printed to the console, they are displayed in a human-readable format along the
+the International Organization for Standardization (ISO) 8601 date and time
+standard. ISO 8601 provides an unambiguous, well-known, and well-defined method
+of representing dates and times.
+
+It is often necessary to define date/time components or format of a datetime
+object specifically for each instrument. In addition, the time scale of each
+instrument can be different, and it is necessary to ensure a common schedule
+prior to merging the data. You'll also likely encounter dates/times with various
+time zones, daylight savings conventions, and perhaps even issues with
+simultaneous measurements on either side of the international date line.
+Accounting for these issues will make it easier to handle date and datetime
+variables.
+
 
 # Identify Files of Interest, Read Files & Wrangle
 
@@ -184,7 +204,7 @@ gps <- read_csv(file.path(data_dir, gps_file)) %>%
    # set column names
    set_names(c("date", "time", "latitude", "longitude", "altitude", "speed")) %>% 
    
-   # create datetime column
+   # create datetime column (notice we must specify the timezone)
    mutate(datetime = as.POSIXct(paste(date, time), tz = "US/Pacific") )
 
 # show dataframe
@@ -194,7 +214,12 @@ gps
 
 ## P-Trak
 
-These instruments collect ultrafine particles (UFPs) at the 1 second time resolution.  An unscreened P-Trak collects particles in the range of 20 - 1,000 nm while the screened P-Track collects particles in the range of 50-1,000 nm.  Thus, having both allows some rudimentary understanding of particle size distributions.  Both instruments provide data in units of pt/cm$^#$.
+These instruments collect ultrafine particles (UFPs) at the 1 second time
+resolution. An unscreened P-Trak collects particles in the range of 20 - 1,000
+nm while the screened P-Track collects particles in the range of 50-1,000 nm.
+Thus, having both allows some rudimentary understanding of particle size
+distributions. The instruments measure particle number concentration, with units
+expressed as $particles/cm^3$, $pt/cm^3$, or $1/cm^3$
 
 ```{r p.trak, message=FALSE}
 #-----p-trak-----
@@ -210,7 +235,8 @@ ptrak_noscreen <-  read_tsv(file.path(data_dir, ptrak_noscreen_file), skip = 29)
    # name columns
    set_names(c("date","time", "ptrak_noscreen_conc")) %>% 
    
-   # modify date column and create datetime column
+   # modify date column and create datetime column (notice we must specify the
+   # date format)
    mutate(date = as.Date(date, format = "%m/%d/%Y"), 
           datetime = as.POSIXct(paste(date, time), tz = "US/Pacific") )
 
