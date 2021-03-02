@@ -1,0 +1,528 @@
+---
+title: "Week 9 Lecture Commands"
+author: "Lianne Sheppard for ENVH 556"
+date: "Winter 2021; Updated `r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    html_document:
+        fig_caption: yes
+        toc: true
+        toc_depth: 3
+        number_sections: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+#-----setup-----
+
+# set knitr options
+knitr::opts_chunk$set(echo = TRUE)
+
+# clear work space of all objects and unload all extra (non-base) packages
+rm(list = ls(all = TRUE))
+if (!is.null(sessionInfo()$otherPkgs)) {
+    res <- suppressWarnings(
+        lapply(paste('package:', names(sessionInfo()$otherPkgs), sep=""),
+               detach, character.only=TRUE, unload=TRUE, force=TRUE))
+}
+
+```
+
+```{r load.libraries.pacman, echo=FALSE, include=FALSE, eval=TRUE}
+#-----load libraries pacman-----
+
+# Load pacman into memory, installing as needed
+my_repo <- 'http://cran.r-project.org'
+if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
+
+# Load the other packages, installing as needed.
+pacman::p_load(knitr, dplyr, feasts, slider, tidyr, ggplot2)
+# may not need older time series packages:
+pacman::p_load(tseries, xts) 
+
+```
+
+# Slides 8 & 9:  AR(1) process example, $\alpha$=0.5
+
+```{r AR(1) example}
+#---- AR(1) example----
+
+# n is length of time series
+n <- 500
+# generate data with alpha = .5
+e <- rnorm(n)
+y <- double(n)
+y[1] <- 0
+for (i in 2:n) {y[i] <- 0.5*y[i-1] + e[i]}
+ 
+# make a tsibble 
+ts_ex_data <- tibble(y, ind = seq(1,n)) %>%
+  as_tsibble(index = ind)
+
+# plot time series
+ggplot() + 
+  geom_line(data = ts_ex_data, aes(x = ind, y = y)) +
+  labs(title = "AR(1) time series",
+       x = "Time axis",
+       y = "Outcome")
+ 
+# plot autocorrelation
+ts_ex_data %>% ACF(y) %>% autoplot()
+
+# plot partial autocorrelation
+ts_ex_data %>% PACF(y) %>% autoplot()
+
+```
+
+# Slide10:  AR(1) process example, $\alpha$=0.9
+
+```{r AR(1) example2}
+#---- AR(1) example2----
+
+# n is length of time series
+n <- 500
+# generate data with alpha = .9
+e <- rnorm(n)
+y <- double(n)
+y[1] <- 0
+for (i in 2:n) {y[i] <- 0.9*y[i-1] + e[i]}
+ 
+# make a tsibble 
+ts_ex_data <- tibble(y, ind = seq(1,n)) %>%
+  as_tsibble(index = ind)
+
+# plot time series
+ggplot() + 
+  geom_line(data = ts_ex_data, aes(x = ind, y = y)) +
+  labs(title = "AR(1) time series, alpha=0.9",
+       x = "Time axis",
+       y = "Outcome")
+ 
+# plot autocorrelation
+ts_ex_data %>% ACF(y) %>% autoplot()
+
+# plot partial autocorrelation
+ts_ex_data %>% PACF(y) %>% autoplot()
+
+```
+
+# Slide 13:  Moving average example
+
+```{r MA(2) process example}
+#---- MA(2) process example----
+
+# n is length of time series
+n <- 500
+
+# generate data with rho1 = .0, rho2 = .8
+e <- rnorm(n)
+y <- double(n)
+y[1] <- e[1]
+y[2] <- e[2] + 0.8*e[1]
+for (i in 3:n) {y[i] <- e[i] + 0.8*e[i-1] + 0.8*e[i-2]}
+ 
+# make a tsibble 
+ts_ex_data <- tibble(y, ind = seq(1,n)) %>%
+  as_tsibble(index = ind)
+
+# plot time series
+ggplot() + 
+  geom_line(data = ts_ex_data, aes(x = ind, y = y)) +
+  labs(title = "MA(2) time series",
+       x = "Time axis",
+       y = "Outcome")
+ 
+# plot autocorrelation
+ts_ex_data %>% ACF(y) %>% autoplot()
+
+# plot partial autocorrelation
+ts_ex_data %>% PACF(y) %>% autoplot()
+
+
+
+```
+
+# Slide 14:  ARMA(1,1)
+
+```{r ARMA(1,1)}
+#---- ARMA(1,1) ----
+
+set.seed(200)
+
+# n is length of time series
+n <- 500
+
+# generate data with alpha=0.9, rho = .8
+e <- rnorm(n)
+y <- double(n)
+y[1] <- e[1]
+for (i in 2:n) {y[i] <- 0.9*y[i-1] + e[i] + 0.8*e[i-1] }
+ 
+# make a tsibble 
+ts_ex_data <- tibble(y, ind = seq(1,n)) %>%
+  as_tsibble(index = ind)
+
+# plot time series
+ggplot() + 
+  geom_line(data = ts_ex_data, aes(x = ind, y = y)) +
+  labs(title = "ARMA(1,1) time series",
+       x = "Time axis",
+       y = "Outcome")
+ 
+# plot autocorrelation
+ts_ex_data %>% ACF(y) %>% autoplot()
+
+# plot partial autocorrelation
+ts_ex_data %>% PACF(y) %>% autoplot()
+
+```
+
+# Time plots with smoother overlaid
+
+The next chunk attempts some ideas but so far none are working.  Would like to
+show a running 10th percentile.
+
+```{r Time plot with smoother, eval = FALSE}
+#---- Time plot with smoother ----
+
+# Chris: none of the following are working. Due to the tsibble? Maybe drop in
+# favor of the kernel and loess smoothers below?  Thought it owuld be nice to
+# get an example of the quantile smoother to work to accompany Brantley
+
+# # Not working
+# ts_ex_data <- ts_ex_data %>% 
+#   #as_tibble() %>%
+#   slide_dbl(ts_ex_data$y, ~mean(.x, na.rm = TRUE), .before = 10, .after = 10) 
+#Example code:
+#slide_dbl(x, ~mean(.x, na.rm = TRUE), .before = 1)
+
+# # Not working:  fails at side %in% and says object 'side' not found
+# # from here:  https://stackoverflow.com/questions/743812/calculating-moving-average
+# moving_fn <- function(x, w, fun, ...) {
+#   # x = vector with numeric data
+#   # w = window length
+#   # fun = function to apply
+#   # side = side to take, (c)entre, (l)eft or (r)ight
+#   # ... = parameters passed on to 'fun'
+#   y <- numeric(length(x))
+#   for (i in seq_len(length(x))) {
+#     if (side %in% c("c", "centre", "center")) {
+#       ind <- c((i - floor(w / 2)):(i + floor(w / 2)))
+#     } else if (side %in% c("l", "left")) {
+#       ind <- c((i - floor(w) + 1):i)
+#     } else if (side %in% c("r", "right")) {
+#       ind <- c(i:(i + floor(w) - 1))
+#     } else {
+#       stop("'side' must be one of 'centre', 'left', 'right'", call. = FALSE)
+#     }
+#     ind <- ind[ind %in% seq_len(length(x))]
+#     y[i] <- fun(x[ind], ...)
+#   }
+#   y
+# }
+# 
+# # and now any variation you can think of!
+# moving_average <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+#   moving_fn(x = x, w = w, fun = mean, side = side, na.rm = na.rm)
+# }
+# 
+# moving_sum <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+#   moving_fn(x = x, w = w, fun = sum, side = side, na.rm = na.rm)
+# }
+# 
+# moving_maximum <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+#   moving_fn(x = x, w = w, fun = max, side = side, na.rm = na.rm)
+# }
+# 
+# moving_median <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+#   moving_fn(x = x, w = w, fun = median, side = side, na.rm = na.rm)
+# }
+# 
+# moving_Q1 <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+#   moving_fn(x = x, w = w, fun = quantile, side = side, na.rm = na.rm, 0.25)
+# }
+# 
+# moving_Q3 <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+#   moving_fn(x = x, w = w, fun = quantile, side = side, na.rm = na.rm, 0.75)
+# }
+# 
+# moving_10th <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+#   moving_fn(x = x, w = w, fun = quantile, side = side, na.rm = na.rm, 0.10)
+# }
+
+# # Test rolling background when the above finally works:
+# roll10_y <- moving_10th(ts_ex_data$y, w = 10, side = "c")
+
+```
+
+# Loess and kernel smoother examples
+
+Examples in this section follow the nice exposition by Rafael A. Irizarry in his
+[Introduction to Data Science](https://rafalab.github.io/dsbook/) on [bin
+smoothing](https://rafalab.github.io/dsbook/smoothing.html#bin-smoothing) and [
+loess](https://rafalab.github.io/dsbook/smoothing.html#local-weighted-regression-loess)
+for how kernel smoothers and loess work.  It is worth taking a look at his
+animated graphics that show the repeated estimation across the length of the
+data.
+
+## Slide 18:  4 example plots with different kernel smoothers
+
+<!--
+# examples copied from rafalab:
+
+# # bin smoothing
+# span <- 7 
+# fit <- with(polls_2008, 
+#             ksmooth(day, margin, kernel = "box", bandwidth = span))
+# 
+# polls_2008 %>% mutate(smooth = fit$y) %>%
+#   ggplot(aes(day, margin)) +
+#     geom_point(size = 3, alpha = .5, color = "grey") + 
+#   geom_line(aes(day, smooth), color="red")
+
+# # kernel smoothing, normal kernel
+# span <- 20
+# fit <- with(polls_2008, 
+#             ksmooth(day, margin, kernel = "normal", bandwidth = span))
+# 
+# polls_2008 %>% mutate(smooth = fit$y) %>%
+#   ggplot(aes(day, margin)) +
+#   geom_point(size = 3, alpha = .5, color = "grey") + 
+#   geom_line(aes(day, smooth), color="red")
+-->
+
+
+```{r bin and kernel smoothing}
+#---- bin and kernel smoothing ----
+
+
+# # TODO: Optional; what is wrong with this?  The separate code
+# # (sample below) works but this faceted version doesn't
+# # examples implemented:
+# # bin smoothing
+# span <- 10 
+# fit_ru <- with(ts_ex_data, 
+#             ksmooth(ind, y, kernel = "box", bandwidth = span))
+# fit_rw <- with(ts_ex_data, 
+#             ksmooth(ind, y, kernel = "normal", bandwidth = span))
+# span <- 50
+# fit_su <- with(ts_ex_data, 
+#             ksmooth(ind, y, kernel = "box", bandwidth = span))
+# fit_sw <- with(ts_ex_data, 
+#             ksmooth(ind, y, kernel = "normal", bandwidth = span))
+# 
+# data_smooth <- ts_ex_data %>% tibble() %>%
+#   # create new variables from the different fits
+#   mutate(smooth_ru = fit_ru$y,
+#          smooth_rw = fit_rw$y,
+#          smooth_su = fit_su$y,
+#          smooth_sw = fit_su$y) %>%
+#   # make dataset longer
+#   pivot_longer(cols = c(contains("smooth_")), 
+#                names_to = "Smoother_type", 
+#                values_to = "smooth_fit")
+# 
+#   ggplot(aes(ind, y=smooth_fit)) +
+#     # different plots by error type
+#     facet_wrap(~error_type) +
+#     # raw data as points
+#     geom_point(size = 1, alpha = .5, shape = "o", color = "grey") + 
+#     # lines for smooths
+#     geom_line(aes(ind, smooth_fit), color="red")
+# 
+
+# kernel smoothing, box and normal kernel
+# note the Gaussian is a smoother function, even for the same span
+span <- 10 
+fit_ru <- with(ts_ex_data, 
+            ksmooth(ind, y, kernel = "box", bandwidth = span))
+fit_rw <- with(ts_ex_data, 
+            ksmooth(ind, y, kernel = "normal", bandwidth = span))
+span <- 50
+fit_su <- with(ts_ex_data, 
+            ksmooth(ind, y, kernel = "box", bandwidth = span))
+fit_sw <- with(ts_ex_data, 
+            ksmooth(ind, y, kernel = "normal", bandwidth = span))
+
+# 4 separate plots for now:
+# Rough, unweighted
+ts_ex_data %>% mutate(smooth = fit_ru$y) %>%
+  ggplot(aes(ind, y)) +
+  geom_point(size = 1, alpha = .5, color = "grey") +
+  geom_line(aes(ind, smooth), color="red") +
+  labs(title = "ARMA(1,1) time series\n box smooth (span 10)",
+       x = "Time axis",
+       y = "Outcome")
+
+# Rough, weighted
+ts_ex_data %>% mutate(smooth = fit_rw$y) %>%
+  ggplot(aes(ind, y)) +
+  geom_point(size = 1, alpha = .5, color = "grey") +
+  geom_line(aes(ind, smooth), color="red")+
+  labs(title = "ARMA(1,1) time series\n Gaussian smooth (span 10)",
+       x = "Time axis",
+       y = "Outcome")
+
+# Smooth, unweighted
+ts_ex_data %>% mutate(smooth = fit_su$y) %>%
+  ggplot(aes(ind, y)) +
+  geom_point(size = 1, alpha = .5, color = "grey") +
+  geom_line(aes(ind, smooth), color="red") +
+  labs(title = "ARMA(1,1) time series\n box smooth (span 50)",
+       x = "Time axis",
+       y = "Outcome")
+
+# Smooth, weighted
+ts_ex_data %>% mutate(smooth = fit_sw$y) %>%
+  ggplot(aes(ind, y)) +
+  geom_point(size = 1, alpha = .5, color = "grey") +
+  geom_line(aes(ind, smooth), color="red") +
+  labs(title = "ARMA(1,1) time series\n Gaussian smooth (span 50)",
+       x = "Time axis",
+       y = "Outcome")
+
+
+```
+
+## Slide 20:  loess
+
+Loess is a locally weighted regression model fit over a small span. The default
+in loewss is a 2nd degree polynomial, rather than a linear regression line.
+
+<!--
+# example code copied from rafalab link above
+total_days <- diff(range(polls_2008$day))
+span <- 21/total_days
+
+fit <- loess(margin ~ day, degree=1, span = span, data=polls_2008)
+
+polls_2008 %>% mutate(smooth = fit$fitted) %>%
+  ggplot(aes(day, margin)) +
+  geom_point(size = 3, alpha = .5, color = "grey") +
+  geom_line(aes(day, smooth), color="red")
+  -->
+  
+```{r loess example}
+#---- loess example ----
+
+# first convert to a tibble
+ts_ex_data <- ts_ex_data %>% tibble()
+
+# choose a span based on the length of the data
+# default span is .75; we are using .1 (50/500)
+span <- .25
+
+# consider two different loess smoothers, linear and polynomial
+fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+# the default is degree = 2
+fit2 <- loess(y ~ ind, span = span, data=ts_ex_data)
+
+ts_ex_data %>% mutate(smooth1 = fit1$fitted,
+                      smooth2 = fit2$fitted) %>%
+  ggplot(aes(ind, y)) +
+  geom_point(size = 1, alpha = .5, color = "grey") +
+  geom_line(aes(ind, smooth1), color="red", lty = 1) +
+  geom_line(aes(ind, smooth2), color="blue", lty = 2) +
+  labs(title = "ARMA(1,1) time series\n with loess smooth (span .25)",
+       x = "Time axis",
+       y = "Outcome")
+
+# short span
+span <- .1
+
+# consider two different loess smoothers, linear and polynomial
+fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+# the default is degree = 2
+fit2 <- loess(y ~ ind, span = span, data=ts_ex_data)
+
+ts_ex_data %>% mutate(smooth1 = fit1$fitted,
+                      smooth2 = fit2$fitted) %>%
+  ggplot(aes(ind, y)) +
+  geom_point(size = 1, alpha = .5, color = "grey") +
+  geom_line(aes(ind, smooth1), color="red", lty = 1) +
+  geom_line(aes(ind, smooth2), color="blue", lty = 2) +
+  labs(title = "ARMA(1,1) time series\n with loess smooth (span .1)",
+       x = "Time axis",
+       y = "Outcome")
+
+# long span
+span <- .75
+
+# consider two different loess smoothers, linear and polynomial
+fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+# the default is degree = 2
+fit2 <- loess(y ~ ind, span = span, data=ts_ex_data)
+
+ts_ex_data %>% mutate(smooth1 = fit1$fitted,
+                      smooth2 = fit2$fitted) %>%
+  ggplot(aes(ind, y)) +
+  geom_point(size = 1, alpha = .5, color = "grey") +
+  geom_line(aes(ind, smooth1), color="red", lty = 1) +
+  geom_line(aes(ind, smooth2), color="blue", lty = 2) +
+  labs(title = "ARMA(1,1) time series\n with loess smooth (span .75)",
+       x = "Time axis",
+       y = "Outcome")
+
+```
+
+# Slide 21:  Smooth vs. rough decomposition
+
+```{r}
+#---- smooth vs. rough ----
+
+# after minimal smoothing -- long span
+span <- .75
+
+fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+ts_ex_data %>% mutate(smooth1 = fit1$fitted,
+                      resid1  = y - fit1$fitted) %>%
+  ggplot(aes(ind, resid1)) +
+  geom_point(size = .75, alpha = .5, color = "black") +
+  geom_abline(intercept=0, slope = 0, color="red", lty = 1) +
+  labs(title = "ARMA(1,1) residual time series\n light smoothing removed",
+       x = "Time axis",
+       y = "Residual Outcome")
+
+# after more aggressive smoothing -- wigglier curve
+span <- .1
+
+fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+
+ts_ex_data %>% mutate(smooth1 = fit1$fitted,
+                      resid1  = y - fit1$fitted) %>%
+  ggplot(aes(ind, resid1)) +
+  geom_point(size = .75, alpha = .5, color = "black") +
+  geom_abline(intercept=0, slope = 0, color="red", lty = 1) +
+  labs(title = "ARMA(1,1) residual time series\n wiggly smoother removed",
+       x = "Time axis",
+       y = "Residual Outcome")
+
+
+```
+
+# Slide 22:  Differencing
+
+```{r}
+#---- Differencing ----
+
+# first difference:
+ts_ex_diff <- ts_ex_data %>% 
+    mutate(diff = y - lag(y, default = first(y), order_by = ind))
+
+#ts_ex_diff
+
+# plot the first differences and check how smooth they are:
+span = 0.75
+fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+ts_ex_diff %>% mutate(smooth1 = fit1$fitted,
+                      resid1  = y - fit1$fitted) %>%
+  ggplot(aes(ind, diff)) +
+  geom_point(size = .75, alpha = .5, color = "black") +
+  geom_line(aes(ind, smooth1), color="red", lty = 1) +
+  labs(title = "ARMA(1,1) first differences\n w/ loess smooth (span .75)",
+       x = "Time axis",
+       y = "Residual Outcome")
+
+```
+
+
