@@ -276,6 +276,24 @@ res_pure <- result_pure_sp %>%
               ) %>%
     arrange(`E(exp_var)`) 
     
+# # The following commented out version adds in 95% coverage statistics
+# res_pure <- result_pure_sp %>%
+#     rowwise %>% 
+#     mutate(is_95cov = between(2, b1 - 1.96*seb1, b1 + 1.96*seb1)) %>%
+#     group_by(predictor) %>% 
+#     summarise(N = n(), 
+#               `E(b1)` = mean(b1),
+#               sd_b1 = sd(b1),
+#               Coverage = sum(is_95cov)/N,
+#               `E(se_b1)` = sqrt(mean(seb1^2)),
+#               `RMSE_b1` = sqrt(var(b1)+(mean(b1-2)^2)),
+#               `E(R2_exp(reg))` = mean(R2_W_reg),
+#               `E(R2_exp(MSE))` = mean(R2_W_MSE),
+#               `E(exp_var)` = mean(exp_var),
+#               .groups = "drop" 
+#               ) %>%
+#     arrange(`E(exp_var)`) 
+    
 # Display results 
 # Note: This presentation removes N from the table and puts it in the caption.
 # This is good practice since we don't want columns in our tables with constant
