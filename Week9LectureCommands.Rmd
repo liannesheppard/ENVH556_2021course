@@ -47,21 +47,56 @@ pacman::p_load(tseries, xts)
 ```{r AR(1) example}
 #---- AR(1) example----
 
-# n is length of time series
-n <- 500
-# generate data with alpha = .5
-e <- rnorm(n)
-y <- double(n)
-y[1] <- 0
-for (i in 2:n) {y[i] <- 0.5*y[i-1] + e[i]}
- 
-# make a tsibble 
-ts_ex_data <- tibble(y, ind = seq(1,n)) %>%
-  as_tsibble(index = ind)
+# function to generate an AR(1) series.  Includes units in function
+ar_data <- function(n = 500, interval = 1, units = "seconds", alpha=0.5){
+  
+  # function arguments
+    # n: integer, desired output dataframe length
+    # interval: integer specifying the number between timestamps
+    # units: character specifying the lubridate period function (e.g. "minutes")
+    # alpha: numeric value less than 1 specifying the AR alpha term.
+  
+  # function requires lubridate and tsibble
+  pacman::p_load(lubridate, tsibble)
+  
+  # use match.fun() to find the lubridate function specifying time units
+  input_units <- match.fun(units)
+  
+  # generate time sequence
+  x <- seq(1:n)*interval %>% input_units()
+  
+  # generate e and y
+  e <- rnorm(n)
+  y <- double(n)
+  y[1] <- 0
+  for (i in 2:n) {y[i] <- alpha*y[i-1] + e[i]}
+
+  # make a `tsibble`
+  ts_ex_data <- data.frame(time = x, y) %>% as_tsibble(index = time) 
+  
+  # explicit return
+  return(ts_ex_data)
+  
+}
+
+
+# Alternative to function:  Manual creation of an AR(1) time series
+# # n is length of time series
+# n <- 500
+# # generate data with alpha = .5
+# e <- rnorm(n)
+# y <- double(n)
+# y[1] <- 0
+# for (i in 2:n) {y[i] <- 0.5*y[i-1] + e[i]}
+
+set.seed(20)
+
+# create data 
+ts_ex_data <- ar_data() 
 
 # plot time series
 ggplot() + 
-  geom_line(data = ts_ex_data, aes(x = ind, y = y)) +
+  geom_line(data = ts_ex_data, aes(x = time, y = y)) +
   labs(title = "AR(1) time series",
        x = "Time axis",
        y = "Outcome")
@@ -79,21 +114,12 @@ ts_ex_data %>% PACF(y) %>% autoplot()
 ```{r AR(1) example2}
 #---- AR(1) example2----
 
-# n is length of time series
-n <- 500
-# generate data with alpha = .9
-e <- rnorm(n)
-y <- double(n)
-y[1] <- 0
-for (i in 2:n) {y[i] <- 0.9*y[i-1] + e[i]}
- 
-# make a tsibble 
-ts_ex_data <- tibble(y, ind = seq(1,n)) %>%
-  as_tsibble(index = ind)
+# create data 
+ts_ex_data <- ar_data(alpha = 0.9) 
 
 # plot time series
 ggplot() + 
-  geom_line(data = ts_ex_data, aes(x = ind, y = y)) +
+  geom_line(data = ts_ex_data, aes(x = time, y = y)) +
   labs(title = "AR(1) time series, alpha=0.9",
        x = "Time axis",
        y = "Outcome")
@@ -122,12 +148,12 @@ y[2] <- e[2] + 0.8*e[1]
 for (i in 3:n) {y[i] <- e[i] + 0.8*e[i-1] + 0.8*e[i-2]}
  
 # make a tsibble 
-ts_ex_data <- tibble(y, ind = seq(1,n)) %>%
-  as_tsibble(index = ind)
+ts_ex_data <- tibble(y, time = seq(1,n)) %>%
+  as_tsibble(index = time)
 
 # plot time series
 ggplot() + 
-  geom_line(data = ts_ex_data, aes(x = ind, y = y)) +
+  geom_line(data = ts_ex_data, aes(x = time, y = y)) +
   labs(title = "MA(2) time series",
        x = "Time axis",
        y = "Outcome")
@@ -159,12 +185,12 @@ y[1] <- e[1]
 for (i in 2:n) {y[i] <- 0.9*y[i-1] + e[i] + 0.8*e[i-1] }
  
 # make a tsibble 
-ts_ex_data <- tibble(y, ind = seq(1,n)) %>%
-  as_tsibble(index = ind)
+ts_ex_data <- tibble(y, time = seq(1,n)) %>%
+  as_tsibble(index = time)
 
 # plot time series
 ggplot() + 
-  geom_line(data = ts_ex_data, aes(x = ind, y = y)) +
+  geom_line(data = ts_ex_data, aes(x = time, y = y)) +
   labs(title = "ARMA(1,1) time series",
        x = "Time axis",
        y = "Outcome")
@@ -177,29 +203,22 @@ ts_ex_data %>% PACF(y) %>% autoplot()
 
 ```
 
-# Time plots with smoother overlaid
+# Not a slide:  Time plots with smoother overlaid
 
-The next chunk attempts some ideas but so far none are working.  Would like to
-show a running 10th percentile.
+The next chunk shows the slider function and a user-written moving function that can present a running 10th percentile.
 
-```{r Time plot with smoother, eval = FALSE}
+```{r Time plot with smoother}
 #---- Time plot with smoother ----
 
-# Chris: none of the following are working. Due to the tsibble? Maybe drop in
-# favor of the kernel and loess smoothers below?  Thought it owuld be nice to
-# get an example of the quantile smoother to work to accompany Brantley
-
-# Lianne, this is all working now:
-  # 1) the slider function works with `mutate()`
-  # 2) the custom function was missing an argument in the function definition.
-
-# Not working
+# Using slider function with mean; the lab shows it with the quantile
 ts_ex_data <- ts_ex_data %>%
   mutate(slide_20 = slide_dbl(ts_ex_data$y, ~mean(.x, na.rm = TRUE), .before = 10, .after = 10) )
 
 
-# # Not working:  fails at side %in% and says object 'side' not found
-# # from here:  https://stackoverflow.com/questions/743812/calculating-moving-average
+# User-written moving window function:  Functionally this is the same as the
+# slide function; seeing the code allows you to see how it can be constructed.
+# Code found here:
+# https://stackoverflow.com/questions/743812/calculating-moving-average
 moving_fn <- function(x, w, fun, side, ...) {
   # x = vector with numeric data
   # w = window length
@@ -223,8 +242,7 @@ moving_fn <- function(x, w, fun, side, ...) {
   y
 }
 
-
-# and now any variation you can think of!
+# and now create any variation you can think of!
 moving_average <- function(x, w = 5, side = "centre", na.rm = FALSE) {
   moving_fn(x = x, w = w, fun = mean, side = side, na.rm = na.rm)
 }
@@ -253,8 +271,19 @@ moving_10th <- function(x, w = 5, side = "centre", na.rm = FALSE) {
   moving_fn(x = x, w = w, fun = quantile, side = side, na.rm = na.rm, 0.10)
 }
 
-# Test rolling background when the above finally works:
+# Test rolling background:
 roll10_y <- moving_10th(ts_ex_data$y, w = 10, side = "c")
+
+# Show the results on a plot
+ts_ex_data %>%
+  bind_cols(roll10_y) %>%
+  ggplot(aes(time, y)) +
+  geom_point(size = 1, alpha = .5, color = "grey") +
+  geom_line(aes(time, slide_20), color="red", lty=1) +
+  geom_line(aes(time, roll10_y), color="blue", lty=2) +
+  labs(title = "ARMA(1,1) time series\n slider & rolling 10th %tile",
+       x = "Time axis",
+       y = "Outcome")
 
 ```
 
@@ -271,119 +300,62 @@ data.
 ## Slide 18:  4 example plots with different kernel smoothers
 
 <!--
-# examples copied from rafalab:
-
-# # bin smoothing
-# span <- 7 
-# fit <- with(polls_2008, 
-#             ksmooth(day, margin, kernel = "box", bandwidth = span))
-# 
-# polls_2008 %>% mutate(smooth = fit$y) %>%
-#   ggplot(aes(day, margin)) +
-#     geom_point(size = 3, alpha = .5, color = "grey") + 
-#   geom_line(aes(day, smooth), color="red")
-
-# # kernel smoothing, normal kernel
-# span <- 20
-# fit <- with(polls_2008, 
-#             ksmooth(day, margin, kernel = "normal", bandwidth = span))
-# 
-# polls_2008 %>% mutate(smooth = fit$y) %>%
-#   ggplot(aes(day, margin)) +
-#   geom_point(size = 3, alpha = .5, color = "grey") + 
-#   geom_line(aes(day, smooth), color="red")
+# examples below copied from rafalab and edited
 -->
 
 
 ```{r bin and kernel smoothing}
 #---- bin and kernel smoothing ----
 
-
-# # TODO: Optional; what is wrong with this?  The separate code
-# # (sample below) works but this faceted version doesn't
-# # examples implemented:
-# # bin smoothing
-# span <- 10 
-# fit_ru <- with(ts_ex_data, 
-#             ksmooth(ind, y, kernel = "box", bandwidth = span))
-# fit_rw <- with(ts_ex_data, 
-#             ksmooth(ind, y, kernel = "normal", bandwidth = span))
-# span <- 50
-# fit_su <- with(ts_ex_data, 
-#             ksmooth(ind, y, kernel = "box", bandwidth = span))
-# fit_sw <- with(ts_ex_data, 
-#             ksmooth(ind, y, kernel = "normal", bandwidth = span))
-# 
-# data_smooth <- ts_ex_data %>% tibble() %>%
-#   # create new variables from the different fits
-#   mutate(smooth_ru = fit_ru$y,
-#          smooth_rw = fit_rw$y,
-#          smooth_su = fit_su$y,
-#          smooth_sw = fit_su$y) %>%
-#   # make dataset longer
-#   pivot_longer(cols = c(contains("smooth_")), 
-#                names_to = "Smoother_type", 
-#                values_to = "smooth_fit")
-# 
-#   ggplot(aes(ind, y=smooth_fit)) +
-#     # different plots by error type
-#     facet_wrap(~error_type) +
-#     # raw data as points
-#     geom_point(size = 1, alpha = .5, shape = "o", color = "grey") + 
-#     # lines for smooths
-#     geom_line(aes(ind, smooth_fit), color="red")
-# 
-
 # kernel smoothing, box and normal kernel
 # note the Gaussian is a smoother function, even for the same span
 span <- 10 
 fit_ru <- with(ts_ex_data, 
-            ksmooth(ind, y, kernel = "box", bandwidth = span))
+            ksmooth(time, y, kernel = "box", bandwidth = span))
 fit_rw <- with(ts_ex_data, 
-            ksmooth(ind, y, kernel = "normal", bandwidth = span))
+            ksmooth(time, y, kernel = "normal", bandwidth = span))
 span <- 50
 fit_su <- with(ts_ex_data, 
-            ksmooth(ind, y, kernel = "box", bandwidth = span))
+            ksmooth(time, y, kernel = "box", bandwidth = span))
 fit_sw <- with(ts_ex_data, 
-            ksmooth(ind, y, kernel = "normal", bandwidth = span))
+            ksmooth(time, y, kernel = "normal", bandwidth = span))
 
 # 4 separate plots for now:
 # Rough, unweighted
 ts_ex_data %>% mutate(smooth = fit_ru$y) %>%
-  ggplot(aes(ind, y)) +
+  ggplot(aes(time, y)) +
   geom_point(size = 1, alpha = .5, color = "grey") +
-  geom_line(aes(ind, smooth), color="red") +
+  geom_line(aes(time, smooth), color="red") +
   labs(title = "ARMA(1,1) time series\n box smooth (span 10)",
        x = "Time axis",
        y = "Outcome")
 
 # Rough, weighted
 ts_ex_data %>% mutate(smooth = fit_rw$y) %>%
-  ggplot(aes(ind, y)) +
+  ggplot(aes(time, y)) +
   geom_point(size = 1, alpha = .5, color = "grey") +
-  geom_line(aes(ind, smooth), color="red")+
+  geom_line(aes(time, smooth), color="red")+
   labs(title = "ARMA(1,1) time series\n Gaussian smooth (span 10)",
        x = "Time axis",
        y = "Outcome")
 
 # Smooth, unweighted
 ts_ex_data %>% mutate(smooth = fit_su$y) %>%
-  ggplot(aes(ind, y)) +
+  ggplot(aes(time, y)) +
   geom_point(size = 1, alpha = .5, color = "grey") +
-  geom_line(aes(ind, smooth), color="red") +
+  geom_line(aes(time, smooth), color="red") +
   labs(title = "ARMA(1,1) time series\n box smooth (span 50)",
        x = "Time axis",
        y = "Outcome")
 
 # Smooth, weighted
 ts_ex_data %>% mutate(smooth = fit_sw$y) %>%
-  ggplot(aes(ind, y)) +
+  ggplot(aes(time, y)) +
   geom_point(size = 1, alpha = .5, color = "grey") +
-  geom_line(aes(ind, smooth), color="red") +
+  geom_line(aes(time, smooth), color="red") +
   labs(title = "ARMA(1,1) time series\n Gaussian smooth (span 50)",
        x = "Time axis",
        y = "Outcome")
-
 
 ```
 
@@ -393,17 +365,8 @@ Loess is a locally weighted regression model fit over a small span. The default
 in loewss is a 2nd degree polynomial, rather than a linear regression line.
 
 <!--
-# example code copied from rafalab link above
-total_days <- diff(range(polls_2008$day))
-span <- 21/total_days
-
-fit <- loess(margin ~ day, degree=1, span = span, data=polls_2008)
-
-polls_2008 %>% mutate(smooth = fit$fitted) %>%
-  ggplot(aes(day, margin)) +
-  geom_point(size = 3, alpha = .5, color = "grey") +
-  geom_line(aes(day, smooth), color="red")
-  -->
+# example code copied from rafalab link above and edited
+-->
   
 ```{r loess example}
 #---- loess example ----
@@ -416,16 +379,16 @@ ts_ex_data <- ts_ex_data %>% tibble()
 span <- .25
 
 # consider two different loess smoothers, linear and polynomial
-fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+fit1 <- loess(y ~ time, degree=1, span = span, data=ts_ex_data)
 # the default is degree = 2
-fit2 <- loess(y ~ ind, span = span, data=ts_ex_data)
+fit2 <- loess(y ~ time, span = span, data=ts_ex_data)
 
 ts_ex_data %>% mutate(smooth1 = fit1$fitted,
                       smooth2 = fit2$fitted) %>%
-  ggplot(aes(ind, y)) +
+  ggplot(aes(time, y)) +
   geom_point(size = 1, alpha = .5, color = "grey") +
-  geom_line(aes(ind, smooth1), color="red", lty = 1) +
-  geom_line(aes(ind, smooth2), color="blue", lty = 2) +
+  geom_line(aes(time, smooth1), color="red", lty = 1) +
+  geom_line(aes(time, smooth2), color="blue", lty = 2) +
   labs(title = "ARMA(1,1) time series\n with loess smooth (span .25)",
        x = "Time axis",
        y = "Outcome")
@@ -434,16 +397,16 @@ ts_ex_data %>% mutate(smooth1 = fit1$fitted,
 span <- .1
 
 # consider two different loess smoothers, linear and polynomial
-fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+fit1 <- loess(y ~ time, degree=1, span = span, data=ts_ex_data)
 # the default is degree = 2
-fit2 <- loess(y ~ ind, span = span, data=ts_ex_data)
+fit2 <- loess(y ~ time, span = span, data=ts_ex_data)
 
 ts_ex_data %>% mutate(smooth1 = fit1$fitted,
                       smooth2 = fit2$fitted) %>%
-  ggplot(aes(ind, y)) +
+  ggplot(aes(time, y)) +
   geom_point(size = 1, alpha = .5, color = "grey") +
-  geom_line(aes(ind, smooth1), color="red", lty = 1) +
-  geom_line(aes(ind, smooth2), color="blue", lty = 2) +
+  geom_line(aes(time, smooth1), color="red", lty = 1) +
+  geom_line(aes(time, smooth2), color="blue", lty = 2) +
   labs(title = "ARMA(1,1) time series\n with loess smooth (span .1)",
        x = "Time axis",
        y = "Outcome")
@@ -452,16 +415,16 @@ ts_ex_data %>% mutate(smooth1 = fit1$fitted,
 span <- .75
 
 # consider two different loess smoothers, linear and polynomial
-fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+fit1 <- loess(y ~ time, degree=1, span = span, data=ts_ex_data)
 # the default is degree = 2
-fit2 <- loess(y ~ ind, span = span, data=ts_ex_data)
+fit2 <- loess(y ~ time, span = span, data=ts_ex_data)
 
 ts_ex_data %>% mutate(smooth1 = fit1$fitted,
                       smooth2 = fit2$fitted) %>%
-  ggplot(aes(ind, y)) +
+  ggplot(aes(time, y)) +
   geom_point(size = 1, alpha = .5, color = "grey") +
-  geom_line(aes(ind, smooth1), color="red", lty = 1) +
-  geom_line(aes(ind, smooth2), color="blue", lty = 2) +
+  geom_line(aes(time, smooth1), color="red", lty = 1) +
+  geom_line(aes(time, smooth2), color="blue", lty = 2) +
   labs(title = "ARMA(1,1) time series\n with loess smooth (span .75)",
        x = "Time axis",
        y = "Outcome")
@@ -470,16 +433,16 @@ ts_ex_data %>% mutate(smooth1 = fit1$fitted,
 
 # Slide 21:  Smooth vs. rough decomposition
 
-```{r}
+```{r smooth vs. rough}
 #---- smooth vs. rough ----
 
 # after minimal smoothing -- long span
 span <- .75
 
-fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+fit1 <- loess(y ~ time, degree=1, span = span, data=ts_ex_data)
 ts_ex_data %>% mutate(smooth1 = fit1$fitted,
                       resid1  = y - fit1$fitted) %>%
-  ggplot(aes(ind, resid1)) +
+  ggplot(aes(time, resid1)) +
   geom_point(size = .75, alpha = .5, color = "black") +
   geom_abline(intercept=0, slope = 0, color="red", lty = 1) +
   labs(title = "ARMA(1,1) residual time series\n light smoothing removed",
@@ -489,11 +452,11 @@ ts_ex_data %>% mutate(smooth1 = fit1$fitted,
 # after more aggressive smoothing -- wigglier curve
 span <- .1
 
-fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+fit1 <- loess(y ~ time, degree=1, span = span, data=ts_ex_data)
 
 ts_ex_data %>% mutate(smooth1 = fit1$fitted,
                       resid1  = y - fit1$fitted) %>%
-  ggplot(aes(ind, resid1)) +
+  ggplot(aes(time, resid1)) +
   geom_point(size = .75, alpha = .5, color = "black") +
   geom_abline(intercept=0, slope = 0, color="red", lty = 1) +
   labs(title = "ARMA(1,1) residual time series\n wiggly smoother removed",
@@ -505,27 +468,29 @@ ts_ex_data %>% mutate(smooth1 = fit1$fitted,
 
 # Slide 22:  Differencing
 
-```{r}
+```{r Differencing}
 #---- Differencing ----
 
 # first difference:
 ts_ex_diff <- ts_ex_data %>% 
-    mutate(diff = y - lag(y, default = first(y), order_by = ind))
+    mutate(diff = y - lag(y, default = first(y), order_by = time))
 
 #ts_ex_diff
 
 # plot the first differences and check how smooth they are:
 span = 0.75
-fit1 <- loess(y ~ ind, degree=1, span = span, data=ts_ex_data)
+fit1 <- loess(y ~ time, degree=1, span = span, data=ts_ex_data)
 ts_ex_diff %>% mutate(smooth1 = fit1$fitted,
                       resid1  = y - fit1$fitted) %>%
-  ggplot(aes(ind, diff)) +
+  ggplot(aes(time, diff)) +
   geom_point(size = .75, alpha = .5, color = "black") +
-  geom_line(aes(ind, smooth1), color="red", lty = 1) +
+  geom_line(aes(time, smooth1), color="red", lty = 1) +
   labs(title = "ARMA(1,1) first differences\n w/ loess smooth (span .75)",
        x = "Time axis",
        y = "Residual Outcome")
 
 ```
 
+# Spline smoothing
 
+TODO:  Use this section to discus the difference between smoothing and regression splines and show some example smooths.
