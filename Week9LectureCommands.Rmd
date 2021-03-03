@@ -189,69 +189,72 @@ show a running 10th percentile.
 # favor of the kernel and loess smoothers below?  Thought it owuld be nice to
 # get an example of the quantile smoother to work to accompany Brantley
 
-# # Not working
-# ts_ex_data <- ts_ex_data %>% 
-#   #as_tibble() %>%
-#   slide_dbl(ts_ex_data$y, ~mean(.x, na.rm = TRUE), .before = 10, .after = 10) 
-#Example code:
-#slide_dbl(x, ~mean(.x, na.rm = TRUE), .before = 1)
+# Lianne, this is all working now:
+  # 1) the slider function works with `mutate()`
+  # 2) the custom function was missing an argument in the function definition.
+
+# Not working
+ts_ex_data <- ts_ex_data %>%
+  mutate(slide_20 = slide_dbl(ts_ex_data$y, ~mean(.x, na.rm = TRUE), .before = 10, .after = 10) )
+
 
 # # Not working:  fails at side %in% and says object 'side' not found
 # # from here:  https://stackoverflow.com/questions/743812/calculating-moving-average
-# moving_fn <- function(x, w, fun, ...) {
-#   # x = vector with numeric data
-#   # w = window length
-#   # fun = function to apply
-#   # side = side to take, (c)entre, (l)eft or (r)ight
-#   # ... = parameters passed on to 'fun'
-#   y <- numeric(length(x))
-#   for (i in seq_len(length(x))) {
-#     if (side %in% c("c", "centre", "center")) {
-#       ind <- c((i - floor(w / 2)):(i + floor(w / 2)))
-#     } else if (side %in% c("l", "left")) {
-#       ind <- c((i - floor(w) + 1):i)
-#     } else if (side %in% c("r", "right")) {
-#       ind <- c(i:(i + floor(w) - 1))
-#     } else {
-#       stop("'side' must be one of 'centre', 'left', 'right'", call. = FALSE)
-#     }
-#     ind <- ind[ind %in% seq_len(length(x))]
-#     y[i] <- fun(x[ind], ...)
-#   }
-#   y
-# }
-# 
-# # and now any variation you can think of!
-# moving_average <- function(x, w = 5, side = "centre", na.rm = FALSE) {
-#   moving_fn(x = x, w = w, fun = mean, side = side, na.rm = na.rm)
-# }
-# 
-# moving_sum <- function(x, w = 5, side = "centre", na.rm = FALSE) {
-#   moving_fn(x = x, w = w, fun = sum, side = side, na.rm = na.rm)
-# }
-# 
-# moving_maximum <- function(x, w = 5, side = "centre", na.rm = FALSE) {
-#   moving_fn(x = x, w = w, fun = max, side = side, na.rm = na.rm)
-# }
-# 
-# moving_median <- function(x, w = 5, side = "centre", na.rm = FALSE) {
-#   moving_fn(x = x, w = w, fun = median, side = side, na.rm = na.rm)
-# }
-# 
-# moving_Q1 <- function(x, w = 5, side = "centre", na.rm = FALSE) {
-#   moving_fn(x = x, w = w, fun = quantile, side = side, na.rm = na.rm, 0.25)
-# }
-# 
-# moving_Q3 <- function(x, w = 5, side = "centre", na.rm = FALSE) {
-#   moving_fn(x = x, w = w, fun = quantile, side = side, na.rm = na.rm, 0.75)
-# }
-# 
-# moving_10th <- function(x, w = 5, side = "centre", na.rm = FALSE) {
-#   moving_fn(x = x, w = w, fun = quantile, side = side, na.rm = na.rm, 0.10)
-# }
+moving_fn <- function(x, w, fun, side, ...) {
+  # x = vector with numeric data
+  # w = window length
+  # fun = function to apply
+  # side = side to take, (c)entre, (l)eft or (r)ight
+  # ... = parameters passed on to 'fun'
+  y <- numeric(length(x))
+  for (i in seq_len(length(x))) {
+    if (side %in% c("c", "centre", "center")) {
+      ind <- c((i - floor(w / 2)):(i + floor(w / 2)))
+    } else if (side %in% c("l", "left")) {
+      ind <- c((i - floor(w) + 1):i)
+    } else if (side %in% c("r", "right")) {
+      ind <- c(i:(i + floor(w) - 1))
+    } else {
+      stop("'side' must be one of 'centre', 'left', 'right'", call. = FALSE)
+    }
+    ind <- ind[ind %in% seq_len(length(x))]
+    y[i] <- fun(x[ind], ...)
+  }
+  y
+}
 
-# # Test rolling background when the above finally works:
-# roll10_y <- moving_10th(ts_ex_data$y, w = 10, side = "c")
+
+# and now any variation you can think of!
+moving_average <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+  moving_fn(x = x, w = w, fun = mean, side = side, na.rm = na.rm)
+}
+
+moving_sum <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+  moving_fn(x = x, w = w, fun = sum, side = side, na.rm = na.rm)
+}
+
+moving_maximum <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+  moving_fn(x = x, w = w, fun = max, side = side, na.rm = na.rm)
+}
+
+moving_median <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+  moving_fn(x = x, w = w, fun = median, side = side, na.rm = na.rm)
+}
+
+moving_Q1 <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+  moving_fn(x = x, w = w, fun = quantile, side = side, na.rm = na.rm, 0.25)
+}
+
+moving_Q3 <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+  moving_fn(x = x, w = w, fun = quantile, side = side, na.rm = na.rm, 0.75)
+}
+
+moving_10th <- function(x, w = 5, side = "centre", na.rm = FALSE) {
+  moving_fn(x = x, w = w, fun = quantile, side = side, na.rm = na.rm, 0.10)
+}
+
+# Test rolling background when the above finally works:
+roll10_y <- moving_10th(ts_ex_data$y, w = 10, side = "c")
 
 ```
 
