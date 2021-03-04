@@ -186,7 +186,7 @@ consider exploring data from a different car.
 #-----gather file names for import-----
 
 # get filename paths for data files
-filenames <- list.files(data_dir) %>% str_subset("car1")
+filenames <- list.files(data_dir) %>% str_subset("car2")
 
 ```
 
@@ -219,7 +219,7 @@ resolution. An unscreened P-Trak collects particles in the range of 20 - 1,000
 nm while the screened P-Track collects particles in the range of 50-1,000 nm.
 Thus, having both allows some rudimentary understanding of particle size
 distributions. The instruments measure particle number concentration, with units
-expressed as $particles/cm^3$, $pt/cm^3$, or $1/cm^3$
+expressed as $particles/cm^3$, $pt/cm^3$, or $1/cm^3$.
 
 ```{r p.trak, message=FALSE}
 #-----p-trak-----
@@ -275,7 +275,7 @@ co2 <- read_tsv(file.path(data_dir, co2_file), skip = 1,
                 col_types = cols(`System_Time_(h:m:s)` = col_character()) ) %>% 
    
    # name columns
-   set_names(c("date", "time", "co2_conc", "h2o_conc", "temp", "pressure", 
+   setNames(c("date", "time", "co2_conc", "h2o_conc", "temp", "pressure", 
               "co2_absorp", "flow", "X9") ) %>% 
    
    # select columns of interest
@@ -931,7 +931,8 @@ ts_data <- ts_data %>%
 ALSO NOT IN BRANTLEY, BUT SUGGESTED BY LIANNE. IT SEEMS LIKE I'M DOING
 SOMETHING WRONG OR MISSING SOMETHING... MOVED HERE FOR NOW, BUT DROP?-->
 
-Another way to remove background in mobile monitoring data is to fit a smoother to the data and subtract the fitted values from the observations. 
+Another way to remove background in mobile monitoring data is to fit a smoother
+to the data and subtract the fitted values from the observations.
 
 ```{r loess.smoother, eval=FALSE, include=FALSE}
 #-----loess smoother-----
