@@ -99,6 +99,7 @@ concentrations.
 
 -->
 
+
 # Introduction and Purpose
 
 The purpose of this lab is to practice working with time series data, develop
@@ -118,14 +119,14 @@ data. The MOV-UP study has collected data from the following instruments:
   * condensation particle counter (CPC, model 3007, TSI Inc., MN)
   * black carbon aethelometer (microAeth AE51) 
   * particle sizing spectrometer (NanoScan)
-  * carbon dioxide ($CO_2$) (SenseAir K-30-FS)
+  * carbon dioxide (CO<sub>2</sub>) (SenseAir K-30-FS)
 
 The full suite of instruments and their characteristics of the platform used in
 this study can be found in [Riley et al.,
 2014](https://doi.org/10.1016/j.atmosenv.2014.09.018), [Larson et al.,
 2017](https://doi.org/10.1016/j.atmosenv.2016.12.037), and [Xiang et
 al.,2020](https://doi.org/10.1021/acs.est.0c00612). The remainder of the code in
-this week's lab uses the GPS, P-Trak, and $CO_2$ measurements.
+this week's lab uses the GPS, P-Trak, and CO<sub>2</sub> measurements.
 
 
 # Dates and Times
@@ -186,7 +187,7 @@ consider exploring data from a different car.
 #-----gather file names for import-----
 
 # get filename paths for data files
-filenames <- list.files(data_dir) %>% str_subset("car2")
+filenames <- list.files(data_dir) %>% str_subset("car1")
 
 ```
 
@@ -219,7 +220,7 @@ resolution. An unscreened P-Trak collects particles in the range of 20 - 1,000
 nm while the screened P-Track collects particles in the range of 50-1,000 nm.
 Thus, having both allows some rudimentary understanding of particle size
 distributions. The instruments measure particle number concentration, with units
-expressed as $particles/cm^3$, $pt/cm^3$, or $1/cm^3$.
+expressed as particles/cm^3^, #/cm^3^, pt/cm^3^, or 1/cm^3^.
 
 ```{r p.trak, message=FALSE}
 #-----p-trak-----
@@ -264,7 +265,7 @@ ptrak_screen
 
 ## Carbon Dioxide
 
-```{r co2, message=FALSE}
+```{r co2, message=FALSE, warning=FALSE}
 #-----co2-----
 
 # get CO2 file name
@@ -276,7 +277,7 @@ co2 <- read_tsv(file.path(data_dir, co2_file), skip = 1,
    
    # name columns
    setNames(c("date", "time", "co2_conc", "h2o_conc", "temp", "pressure", 
-              "co2_absorp", "flow", "X9") ) %>% 
+              "co2_absorp", "flow") ) %>% 
    
    # select columns of interest
    select(date, time, co2_conc) %>% 
@@ -464,7 +465,7 @@ let's remove the duplicates (you could average duplicates also).
 
 # remove duplicate rows, and convert to `tsibble`
 ts_data <- all_data %>% 
-  distinct() %>% 
+  distinct(datetime, .keep_all = TRUE) %>% 
   as_tsibble(index = datetime)
 
 ```
@@ -505,7 +506,7 @@ Timeseries data is often correlated in time - measurements taken close in time
 to one another are more similar than measurements taken farther apart. An
 autocorrelation plot helps identify at what lag (or time interval) data are less
 correlated. In the following plot, the blue lines indicate bounds on the
-autocorrelation of these data. At what time do the $CO_2$ appear less
+autocorrelation of these data. At what time do the CO<sub>2</sub> appear less
 correlated?
 
 ```{r autocorrelation}
@@ -519,7 +520,7 @@ ts_data %>% ACF(co2_conc, lag_max = 60) %>% autoplot()
 # Temporal Smoothing with New Time Scales 
 
 A common task with timeseries data is averaging to different timescales. From
-the autocorrelation plot above, we can see at a lag of 60 seconds, the $CO_2$
+the autocorrelation plot above, we can see at a lag of 60 seconds, the CO<sub>2</sub>
 concentrations are less correlated. So let's convert our 1-second data to some
 longer timescales. One package that helps with averaging tasks is `slider`.
 
@@ -771,63 +772,23 @@ map_co2
 ```
 
 
-## Map P-Trak Ratios
+# Background Standardization 
+
 <!-- Lianne & Elena, 
-THIS IS NOT IN BRANTLEY, BUT IS IT SOMETHING TO KEEP? IT LIKELY NEEDS
-MODIFICATION AS I WAS JUST FIGURING OUT/DRAFTING SOME CODE -->
+CURRENTLY THIS SECTION IS WRITTEN SHOWING 2 METHODS (MOVING MINIMUM AND
+PERCENTILE). IF YOU FIND ONE MORE IMPORTANT/INFORMATIVE THAN THE OTHER - KEEP
+ONE AND REMOVE THE OTHER (AS WRITTEN, ONLY THE MIN VERSION IS ASSIGNED TO AN
+OBJECT). WE COULD ALSO SHOW ONE AND ASK STUDENTS TO DO THE OTHER IN THEIR
+HOMEWORK -->
 
-As the $CO_2$ map shows, the data we've collected represent concentrations over
-4 hours, meaning some of the variability we're observing could be a mix of
-spatial (i.e. the variability we see in the map) and temporal (i.e. the
-variability observed in timeseries plots) processes.
-
-Next, we'll use the P-Trak data to explore the idea of pollutant ratios...
-
-```{r map.ratios}
-#-----map ratios----
-
-# calculate ratio
-ts_data <- ts_data %>% 
-  mutate(ptrak_ratio = ptrak_screen_conc / ptrak_noscreen_conc)
-
-# map concentrations
-map_ratios <- basemap +
-    
-# locations with concentrations
-geom_point(data = ts_data %>% drop_na(ptrak_ratio), 
-           aes(x = longitude, y = latitude, color = ptrak_ratio)) + 
-
-# color scale
-scale_color_continuous(low = "#56B1F7", high = "#132B43") +  
-
-# labels
-labs(color = "P-trak Ratio \nscreened:unscreened") +
-
-# theme
-theme_void() 
-
-# show map
-map_ratios
-
-```
-
-# Calculating Background & Identifying Peak Concentrations
-
-As we've seen, mobile monitoring data has a mix of temporal and spatial
-variability. In an effort to disentangle temporal confounding from spatial
-analysis, we can calculate the background concentration of a pollutant, then
-subtract it from the observed concentrations. Peak identification can then be
-performed on the background adjusted data to identify single or multi-pollutant
-extreme features (for example, departures above a particular quantile of single
-pollutant features vs departure above background of a multivariate
-representation such as a PCA feature).
-
-## Calculating Background as a Percentile of the Data 
+## Rolling Percentile & Minimum
 
 [Brantley et al., 2014](https://amt.copernicus.org/articles/7/2169/2014/)
 summarize a number of methods to calculate background concentrations, including
 those of [Bukowiecki et al.,](https://doi.org/10.1016/S1352-2310(02)00694-5),
 which includes taking the 5^th^ percentile of 1 or 5 min averages.
+
+One approach to do that is a moving percentile of the data.
 
 ```{r calculate background.as.moving.percentile}
 #-----calculate background as moving percentile-----
@@ -839,37 +800,93 @@ time_min <- 5
 perc <- 0.05
 
 # we can use use `slider` to calculate the percentile equal to background
-ts_data <- ts_data %>% 
-  mutate(background = slide_dbl(co2_conc, 
-                                 ~quantile(.x, probs = perc, na.rm = TRUE), 
-                                 .before = (time_min*60)/2, 
-                                 .after = (time_min*60)/2), 
-         co2_adj = co2_conc - background) 
+ts_data %>% 
+  mutate(co2_background = slide_dbl(co2_conc, 
+                                    ~quantile(.x, probs = perc, na.rm = TRUE), 
+                                    .before = (time_min*60)/2, 
+                                    .after = (time_min*60)/2), 
+         co2_adj = co2_conc - co2_background) %>% 
+  
+  ggplot(aes(x = datetime, y = co2_background)) + 
+    geom_line() + 
+    labs(x = "Time", y = "CO2 Background (ppm)") +
+    theme_bw()
 
 ```
 
 Here, we've taken `r time_min` minutes as the time interval and the `r 
-perc*100`^th^ percentile of the data to calculate the background $CO_2$
+perc*100`^th^ percentile of the data to calculate the background CO<sub>2</sub>
 concentration.
 
-### Plot Carbon Dioxide without Background
+As we talked about in class, another approach is to calculate the moving minimum
+of 30 min time intervals. We'll use that approach in upcoming sections.
 
-```{r plot.co2.minus.background}
-#-----plot co2 minus background-----
+```{r calculate background.as.moving.minimum, warning=FALSE}
+#-----calculate background as moving minimum-----
+
+# specify the time in minutes from which to calculate the minimum
+time_min <- 30
+
+# we can use use `slider` to calculate the minimum equal to background. 
+# `min()` will return Inf when all values are NA; use `na_if()` to avoid.
+ts_data <- ts_data %>% 
+  mutate(co2_background = slide_dbl(co2_conc, 
+                                 ~min(.x, na.rm = TRUE), 
+                                 .before = (time_min*60)/2, 
+                                 .after = (time_min*60)/2), 
+         co2_background = na_if(co2_background, Inf), 
+         co2_adj = co2_conc - co2_background
+         ) 
+
+```
+
+## Loess Smoother 
+
+<!-- Lianne & Elena, 
+ALSO NOT IN BRANTLEY, BUT SUGGESTED BY LIANNE. IT SEEMS LIKE I'M DOING
+SOMETHING WRONG OR MISSING SOMETHING... MOVED HERE FOR NOW, BUT DROP?
+CURRENTLY CODE IS NOT RUN WITH CHUNK HEADER OPTIONS
+-->
+
+Another approach to background standardization in mobile monitoring data is to
+fit a smoother to the data (and subtract the fitted values from the
+observations, if analysis requires).
+
+```{r loess.smoother}
+#-----loess smoother-----
+
+# specify loess model
+mdl <- loess(co2_conc ~ seq_along(time), data = ts_data, span = 0.1)
+
+# add predictions and adjusted concentrations to ts_data
+ts_data %>% 
+  mutate(co2_background = predict(mdl, ts_data)) %>%
+  
+  ggplot(aes(x = datetime, y = co2_background)) + 
+    geom_line() + 
+    labs(x = "Time", y = "CO2 Background (ppm)") +
+    theme_bw()
+
+```
+
+
+## Plot Carbon Dioxide with Background
+
+We'll demonstrate with the the rolling minimum approach.
+
+```{r plot.co2.and.background, warning=FALSE}
+#-----plot co2 and background-----
 
 ggplot(ts_data) + 
   
-  # plot the percentile-adjusted data
-  geom_line(aes(x = datetime, y = co2_adj)) +
+  # plot the co2 observations
+  geom_point(aes(x = datetime, y = co2_conc), size = 0.8, color = "darkgray") +
   
-  # plot the loess-adjusted data
-  #geom_line(aes(x = datetime, y = co2_adj_loess), color = "red") + 
-  
-  # add reference line
-  geom_hline(yintercept = 0, color = "gray", linetype = "dashed") +
+  # plot co2 background
+  geom_line(aes(x = datetime, y = co2_background)) + 
   
   # labels
-  labs(x = "Time", y = "CO2 Minus Background (ppm)") +
+  labs(x = "Time", y = "CO2 with Background (ppm)") +
   
   # theme
   theme_bw()
@@ -877,76 +894,117 @@ ggplot(ts_data) +
 ```
 
 
-## Identifying Peak Concentrations
+# Identifying Peak Concentrations
 
 <!-- Lianne & Elena, 
-I'm still working on this section. I read through the
-papers mentioned below to implement the minimum and percentile peak detection
-methods, but it still isn't clear to me how to implement -->
+Please add to or edit as needed, this was material I wasn't so sure of. In particular, whether or not  -->
 
-With background removed from the $CO_2$ concentrations, we can now use the
+As we've seen, mobile monitoring data has a mix of temporal and spatial
+variability. In an effort to disentangle temporal confounding from spatial
+analysis, we can calculate the background concentration of a pollutant. Peak
+identification can then be performed on the background adjusted data to identify
+single or multi-pollutant extreme features (for example, departures above a
+particular quantile of single pollutant features vs departure above background
+of a multivariate representation such as a PCA feature).
+
+With background removed from the CO<sub>2</sub> concentrations, we can now use the
 adjusted data to identify concentration peaks. Concentration peaks indicate
-potential sources of the pollutant. In this case, a $CO_2$ peak could be a large
+potential sources of the pollutant. In this case, a CO<sub>2</sub> peak could be a large
 vehicle like a truck.
 
-[Brantley et al., 2014](https://amt.copernicus.org/articles/7/2169/2014/) also
-summarize methods to identify peak concentrations. Here, we'll demonstrate a
-rolling minimum ([Kolb et al., 2004](https://doi.org/10.1021/es030718p)) and the
-rolling 25^th^ percentile of the data ([Choi et al.,
-2012](https://doi.org/10.1016/j.atmosenv.2012.07.084)).
 
-```{r id.peaks}
+```{r id.peaks, warning=FALSE}
 #-----id peaks-----
 
 # specify the time in minutes from which to calculate the percentile
 time_min <- 5
 
 # specify the percentile considered to be background
-perc <- 0.25
+perc <- 0.95
 
 # we can use use `slider` to calculate these rolling statistics
 ts_data <- ts_data %>% 
-  mutate(co2_peak_min = slide_dbl(co2_adj, 
-                                 ~min(.x, na.rm = TRUE), 
-                                 .before = (time_min*60)/2, 
-                                 .after = (time_min*60)/2), 
-         co2_peak_perc = slide_dbl(co2_adj, 
-                                   ~quantile(.x, probs = perc, na.rm = TRUE), 
-                                   .before = (time_min*60)/2, 
-                                   .after = (time_min*60)/2), 
+  mutate(co2_peak = slide_dbl(co2_adj, 
+                              ~quantile(.x, probs = perc, na.rm = TRUE), 
+                              .before = (time_min*60)/2, 
+                              .after = (time_min*60)/2), 
+         co2_is_peak = if_else(co2_adj >= co2_peak, TRUE, FALSE)
          ) 
 
 ```
 
 
+```{r plot.co2.peaks, warning=FALSE}
+#-----plot co2 peaks-----
 
-
-
-
-
-
-
-## Loess Smoother {-}
-<!-- Lianne & Elena, 
-ALSO NOT IN BRANTLEY, BUT SUGGESTED BY LIANNE. IT SEEMS LIKE I'M DOING
-SOMETHING WRONG OR MISSING SOMETHING... MOVED HERE FOR NOW, BUT DROP?-->
-
-Another way to remove background in mobile monitoring data is to fit a smoother
-to the data and subtract the fitted values from the observations.
-
-```{r loess.smoother, eval=FALSE, include=FALSE}
-#-----loess smoother-----
-
-# specify loess model
-mdl <- loess(co2_conc ~ seq_along(time), data = ts_data, span = 0.1)
-
-# add predictions and adjusted concentrations to ts_data
-ts_data <- ts_data %>% 
-  bind_cols(loess = predict(mdl, ts_data)) %>% 
-  mutate(co2_adj_loess = co2_conc-loess)
+ggplot(ts_data) + 
+  
+  # plot co2 observations
+  geom_point(aes(x = datetime, y = co2_conc, color = co2_is_peak), size = 0.8) +
+  
+  # plot background
+  geom_line(aes(x = datetime, y = co2_background)) + 
+  
+  # set colors
+  scale_colour_manual(values = c("darkgray", "darkred")) +
+  
+  # labels
+  labs(x = "Time", y = "CO2 Peaks with Background (ppm)") +
+  
+  # theme
+  theme_bw() + 
+  theme(legend.position = "none")
 
 ```
 
+
+# Local Emission Plume Detection with P-Trak 
+
+<!-- Lianne & Elena, 
+THIS WAS IN KOLB (REFERCED IN BRANTLEY) AND SEEMED DOABLE, USING THE IDEA OF
+RATIOS AND POTENTIALLY INTERESTING. IT TURNED OUT TO BE KIND OF BORING (OR I'VE
+MESSED SOMETHING UP)...
+
+IF YOU'D LIKE TO KEEP THE TEXT LIKELY COULD USE SOME EDITING/ADDITIONS -->
+
+As the CO<sub>2</sub> map shows, the data we've collected represent concentrations over
+4 hours, meaning some of the variability we're observing could be a mix of
+spatial (i.e. the variability we see in the map) and temporal (i.e. the
+variability observed in timeseries plots) processes.
+
+Next, we'll use the P-Trak emission ratio data to explore the idea of pollutant
+emission ratios described in ([Kolb et al.,
+2004](https://doi.org/10.1021/es030718p)), which normalizes pollutant
+concentrations to CO<sub>2</sub> concentrations, potentially helping identify emission
+sources in data with both temporal and spatial variability.
+
+```{r map.emission.ratios, warning=FALSE}
+#-----map emission.ratios----
+
+# calculate ratio
+ts_data <- ts_data %>% 
+  mutate(ptrak_ratio = ptrak_screen_conc / co2_adj)
+
+# map concentrations
+map_ratios <- basemap +
+    
+# locations with ratios
+geom_jitter(data = ts_data %>% drop_na(ptrak_ratio), 
+           aes(x = longitude, y = latitude, color = ptrak_ratio)) + 
+
+# color scale
+scale_color_continuous(low = "#56B1F7", high = "#132B43") +  
+
+# labels
+labs(color = "P-trak (screened) \nEmission Ratio") +
+
+# theme
+theme_void() 
+
+# show map
+map_ratios
+
+```
 
 
 # Practice
@@ -989,3 +1047,4 @@ lsf.str()
 lapply(c(lsf.str()), getAnywhere)
 
 ```
+
