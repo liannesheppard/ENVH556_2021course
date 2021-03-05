@@ -950,26 +950,30 @@ ts_data <- ts_data %>%
   mutate(co2_background_pctl = predict(mdl_pct, ts_data),
          co2_background_minl = predict(mdl_min, ts_data)) 
 
+# prepare dataframe for ggplot 
+# (creating new columns for our different types of estimates)
+ts_data %>% pivot_longer(contains("_background_")) %>% 
+  mutate(min_pct = if_else(str_detect(name, "min"), "minimum", "percentile"), 
+         smooth_un = if_else(str_detect(name, "l"), "smoothed", "unsmoothed") ) %>% 
+
 # compare all background estimates
-ggplot(data = ts_data) + 
-  geom_line(aes(x = datetime, y = co2_background_pct, lty = "solid", color = "black")) + 
-  geom_line(aes(x = datetime, y = co2_background_min, lty = "solid", color = "red")) + 
-  geom_line(aes(x = datetime, y = co2_background_pctl, lty = "dashed", color = "black")) + 
-  geom_line(aes(x = datetime, y = co2_background_minl, lty = "dashed", color = "red")) + 
+ggplot(aes(x = datetime, y = value, 
+           linetype = interaction(smooth_un, min_pct, sep = " "), 
+           color = interaction(smooth_un, min_pct, sep = " ") ) ) + 
+  
+  # plot lines
+  geom_line() + 
+  
+  # set colors
+  scale_color_manual(name = "Background Type", 
+                     values = c("red", "red", "black", "black")) +
+  
+  # set linetype
+  scale_linetype_manual(name = "Background Type", 
+                        values = c("dashed", "solid", "dashed", "solid")) + 
   
   # labels
   labs(x = "Time", y = "CO2 Background (ppm)") +
-
-  # specify legend values manually
-  scale_color_identity(name = "Background Type",
-                       breaks = c("black", "red"),
-                       labels = c("Percent", "Minimum"), 
-                       guide = "legend") +
-  
-  scale_linetype_identity(name = "Background Type",
-                        breaks = c("solid", "dashed"),
-                        labels = c("Unsmoothed", "Smoothed"), 
-                        guide = "legend") +
   
   # theme
   theme_bw() + 
