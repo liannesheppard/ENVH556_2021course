@@ -762,9 +762,8 @@ interactively within the `if()` statement).
 bbox <- ts_data %>% 
   
   # first filter to time period (and therefore geographic area) of interest
-  filter(between(datetime, 
-                 as.POSIXct("2018-07-19 13:13:00"),
-                 as.POSIXct("2018-07-19 16:32:00") ) ) %>% 
+  filter(datetime >= as.POSIXct("2018-07-19 13:13:00",tz = "US/Pacific") &
+           datetime <= as.POSIXct("2018-07-19 16:32:00",tz = "US/Pacific")) %>% 
   
   # then pipe into `make_bbox()` 
   make_bbox()
