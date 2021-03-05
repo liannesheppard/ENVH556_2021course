@@ -991,8 +991,8 @@ ggplot(data = ts_data) +
   geom_point(aes(x = datetime, y = co2_conc), size = 0.8, color = "darkgray") +
   
   # plot co2 background using the loess smoothed and unsmoothed rolling minimums
-  geom_line(aes(x = datetime, y = co2_background_minl), lty = 1) + 
-  geom_line(aes(x = datetime, y = co2_background_min), color = "red") + 
+  geom_line(aes(x = datetime, y = co2_background_minl), lty = "dashed", color = "red") + 
+  geom_line(aes(x = datetime, y = co2_background_min), lty = "solid", color = "red") + 
   
   # labels
   labs(x = "Time", y = "CO2 with Background (ppm)") +
