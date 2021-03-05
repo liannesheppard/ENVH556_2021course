@@ -77,29 +77,6 @@ if (!dir.exists(data_dir)) {
   }
 ```
 
-<!-- TODO:  THINGS TO ADD/MODIFY/REFRAME IN LAB:
-LS:  I think this can be deleted unless Elena sees something more to add
-
-# Time alignment before combining dataset
-(all instruments are 1-sec interval currently...) -- LS:  Sufficient now?  I think so
-
-# Spatial Smoothing
-average by distance covered? -- LS:  Skip
-
-# Removing the Influence of Local Exhaust Plumes
-rolling 25th percentile method used by Choi et al. (2012)
-outlier resistant statistics such as the median -- LS:  I think we have enough examples of rolling background
-
-# Characterizing Background
-Another task in mobile monitoring studies is to characterize "background"
-concentrations. LS:  I think this is done
-
-# Lab replicates concepts in:
-[Brantley et al., 2014](https://amt.copernicus.org/articles/7/2169/2014/)
-[full text](https://amt.copernicus.org/articles/7/2169/2014/amt-7-2169-2014.pdf)
-
--->
-
 
 # Introduction and Purpose
 
@@ -240,11 +217,17 @@ gps
 ## P-Trak
 
 These instruments collect ultrafine particles (UFPs) at 1-second time
-resolution. An unscreened P-Trak collects particles in the range of 20 - 1,000
-nm while the screened P-Trak collects particles in the range of 50-1,000 nm.
-Thus, having both allows some rudimentary understanding of particle size
-distributions. The instruments measure particle number concentration, with units
-expressed as particles/cm^3^, #/cm^3^, pt/cm^3^, or 1/cm^3^.
+resolution. In order to capture the change in ultrafine particles, two ultrafine
+particle counters (P-Trak) instruments were used. One instrument was operated
+under standard conditions and reported the total particle number concentration
+(in units of particles/cm^3^, #/cm^3^, pt/cm^3^, or 1/cm^3^) for all particles
+with diameters between 20 nm - 1 um. The second P-Trak operated using a screened
+inlet. The mesh size used and the number of layers of mesh were selected to
+intercept the smallest particles as they entered the system and changed the
+lower particle size to 36 nm. The difference between the unscreened and screened
+P-Trak instruments provided an estimate the particle concentration of 20-36 nm
+particles. This was verified using a particle Scanning Mobility Particle Sizer
+Spectrometer.
 
 ```{r p.trak, message=FALSE}
 #-----p-trak-----
@@ -391,7 +374,7 @@ are present even though we already observed that there are missing data after
 merging.
 
 ```{r data.availability.plot}
-#-----data.availability.plot-----
+#-----data availability plot-----
 
 # transform data from wide to long for ggplot (using latitude for GPS)
 all_data %>% 
@@ -442,7 +425,7 @@ calculating the difference in time between consecutive measurements in each of
 our datasets:
 
 ```{r time.stamps}
-#-----time stamps
+#-----time stamps-----
 
 # we'll use the instrument data list
 lapply(instrument_list, function(i){
@@ -451,7 +434,7 @@ lapply(instrument_list, function(i){
    datetimes <- i[["datetime"]]
    
    # get a vector of the differences between consecutive measurements
-   time_diff <- datetimes[2:length(datetimes)] - datetimes[1:length(datetimes)-1]
+   time_diff <- datetimes - lag(datetimes)
    
    # summarize differences
    table(time_diff)
@@ -500,7 +483,7 @@ that knitting our document doesn't fail if this operation fails. We observe that
 it does fail because there were duplicates, so then we inspect them.
 
 ```{r try.tsibble}
-#-----try tsibble----
+#-----try tsibble-----
 
 # use "try" here so document knits
 try( as_tsibble(all_data, index = datetime) )
@@ -550,10 +533,8 @@ ts_data <- fill_gaps(ts_data)
 # count rows after filling
 paste("number of rows after filling gaps:", nrow(ts_data))
 
-# glimpse
-glimpse(ts_data)
-
 ```
+
 
 # Temporal Autocorrelation
 
@@ -567,7 +548,11 @@ different from zero. At what time do the CO<sub>2</sub> appear less correlated?
 ```{r autocorrelation}
 #-----autocorrelation-----
 
+# autocorrelation plot
 ts_data %>% ACF(co2_conc, lag_max = 60) %>% autoplot()
+
+# partial autocorrelation plot
+ts_data %>% PACF(co2_conc, lag_max = 60) %>% autoplot()
 
 ```
 
@@ -621,7 +606,7 @@ ts_data <- ts_data %>%
   # use `slider` to calculate 2 minute moving averages (this works because we've
   # made sure our datetime index is unique and complete)
   mutate(co2_conc_two = slide_dbl(co2_conc, ~mean(.x, na.rm = TRUE), 
-                             .before = 60, .after = 60) ) 
+                                  .before = 60, .after = 60) ) 
 
 # # slide_period also works in the same way, but it returns a vector of different
 # # length than the original inputs
@@ -640,8 +625,6 @@ glimpse(ts_data)
 Next, let's take a look at a `tsibble` approach for 5-minute averages. Notice
 that the size of the dataframe decreases.
 
-<!--TODO Chris:  Need to add 2.5 minutes to the datetime variable so this isn't offset in time -->
-
 ```{r new.timescale}
 #-----new timescales-----
 
@@ -657,7 +640,8 @@ ts_new <- ts_data %>%
   # rename to get "datetime" variable name back
   rename(datetime = datetime_new) %>% 
   
-  # create new variable so new averages align with original due to `floor_date()`
+  # create variable so new averages are aligned with originals for plots 
+  # (because of `floor_date()` behavior)
   mutate(plot_time = datetime + minutes(2) + seconds(30))
   
 # glimpse
@@ -705,7 +689,7 @@ ggplot() +
   # plot `slider` 2-min moving averages
   geom_line(data = ts_data, aes(x = datetime, y = co2_conc_two, color = "red")) +
   
-  # plot `tsibble` 5-minute block averages
+  # plot `tsibble` 5-minute block averages (note `x = plot_time`)
   geom_line(data = ts_new, aes(x = plot_time, y = co2_conc, color = "darkgreen")) +  
   
   # specify legend values manually
@@ -726,7 +710,7 @@ ggplot() +
 ```
 
 
-# Map concentrations
+# Map Concentrations
 
 Our data was from a mobile monitoring campaign - so let's map the
 concentrations.
@@ -738,9 +722,9 @@ define the extent of the mapping region. You might find it helpful in the
 future. These operations require `stringr`and `tidyr`.
 
 ```{r define.make_bbox.function}
-#-----define make_bbox function------
+#-----define make_bbox function-----
 
-make_bbox <- function(.data, width_extra = 0.0001, height_extra = 0.00005){
+make_bbox <- function(.data, width_extra = 0.0001, height_extra = 0.0005){
   
   # dependencies
   pacman::p_load(stringr, tidyr)
@@ -761,20 +745,29 @@ make_bbox <- function(.data, width_extra = 0.0001, height_extra = 0.00005){
 
 ```
 
-In the following chunk we define the bounding box (extent of the mapping area),
-download the stamen map tiles (if they have not already been downloaded), and
-save the map for later. If the map file has already been downloaded and saved,
-we can just load the `map.rds` file. This will save you some time and from
-unnecessarily repeating file downloads as you work to develop your code. Note if
-you've already downloaded and saved a `map.rds` file, but then you want to
-modify the underlying map somehow, you'll need to delete the `map.rds` file
-first (or work interactively within the `if()` statement).
+In the following chunk we select the data corresponding to the geographic area
+of interest, define the bounding box (extent of the mapping area), download the
+stamen map tiles (if they have not already been downloaded), and save the map
+for later. If the map file has already been downloaded and saved, we can just
+load the `map.rds` file. This will save you some time and from unnecessarily
+repeating file downloads as you work to develop your code. Note if you've
+already downloaded and saved a `map.rds` file, but then you want to modify the
+underlying map somehow, you'll need to delete the `map.rds` file first (or work
+interactively within the `if()` statement).
 
 ```{r get.map.objects}
 #-----get map objects-----
 
-# define the bounding box for the map using `make_bbox()` 
-bbox <- make_bbox(ts_data)
+# define the bounding box for the map
+bbox <- ts_data %>% 
+  
+  # first filter to time period (and therefore geographic area) of interest
+  filter(between(datetime, 
+                 as.POSIXct("2018-07-19 13:13:00"),
+                 as.POSIXct("2018-07-19 16:32:00") ) ) %>% 
+  
+  # then pipe into `make_bbox()` 
+  make_bbox()
 
 # download stamen map if needed, otherwise just load it from a previous download
 if (!file.exists(file.path(data_dir, "map.rds"))) {
@@ -819,22 +812,22 @@ map_times <- ts_data %>%
 ## Map Carbon Dioxide Concentrations
 
 ```{r map.concentration, warning=FALSE}
-#-----map concentrations----
+#-----map concentrations-----
 
 # map concentrations
 map_co2 <- basemap +
 
-  # locations with concentrations
+  # map locations with concentrations
   geom_point(data = ts_data %>% drop_na(co2_conc), 
              aes(x = longitude, y = latitude, color = co2_conc))+ 
   
   # add measurement times to map
   geom_text_repel(data = map_times,
                   aes(x = longitude, y = latitude, label = map_time), 
-                  force_pull = -.02 ) +
+                  force_pull = -0.02 ) +
   
-  # color scale, chosen so that high values are darker
-  scale_color_continuous(low = "#56B1F7", high = "#132B43") +  
+  # color scale
+  scale_color_continuous(type = "viridis") +  
   
   # labels
   labs(color = "CO2 (ppm)") +
@@ -858,10 +851,10 @@ plot them for comparison.
 [Brantley et al., 2014](https://amt.copernicus.org/articles/7/2169/2014/)
 summarize a number of methods to calculate background concentrations. One
 approach described by 
-[Bukowiecki et al.,](https://doi.org/10.1016/S1352-2310(02)00694-5), includes 
-taking the 5^th^ percentile of 1 or 5 min averages. As we talked about in class,
-another approach is to calculate the moving minimum of 30-minute time intervals.
-`slider` simplifies these types of moving calculations.
+[Bukowiecki et al., 2002](https://doi.org/10.1016/S1352-2310(02)00694-5), 
+includes taking the 5^th^ percentile of 1 or 5 min averages. As we talked about
+in class, another approach is to calculate the moving minimum of 30-minute time
+intervals. `slider` simplifies these types of moving calculations.
 
 ```{r calculate background.with.moving.functions}
 #-----calculate background with moving functions-----
@@ -899,11 +892,10 @@ ts_data <- ts_data %>%
 
 ```
 
-For both the percentile approach we've taken `r time_pct` minutes
-as the time interval and `r pct*100`^th^ percentile of the data to calculate the
-background CO<sub>2</sub> concentration.
-
-Let's compare our two background estimation approaches in one plot:
+For the percentile approach we've taken `r time_pct` minutes as the time
+interval and `r pct*100`^th^ percentile of the data to calculate the background
+CO<sub>2</sub> concentration. Let's compare our two background estimation
+approaches in one plot:
 
 ```{r plot.background, warning=FALSE}
 #-----plot background-----
@@ -934,7 +926,6 @@ in the context of the data, which are **much** higher, so the apparent high
 variation in background isn't that large in the context of the complete
 CO<sub>2</sub> dataset.
 
-
 ```{r loess.smooth.of.moving.background}
 #-----loess smooth of moving background-----
 
@@ -945,7 +936,7 @@ mdl_pct <- loess(co2_background_pct ~ seq_along(time), data = ts_data,
 mdl_min <- loess(co2_background_min ~ seq_along(time), data = ts_data, 
                  span = 0.1, degree = 1)
 
-# add smoothed predictions of background to ts_data
+# add smoothed predictions of background to `ts_data`
 ts_data <- ts_data %>% 
   mutate(co2_background_pctl = predict(mdl_pct, ts_data),
          co2_background_minl = predict(mdl_min, ts_data)) 
@@ -1009,9 +1000,6 @@ ggplot(data = ts_data) +
 
 # Identifying Peak Concentrations
 
-<!-- Elena, Please add to or edit as needed, this was material I wasn't so sure
-of. In particular, whether or not  -->
-
 As we've seen, mobile monitoring data has a mix of temporal and spatial
 variability. In an effort to disentangle temporal confounding from spatial
 analysis, we can calculate the background concentration of a pollutant. Peak
@@ -1028,20 +1016,42 @@ a large vehicle like a truck.
 ```{r id.peaks, warning=FALSE}
 #-----id peaks-----
 
-# specify the time in minutes from which to calculate the percentile
-time_pct <- 5
+# specify the time in minutes for the rolling window
+time_window <- 1
 
-# specify the percentile considered to be peaks
-pct <- 0.95
+# specify windsorize cut-point (percentile)
+w_pct <- 0.95
+
+# specify cutoff for peak change in slope values
+pqv <- 0.6
 
 # we can use use `slider` to calculate these rolling statistics
 # use our previous adjusted co2 from the rolling 5th percentile (co2_adj_pct)
 ts_data <- ts_data %>% 
-  mutate(co2_peak = slide_dbl(co2_adj_pct, 
-                              ~quantile(.x, probs = pct, na.rm = TRUE), 
-                              .before = (time_pct*60)/2, 
-                              .after = (time_pct*60)/2), 
-         co2_is_peak = if_else(co2_adj_pct >= co2_peak, TRUE, FALSE)
+  mutate(
+         # calculate adjusted CO2 concentration
+         co2_adj = (co2_conc - co2_background_min),
+         
+         # identify the "next" value in the series with `lead()`
+         co2_lag = lead(co2_adj), 
+         
+         # calculate squared difference in consecutive CO2 concentrations
+         co2_diff_sq = (co2_adj - co2_lag)^2,
+         
+         # limit extreme values by windsorizing
+         co2_diff_sq = replace(co2_diff_sq, co2_diff_sq > 
+                                 quantile(co2_diff_sq, w_pct, na.rm = TRUE), 
+                               quantile(co2_diff_sq, w_pct, na.rm = TRUE)),
+         
+         # calculate a 1 minute rolling mean of CO2 differences
+         roll_co2_diff = slide_dbl(co2_diff_sq, 
+                                   ~mean(.x, na.rm = TRUE), 
+                                         .before = (time_window*60)/2, 
+                                         .after = (time_window*60)/2),
+         # calculate peaks
+         co2_is_peak = if_else(roll_co2_diff >= 
+                                 quantile(roll_co2_diff, pqv, na.rm = TRUE), 
+                               TRUE, FALSE)
          ) 
 
 ```
@@ -1072,44 +1082,39 @@ ggplot(ts_data) +
 
 # Local Emission Plume Detection with P-Trak 
 
-<!-- Elena, 
-THIS WAS IN KOLB (REFERENCED IN BRANTLEY) AND SEEMED DOABLE, USING THE IDEA OF
-RATIOS AND POTENTIALLY INTERESTING. IT TURNED OUT TO BE KIND OF BORING (OR I'VE
-MESSED SOMETHING UP)...
-
-IF YOU'D LIKE TO KEEP THE TEXT LIKELY COULD USE SOME EDITING/ADDITIONS -->
-
 As the CO<sub>2</sub> map shows, the data we've collected represent
 concentrations over 4 hours, meaning some of the variability we're observing
 could be a mix of spatial (i.e. the variability we see in the map) and temporal
 (i.e. the variability observed in time series plots) processes.
 
 Next, we'll use the P-Trak emission ratio data to explore the idea of pollutant
-emission ratios described in ([Kolb et al.,
-2004](https://doi.org/10.1021/es030718p)), which normalizes pollutant
+emission ratios described by [Kolb et al.,
+2004](https://doi.org/10.1021/es030718p), which normalizes pollutant
 concentrations to CO<sub>2</sub> concentrations, potentially helping identify
-emission sources in data with both temporal and spatial variability.
+emission sources in data with both temporal and spatial variability. We'll use
+the P-Trak data to explore the idea of pollutant ratios by plotting the
+proportion of smallest particles (20-36 nm to the total concentration of UFP
+particles).
 
 ```{r map.emission.ratios, warning=FALSE}
-#-----map emission.ratios----
+#-----map emission.ratios-----
 
-# calculate ratio, this time using adjusted co2 from the rolling minimum
-# (co2_adj_min)
+# calculate P-Trak ratio
 ts_data <- ts_data %>% 
-  mutate(ptrak_ratio = ptrak_screen_conc / co2_adj_min)
+  mutate(ptrak_ratio = (ptrak_noscreen_conc - ptrak_screen_conc) / ptrak_noscreen_conc)
 
-# map concentrations
+# map ratios that are greater than zero 
 map_ratios <- basemap +
     
-# locations with ratios
-geom_jitter(data = ts_data %>% drop_na(ptrak_ratio), 
+# locations with concentrations
+geom_point(data = ts_data %>% drop_na(ptrak_ratio), 
            aes(x = longitude, y = latitude, color = ptrak_ratio)) + 
 
 # color scale
-scale_color_continuous(low = "#56B1F7", high = "#132B43") +  
+scale_color_continuous(type = "viridis", limits = c(0,1)) + 
 
 # labels
-labs(color = "P-trak (screened) \nEmission Ratio") +
+labs(color = "P-trak Ratio \nscreened:unscreened") +
 
 # theme
 theme_void() 
