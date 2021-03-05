@@ -41,7 +41,7 @@ pacman::p_load(knitr, dplyr, tidyr, readr, stringr, ggplot2, hms,
 
 ```
 
-```{r directory.organization.read.data, echo=FALSE, warning=FALSE}
+```{r directory.organization.and.read.data, echo=FALSE, warning=FALSE}
 #-----directory organization and read data-----
 
 # specify working directory
@@ -148,18 +148,18 @@ will make it less likely that you'll interpret a date and time incorrectly.
 
 Date objects in `R` are of class `Date`, and compound date and time ("datetime")
 objects, are of class `POSIXct` (shown as `dttm` when a tibble is printed to the
-console). Let's take a look at  a `POSIXct` object and show its class: 
+console). Let's take a look at  these object types and show their classes: 
 
-```{r POSIXct.objects}
-#-----POSIXct objects-----
+```{r datetime.and.date.objects}
+#-----datetime.and.date objects-----
 
 # show POSIXct object -- a datetime object with both date and time
 Sys.time()
 
 # show class
-# Note that POSIXt is a virtual class which cannot be used directly. A virtual
-# class ‘POSIXt’ exists from which both of the classes [POSIXct and POSIXlt]
-# inherit. ‘POSIXt’  is used to allow operations such as subtraction to mix the
+# Note that 'POSIXt' is a virtual class which cannot be used directly. This
+# virtual class exists from which both of the classes (POSIXct and POSIXlt)
+# inherit. POSIXt is used to allow operations, such as subtraction, to mix the
 # two classes.
 class(Sys.time())
 
@@ -172,20 +172,25 @@ class(Sys.Date())
 ```
 
 Internally, date and datetime objects store the number of seconds (for
-`POSIXct`) or days (for `Date`) since January 1st 1970 at midnight.  So for the
-current time and date these values are `r as.numeric(Sys.time())` seconds and `r
-as.numeric(Sys.Date())` days. When printed to the console, they are displayed in
-a human-readable format along the the International Organization for
+`POSIXct`) or days (for `Date`) since January 1st 1970 at midnight. So for the
+current time and date these values are `r as.numeric(Sys.time())` seconds and 
+`r as.numeric(Sys.Date())` days. When printed to the console, they are displayed
+in a human-readable format along the the International Organization for
 Standardization (ISO) 8601 date and time standard. ISO 8601 provides an
 unambiguous, well-known, and well-defined method of representing dates and
 times.
 
 It is often necessary to define date/time components or the format of a datetime
-object specifically for each instrument. There are several reasons on practice
+object specifically for each instrument. There are several reasons in practice
 why we need to pay careful attention to this:  
-* the time scale of each instrument can be different, 
-* the internal instrument clocks can be different from each other and/or the current time, or
-* the instruments may be using different time zones, daylight savings time conventions, or there may be issues with simultaneous measurements on either side of the international date line.
+
+  * the time scale of each instrument can be different, 
+  * the internal instrument clocks can be different from each other and/or the
+    current time, or
+  * the instruments may be using different time zones, daylight savings time
+    conventions, or there may be issues with simultaneous measurements on either
+    side of the international date line.
+
 Regardless, it is necessary to ensure a common schedule prior to merging the
 data. Accounting for these issues during the initial data wrangling will make it
 easier to handle date and datetime variables throughout your analysis process.
@@ -193,13 +198,13 @@ easier to handle date and datetime variables throughout your analysis process.
 
 # Identify Files of Interest, Read Files & Wrangle
 
-Here, we'll focus on CO$_2$ data from Car 1 (there were 2 cars), for your
+Here, we'll focus on CO<sub>2</sub> data from Car 1 (there were 2 cars), for your
 assignment we ask you to analyze data from P-Traks, either using the same car or
 the other car.
 
-In each of the following chunks we show the tibble.  In the html file you can
+In each of the following chunks we show the tibble. In the `.html` file you can
 scroll through the first 10,000 rows.  However, don't assume that 10,000 is the
-maximum number of obervations in the dataset.  To learn that use `glimpse` or
+maximum number of observations in the dataset. To learn that use `glimpse` or
 `str`.
 
 ```{r gather.file.names.for.import}
@@ -234,9 +239,9 @@ gps
 
 ## P-Trak
 
-These instruments collect ultrafine particles (UFPs) at the 1 second time
+These instruments collect ultrafine particles (UFPs) at 1-second time
 resolution. An unscreened P-Trak collects particles in the range of 20 - 1,000
-nm while the screened P-Track collects particles in the range of 50-1,000 nm.
+nm while the screened P-Trak collects particles in the range of 50-1,000 nm.
 Thus, having both allows some rudimentary understanding of particle size
 distributions. The instruments measure particle number concentration, with units
 expressed as particles/cm^3^, #/cm^3^, pt/cm^3^, or 1/cm^3^.
@@ -317,17 +322,17 @@ co2
 The `purrr` package from `tidyverse` is a functional programming tool that
 allows you to apply a function iteratively over a list.  We use that next to
 merge (or "join") the datasets.  Note that the `full_join` function searches for
-common column names and joins on thse.  Alternatively you can add this argument:
-`by = c(datetime, date, time)`.
+common column names and joins on these. Alternatively you can add this argument:
+`by = c("date", "time", "datetime")`.
 
 We print out the dataset to get a basic idea of whether the merge worked.  Ask
 yourself questions like the following:
 
-* Are there missing data and what is its pattern?
-* Do the variables (columns) in the final dataset make sense to you?  
+  * Are there missing data and what is its pattern?
+  * Do the variables (columns) in the final dataset make sense to you?  
 
-We observe that early rows of the dataset have missing GPS and CO2 data, so we
-know this is something we need to investigate further.
+We observe that early rows of the dataset have missing GPS and CO<sub>2</sub>
+data, so we know this is something we need to investigate further.
 
 ```{r merge.datasets}
 #-----merge datasets-----
@@ -345,9 +350,6 @@ all_data <- reduce(instrument_list, full_join) %>%
    # arrange data in datetime order
    arrange(datetime)
 
-# show data
-all_data
-
 # use glimpse to learn more about the data
 glimpse(all_data)
 
@@ -355,18 +357,20 @@ glimpse(all_data)
 
 ## Plot Data 
 
-Let's make a quick visualization of the concentration data to get an idea of the data we're working with.
+Let's make a quick visualization of the concentration data to get an idea of the
+data we're working with.
+
 What features do you see?
 
-```{r plot.data}
+```{r plot.data, warning=FALSE}
 #-----plot data-----
 
 # transform data from wide to long for ggplot
-ggplot(data = all_data %>% 
-         pivot_longer(cols = contains("_conc"), 
-                      names_to = "pollutant", 
-                      values_to = "concentration"), 
-       aes(x = datetime, y = concentration) ) + 
+all_data %>% pivot_longer(cols = contains("_conc"), 
+                          names_to = "pollutant", 
+                          values_to = "concentration") %>% 
+# pipe into ggplot
+ggplot(aes(x = datetime, y = concentration)) + 
   
   # plot each pollutant in a facet
   facet_wrap(~pollutant, ncol = 1, scales = "free_y") + 
@@ -379,28 +383,37 @@ ggplot(data = all_data %>%
 
 ```
 
-Data availability plots can be a useful initial check to visualize what data we have across instruments over time.  We show one variable from each dataset.  In this case the plot is not very informative because the data are fairly complete and the plot doesn't make it easy to see the limited amount of missing data that are present even though we already observed that there are missing data after merging.
+Data availability plots can be a useful initial check to visualize what data we
+have across instruments over time. We show one variable from each dataset. In
+this case the plot is not very informative because the data are fairly complete
+and the plot doesn't make it easy to see the limited amount of missing data that
+are present even though we already observed that there are missing data after
+merging.
 
 ```{r data.availability.plot}
 #-----data.availability.plot-----
 
-# create temporary dataframe for ggplot
-temp <- all_data %>% 
-  pivot_longer(cols = c(contains("conc"), latitude), 
-               names_to = "measurement")
+# transform data from wide to long for ggplot (using latitude for GPS)
+all_data %>% 
+  mutate(GPS = latitude) %>%
+  pivot_longer(cols = c(contains("conc"), GPS), 
+               names_to = "measurement") %>%
 
 # make plot
-ggplot(data = temp, 
-       aes(x = datetime, y = measurement, color = factor(measurement)) ) +
-  geom_point() +
-  theme_bw()
+ggplot(aes(x = datetime, y = measurement, color = factor(measurement)) ) +
+  geom_point(size = 0.5) + 
+  labs(x = "Time", y = "Instrument") + 
+  theme_bw() + 
+  theme(legend.position = "none")
 
 ```
 
 ## Missing Data
 
-Next we try to precisely determine how much missing data we have and what are the likely sources of
-missingness in our data.  First we calculate the total and percent missing for every variable in the dataset.  We observe that the presence of missing data depends upon the instrument.
+Next we try to precisely determine how much missing data we have and what are
+the likely sources of missingness in our data. First we calculate the total and
+percent missing for every variable in the dataset. We observe that the presence
+of missing data depends upon the instrument.
 
 ```{r missing}
 #-----missing-----
@@ -424,7 +437,9 @@ lapply(all_data, function(i){
 
 # Time Interval
 
-Our data appeared to be on a similar 1-second time interval. Let's confirm by calculating the difference in time between consecutive measurements in each of our datasets:
+Our data appeared to be on a similar 1-second time interval. Let's confirm by
+calculating the difference in time between consecutive measurements in each of
+our datasets:
 
 ```{r time.stamps}
 #-----time stamps
@@ -454,9 +469,9 @@ there are duplicate measurements for some instruments (difference of zero
 seconds).
 
 Lastly, it appears that the GPS instrument was not turned on at the same time as
-the other instruments (there is no GPS data at the beginning of the all_data dataframe).
-This may be due to the fact that the other instruments were turned on for "warm-up"
-before the measurement campaign started.
+the other instruments (there is no GPS data at the beginning of the `all_data`
+dataframe). This may be due to the fact that the other instruments were turned
+on for "warm-up" before the measurement campaign started.
 
 Let's drop data missing the GPS variables for convenience, but is this the best
 thing to under all circumstances and for all variables?
@@ -469,7 +484,7 @@ all_data <- drop_na(all_data, latitude, longitude)
 ```
 
 
-# Time series data
+# Timeseries Data
 
 Time series data are marked by measurements that are indexed to a time component.
 There are many `R` standards for time series data: `ts`, `xts`, `data.frame`,
@@ -480,7 +495,9 @@ time series formats.
 We've focused most of our effort on `tidyverse` tools this term, so let's
 concentrate on the `tsibble`, `feasts`, and `slider` package functions.
 
-First we want to turn our dataset into a `tsibble`.  We use the function `try` so that knitting our document doesn't fail if this operation fails.  We observe that it does fail because there were duplicates, so then we inspect them.
+First we want to turn our dataset into a `tsibble`. We use the function `try` so
+that knitting our document doesn't fail if this operation fails. We observe that
+it does fail because there were duplicates, so then we inspect them.
 
 ```{r try.tsibble}
 #-----try tsibble----
@@ -506,14 +523,16 @@ ts_data <- all_data %>%
 
 ```
 
-Let's also fill the gaps in time. In other words, we have decided in this analysis that the index column `datetime`
-needs to be unique and complete. In standard time series analyses the time increment between every consecutive observation is the same.  Adding these new time rows introduces
-"explicit" NAs to the data, so you'll then have a choice about if and how to
-fill in the non-time data. `tidyr::fill()` can help with this task, and the
-choice of how to fill may be more or less important depending on the time scale you're working
-on, the amount of missingness, and if there are consecutive measurements
-missing. Given the small amount of missing and the one-second time scale of the
-data, it's not unreasonable to introduce a few rows with NAs here.
+Let's also fill the gaps in time. In other words, we have decided in this
+analysis that the index column `datetime` needs to be unique and complete. In
+standard time series analyses the time increment between every consecutive
+observation is the same. Adding these new time rows introduces "explicit" NAs to
+the data, so you'll then have a choice about if and how to fill in the non-time
+data. `tidyr::fill()` can help with this task, and the choice of how to fill may
+be more or less important depending on the time scale you're working on, the
+amount of missingness, and if there are consecutive measurements missing. Given
+the small amount of missing and the one-second time scale of the data, it's not
+unreasonable to introduce a few rows with NAs here.
 
 ```{r fill.ts}
 #-----fill ts-----
@@ -531,9 +550,6 @@ ts_data <- fill_gaps(ts_data)
 # count rows after filling
 paste("number of rows after filling gaps:", nrow(ts_data))
 
-# show dataframe
-ts_data
-
 # glimpse
 glimpse(ts_data)
 
@@ -545,8 +561,8 @@ Time series data is often correlated in time - measurements taken close in time
 to one another are more similar than measurements taken farther apart. An
 autocorrelation plot helps identify at what lag (or time interval) data are less
 correlated. In the following plot, the blue lines indicate bounds on the
-autocorrelation of these data, i.e., which autocorrelations statistically different from zero. At what time do the CO<sub>2</sub> appear less
-correlated?
+autocorrelation of these data, i.e., which autocorrelations statistically
+different from zero. At what time do the CO<sub>2</sub> appear less correlated?
 
 ```{r autocorrelation}
 #-----autocorrelation-----
@@ -559,18 +575,19 @@ ts_data %>% ACF(co2_conc, lag_max = 60) %>% autoplot()
 # Temporal Smoothing with New Time Scales -- Moving averages
 
 A common task with time series data is averaging to different time scales. From
-the autocorrelation plot above, we can see at a lag of 60 seconds, the CO<sub>2</sub>
-concentrations are no longer correlated. So let's convert our 1-second data to some
-longer time scales. One package that helps with averaging tasks is `slider`.
+the autocorrelation plot above, we can see at a lag of 60 seconds, the
+CO<sub>2</sub> concentrations are no longer correlated. So let's convert our
+1-second data to some longer time scales. One package that helps with averaging
+tasks is `slider`.
 
 For the first average we'll use the time scale period (minutes) to calculate
 1-minute averages. Though with other data, this could also be months, weeks,
-years, etc. This is a "block average" where the period we are averaging over is based on an attribute of the data. For
-example, if you wanted monthly averages, this method would be "aware" of the
-fact there are a different number of days in each month. For the second average
-(a 2-minute average) we'll demonstrate a moving ("sliding" or "rolling") average, where the
-number of neighbors before and after a value of interest are used to compute an
-average.
+years, etc. This is a "block average" where the period we are averaging over is
+based on an attribute of the data. For example, if you wanted monthly averages,
+this method would be "aware" of the fact there are a different number of days in
+each month. For the second average (a 2-minute average) we'll demonstrate a
+moving ("sliding" or "rolling") average, where the number of neighbors before
+and after a value of interest are used to compute an average.
 
 Notice how both functions preserve the input dataframe size. For the period
 average we can then easily merge the new column into our existing dataframe
@@ -613,9 +630,6 @@ ts_data <- ts_data %>%
 #              .period = "minute", .f = mean, na.rm = TRUE) 
 #      )
 
-# show dataframe
-ts_data
-
 # glimpse
 glimpse(ts_data)
 
@@ -626,7 +640,7 @@ glimpse(ts_data)
 Next, let's take a look at a `tsibble` approach for 5-minute averages. Notice
 that the size of the dataframe decreases.
 
-TODO Chris:  Need to add 2.5 minutes to the datetime variable so this isn't offset in time
+<!--TODO Chris:  Need to add 2.5 minutes to the datetime variable so this isn't offset in time -->
 
 ```{r new.timescale}
 #-----new timescales-----
@@ -641,21 +655,23 @@ ts_new <- ts_data %>%
   summarise(across(where(is.numeric), mean, na.rm = TRUE ), .groups = "drop") %>% 
   
   # rename to get "datetime" variable name back
-  rename(datetime = datetime_new)
+  rename(datetime = datetime_new) %>% 
   
-# show dataframe
-ts_new
-
+  # create new variable so new averages align with original due to `floor_date()`
+  mutate(plot_time = datetime + minutes(2) + seconds(30))
+  
 # glimpse
 glimpse(ts_new)
 
 ```
 
-Following up on our autocorrelation plot above, notice how it changes.  The lags are now 5 minutes long and the evidence in the autocorrelation is only in the first 2-3 lags.  This is a longer duration in time than we saw with the 1=second data, but a fewer number of lags.
+Following up on our autocorrelation plot above, notice how it changes. The lags
+are now 5 minutes long and the evidence in the autocorrelation is only in the
+first 2-3 lags. This is a longer duration in time than we saw with the 1-second
+data, but a fewer number of lags.
 
-```{r 5-min autocorrelation}
+```{r 5.min.autocorrelation}
 #---- 5-min autocorrelation ----
-
 
 # check 5-minute average autocorrelation
 ts_new %>% ACF(co2_conc) %>% autoplot()
@@ -675,8 +691,8 @@ Let's inspect the time series of our different averages:
 ```{r plot.different.time.averages}
 #-----plot different time averages-----
 
-# we're going to use a simpler approach here and just manually specify each series rather
-# than make a dataframe with all the plotting data combined
+# we're going to use a simpler approach here and just manually specify each
+# series rather than make a dataframe with all the plotting data combined
 
 ggplot() + 
   
@@ -690,7 +706,8 @@ ggplot() +
   geom_line(data = ts_data, aes(x = datetime, y = co2_conc_two, color = "red")) +
   
   # plot `tsibble` 5-minute block averages
-  geom_line(data = ts_new, aes(x = datetime, y = co2_conc, color = "darkgreen")) +  
+  geom_line(data = ts_new, aes(x = plot_time, y = co2_conc, color = "darkgreen")) +  
+  
   # specify legend values manually
   scale_color_identity(name = "Time Average", 
                        breaks = c("blue", "black", "red", "darkgreen"), 
@@ -705,8 +722,6 @@ ggplot() +
   # theme
   theme_bw() + 
   theme(legend.position = "bottom")
-
-# TODO: Chris:  Here or earlier figure out how to offset the 5-minute data so they line up on the plot
 
 ```
 
@@ -748,11 +763,12 @@ make_bbox <- function(.data, width_extra = 0.0001, height_extra = 0.00005){
 
 In the following chunk we define the bounding box (extent of the mapping area),
 download the stamen map tiles (if they have not already been downloaded), and
-save the map for later. If the map file has already been downloaded and saved, we can
-just load the `map.rds` file. This will save you some time and from
+save the map for later. If the map file has already been downloaded and saved,
+we can just load the `map.rds` file. This will save you some time and from
 unnecessarily repeating file downloads as you work to develop your code. Note if
-you've already downloaded and saved a `map.rds` file, but then you want to modify the
-underlying map somehow, you'll need to delete the `map.rds` file first.
+you've already downloaded and saved a `map.rds` file, but then you want to
+modify the underlying map somehow, you'll need to delete the `map.rds` file
+first (or work interactively within the `if()` statement).
 
 ```{r get.map.objects}
 #-----get map objects-----
@@ -807,24 +823,24 @@ map_times <- ts_data %>%
 
 # map concentrations
 map_co2 <- basemap +
-    
-# locations with concentrations
-geom_point(data = ts_data %>% drop_na(co2_conc), 
-           aes(x = longitude, y = latitude, color = co2_conc))+ 
 
-# add measurement times to map
-geom_text_repel(data = map_times,
-                aes(x = longitude, y = latitude, label = map_time), 
-                force_pull = -.02) +
-
-# color scale, chosen so that high values are darker
-scale_color_continuous(low = "#56B1F7", high = "#132B43") +  
-
-# labels
-labs(color = "CO2 (ppm)") +
-
-# theme
-theme_void() 
+  # locations with concentrations
+  geom_point(data = ts_data %>% drop_na(co2_conc), 
+             aes(x = longitude, y = latitude, color = co2_conc))+ 
+  
+  # add measurement times to map
+  geom_text_repel(data = map_times,
+                  aes(x = longitude, y = latitude, label = map_time), 
+                  force_pull = -.02 ) +
+  
+  # color scale, chosen so that high values are darker
+  scale_color_continuous(low = "#56B1F7", high = "#132B43") +  
+  
+  # labels
+  labs(color = "CO2 (ppm)") +
+  
+  # theme
+  theme_void() 
 
 # show map
 map_co2
@@ -834,144 +850,137 @@ map_co2
 
 # Background Standardization 
 
-We show different approaches to estimating the background in this section and plot them for comparison. 
+We show different approaches to estimating the background in this section and
+plot them for comparison.
 
 ## Rolling Percentile & Rolling Minimum
 
 [Brantley et al., 2014](https://amt.copernicus.org/articles/7/2169/2014/)
-summarize a number of methods to calculate background concentrations, including
-those of [Bukowiecki et al.,](https://doi.org/10.1016/S1352-2310(02)00694-5),
-which includes taking the 5^th^ percentile of 1 or 5 min averages.
+summarize a number of methods to calculate background concentrations. One
+approach described by 
+[Bukowiecki et al.,](https://doi.org/10.1016/S1352-2310(02)00694-5), includes 
+taking the 5^th^ percentile of 1 or 5 min averages. As we talked about in class,
+another approach is to calculate the moving minimum of 30-minute time intervals.
+`slider` simplifies these types of moving calculations.
 
-One approach to do that is a moving percentile of the data.
+```{r calculate background.with.moving.functions}
+#-----calculate background with moving functions-----
 
-```{r calculate background.as.moving.percentile}
-#-----calculate background as moving percentile-----
-# Note:  we don't save the updates to ts_data in this chunk, but do so in a
-# later chunk and assign the new names with suffix _pct for moving percentile
-
-# specify the time in minutes from which to calculate the percentile
-time_min <- 5
-
-# specify the percentile considered to be background
-perc <- 0.05
-
-# we can use use `slider` to calculate the percentile equal to background
-ts_data %>% 
-  mutate(co2_background = slide_dbl(co2_conc, 
-                                    ~quantile(.x, probs = perc, na.rm = TRUE), 
-                                    .before = (time_min*60)/2, 
-                                    .after = (time_min*60)/2), 
-         co2_adj = co2_conc - co2_background) %>% 
-  
-  ggplot(aes(x = datetime, y = co2_background)) + 
-    geom_line() + 
-    labs(x = "Time", y = "CO2 Background (ppm)") +
-    theme_bw()
-
-```
-
-Here, we've taken `r time_min` minutes as the time interval and the `r 
-perc*100`^th^ percentile of the data to calculate the background CO<sub>2</sub>
-concentration.
-
-As we talked about in class, another approach is to calculate the moving minimum
-of 30-minute time intervals. We'll use that approach in the next section.  Also let's compare our two background estimation approaches in one plot:
-
-```{r plot moving minimum, warning=FALSE}
-#---- plot moving minimum ----
-# calculate and plot the moving minimum; add it to ts_data along with the moving
-# percentile
-
-# specify the time in minutes from which to calculate the minimum
+# specify the time in minutes for moving calculations 
+# (for percentile `_pct` and minimum `_min`)
+time_pct <- 5
 time_min <- 30
 
-# this repeats the moving percentile from above and adds the moving minimum
-# we can use use `slider` to calculate the minimum equal to background. 
-# `min()` will return Inf when all values are NA; use `na_if()` to avoid.
+# specify the percentile considered to be background
+pct <- 0.05
+
+# use use `slider` to add moving background calculations to `ts_data`. Then
+# calculate an adjusted concentration by removing the background concentration.
+# For moving percentile, assign new names with suffix `_pct`, and for moving
+# minimums use `_min`. `min()` will return Inf when all values are NA; use
+# `na_if()` to avoid.
 ts_data <- ts_data %>% 
-  mutate(co2_background_pct = slide_dbl(co2_conc, 
-                                    ~quantile(.x, probs = perc, na.rm = TRUE), 
-                                    .before = (time_min*60)/2, 
-                                    .after = (time_min*60)/2), 
-         co2_adj_pct = co2_conc - co2_background_pct,
+  mutate( 
+         # using moving percentiles
+         co2_background_pct = slide_dbl(co2_conc, 
+                                    ~quantile(.x, probs = pct, na.rm = TRUE), 
+                                    .before = (time_pct*60)/2, 
+                                    .after = (time_pct*60)/2), 
+         co2_adj_pct = co2_conc - co2_background_pct, 
+         
+         # using moving minimums
          co2_background_min = slide_dbl(co2_conc, 
                                  ~min(.x, na.rm = TRUE), 
                                  .before = (time_min*60)/2, 
                                  .after = (time_min*60)/2), 
          co2_background_min = na_if(co2_background_min, Inf), 
          co2_adj_min = co2_conc - co2_background_min
-         ) 
-  
-# plot the two background estimates on the same plot
-  ggplot(data = ts_data) + 
-    geom_line(aes(x = datetime, y = co2_background_pct), lty = 1, color = "black") + 
-    geom_line(aes(x = datetime, y = co2_background_min), lty = 1, color = "red") + 
-    labs(x = "Time", y = "CO2 Background (ppm)") +
-# specify legend values manually
-  # specify legend values manually
-  scale_color_identity(name = "Background Type",
-                     breaks = c("black", "red"),
-                     labels = c("Percent", "Minimum"),
-                     guide = "legend") +
-   # theme
-  theme_bw() + 
-  theme(legend.position = "bottom")
-  
-  #TODO Chris:  Legend isn't working correctly
+         )
 
+```
+
+For both the percentile approach we've taken `r time_pct` minutes
+as the time interval and `r pct*100`^th^ percentile of the data to calculate the
+background CO<sub>2</sub> concentration.
+
+Let's compare our two background estimation approaches in one plot:
+
+```{r plot.background, warning=FALSE}
+#-----plot background-----
+
+# plot the two background estimates on the same plot
+ggplot(data = ts_data) + 
+  geom_line(aes(x = datetime, y = co2_background_pct, color = "black")) + 
+  geom_line(aes(x = datetime, y = co2_background_min, color = "red")) + 
+  labs(x = "Time", y = "CO2 Background (ppm)") +
+
+# specify legend values manually
+scale_color_identity(name = "Background Type",
+                   breaks = c("black", "red"),
+                   labels = c("Percentile", "Minimum"),
+                   guide = "legend") +
+# theme
+theme_bw() + 
+theme(legend.position = "bottom")
+  
 ```
 
 ## Loess Smoother of Background
 
 We can further address the background by smoothing our estimates of background.
 These background estimates, even when smoothed, appear to be picking up more
-than background.  However, in a later plot we consider the background estimates
+than background. However, in a later plot we consider the background estimates
 in the context of the data, which are **much** higher, so the apparent high
-variation in background isn't that large in the context of the complete CO$_2$
-dataset.
+variation in background isn't that large in the context of the complete
+CO<sub>2</sub> dataset.
 
 
-```{r loess smooth of moving minimum}
-#---- loess smooth of moving minimum ----
+```{r loess.smooth.of.moving.background}
+#-----loess smooth of moving background-----
 
-# specify loess model
-mdl_pct <- loess(co2_background_pct ~ seq_along(time), data = ts_data, span = 0.1, degree = 1)
-mdl_min <- loess(co2_background_min ~ seq_along(time), data = ts_data, span = 0.1, degree = 1)
+# specify loess models
+mdl_pct <- loess(co2_background_pct ~ seq_along(time), data = ts_data, 
+                 span = 0.1, degree = 1)
 
-# add smooted predictions of background to ts_data
+mdl_min <- loess(co2_background_min ~ seq_along(time), data = ts_data, 
+                 span = 0.1, degree = 1)
+
+# add smoothed predictions of background to ts_data
 ts_data <- ts_data %>% 
   mutate(co2_background_pctl = predict(mdl_pct, ts_data),
          co2_background_minl = predict(mdl_min, ts_data)) 
 
 # compare all background estimates
-  ggplot(data = ts_data) + 
-    geom_line(aes(x = datetime, y = co2_background_pct), lty = 1, color = "black") + 
-    geom_line(aes(x = datetime, y = co2_background_min), lty = 1, color = "red") + 
-    geom_line(aes(x = datetime, y = co2_background_pctl), lty = 2, color = "black") + 
-    geom_line(aes(x = datetime, y = co2_background_minl), lty = 2, color = "red") + 
-    labs(x = "Time", y = "CO2 Background (ppm)") +
-
-# specify legend values manually
-  scale_color_manual(name = "Background Type",
-                     values = c("black", "red"),
-                     labels = c("Percent", "Minimum")) +
+ggplot(data = ts_data) + 
+  geom_line(aes(x = datetime, y = co2_background_pct, lty = "solid", color = "black")) + 
+  geom_line(aes(x = datetime, y = co2_background_min, lty = "solid", color = "red")) + 
+  geom_line(aes(x = datetime, y = co2_background_pctl, lty = "dashed", color = "black")) + 
+  geom_line(aes(x = datetime, y = co2_background_minl, lty = "dashed", color = "red")) + 
   
-  scale_linetype_manual(name = "Background Type",
-                        values = c("solid", "dashed"),
-                        labels = c("Unsmoothed", "Smoothed")) +
+  # labels
+  labs(x = "Time", y = "CO2 Background (ppm)") +
 
+  # specify legend values manually
+  scale_color_identity(name = "Background Type",
+                       breaks = c("black", "red"),
+                       labels = c("Percent", "Minimum"), 
+                       guide = "legend") +
+  
+  scale_linetype_identity(name = "Background Type",
+                        breaks = c("solid", "dashed"),
+                        labels = c("Unsmoothed", "Smoothed"), 
+                        guide = "legend") +
+  
   # theme
   theme_bw() + 
   theme(legend.position = "bottom")
-
-# TODO: Chris- legends aren't working
 
 ```
 
 ## Plot Carbon Dioxide with Background
 
-We'll demonstrate with the the rolling minimum approach, showing both the unsmoothed and loess smoothed versions.
+We'll demonstrate with the the rolling minimum approach, showing both the
+unsmoothed and loess smoothed versions.
 
 ```{r plot.co2.and.background, warning=FALSE}
 #-----plot co2 and background-----
@@ -981,9 +990,8 @@ ggplot(data = ts_data) +
   # plot the co2 observations
   geom_point(aes(x = datetime, y = co2_conc), size = 0.8, color = "darkgray") +
   
-  # plot co2 background using the loeess smoothed rolling minimum
+  # plot co2 background using the loess smoothed and unsmoothed rolling minimums
   geom_line(aes(x = datetime, y = co2_background_minl), lty = 1) + 
-  # plot co2 background using the unsmoothed rolling minimum
   geom_line(aes(x = datetime, y = co2_background_min), color = "red") + 
   
   # labels
@@ -997,8 +1005,8 @@ ggplot(data = ts_data) +
 
 # Identifying Peak Concentrations
 
-<!-- Elena, 
-Please add to or edit as needed, this was material I wasn't so sure of. In particular, whether or not  -->
+<!-- Elena, Please add to or edit as needed, this was material I wasn't so sure
+of. In particular, whether or not  -->
 
 As we've seen, mobile monitoring data has a mix of temporal and spatial
 variability. In an effort to disentangle temporal confounding from spatial
@@ -1008,33 +1016,31 @@ single or multi-pollutant extreme features (for example, departures above a
 particular quantile of single pollutant features vs departure above background
 of a multivariate representation such as a PCA feature).
 
-With background removed from the CO<sub>2</sub> concentrations, we can now use the
-adjusted data to identify concentration peaks. Concentration peaks indicate
-potential sources of the pollutant. In this case, a CO<sub>2</sub> peak could be a large
-vehicle like a truck.
-
+With background removed from the CO<sub>2</sub> concentrations, we can now use
+the adjusted data to identify concentration peaks. Concentration peaks indicate
+potential sources of the pollutant. In this case, a CO<sub>2</sub> peak could be
+a large vehicle like a truck.
 
 ```{r id.peaks, warning=FALSE}
 #-----id peaks-----
 
 # specify the time in minutes from which to calculate the percentile
-time_min <- 5
+time_pct <- 5
 
-# specify the percentile considered to be background
-perc <- 0.95
+# specify the percentile considered to be peaks
+pct <- 0.95
 
 # we can use use `slider` to calculate these rolling statistics
 # use our previous adjusted co2 from the rolling 5th percentile (co2_adj_pct)
 ts_data <- ts_data %>% 
   mutate(co2_peak = slide_dbl(co2_adj_pct, 
-                              ~quantile(.x, probs = perc, na.rm = TRUE), 
-                              .before = (time_min*60)/2, 
-                              .after = (time_min*60)/2), 
+                              ~quantile(.x, probs = pct, na.rm = TRUE), 
+                              .before = (time_pct*60)/2, 
+                              .after = (time_pct*60)/2), 
          co2_is_peak = if_else(co2_adj_pct >= co2_peak, TRUE, FALSE)
          ) 
 
 ```
-
 
 ```{r plot.co2.peaks, warning=FALSE}
 #-----plot co2 peaks-----
@@ -1069,16 +1075,16 @@ MESSED SOMETHING UP)...
 
 IF YOU'D LIKE TO KEEP THE TEXT LIKELY COULD USE SOME EDITING/ADDITIONS -->
 
-As the CO<sub>2</sub> map shows, the data we've collected represent concentrations over
-4 hours, meaning some of the variability we're observing could be a mix of
-spatial (i.e. the variability we see in the map) and temporal (i.e. the
-variability observed in time series plots) processes.
+As the CO<sub>2</sub> map shows, the data we've collected represent
+concentrations over 4 hours, meaning some of the variability we're observing
+could be a mix of spatial (i.e. the variability we see in the map) and temporal
+(i.e. the variability observed in time series plots) processes.
 
 Next, we'll use the P-Trak emission ratio data to explore the idea of pollutant
 emission ratios described in ([Kolb et al.,
 2004](https://doi.org/10.1021/es030718p)), which normalizes pollutant
-concentrations to CO<sub>2</sub> concentrations, potentially helping identify emission
-sources in data with both temporal and spatial variability.
+concentrations to CO<sub>2</sub> concentrations, potentially helping identify
+emission sources in data with both temporal and spatial variability.
 
 ```{r map.emission.ratios, warning=FALSE}
 #-----map emission.ratios----
@@ -1112,18 +1118,41 @@ map_ratios
 
 # Homework
 
-Use the data from car1 or car2 to repeat a subset of the analyses demonstrated above for ultrafine particles and write up a coherent report about the patterns you see.  The goal of this lab is for you to use the code we have provided to read in time-varying data from multiple instruments, check that they were read in appropriately, and address a few scientific questions about time-varying exposures.  Here are the topics for you to address in your lab report:
+Use the data from car1 or car2 to repeat a subset of the analyses demonstrated
+above for ultrafine particles and write up a coherent report about the patterns
+you see. The goal of this lab is for you to use the code we have provided to
+read in time-varying data from multiple instruments, check that they were read
+in appropriately, and address a few scientific questions about time-varying
+exposures. Here are the topics for you to address in your lab report:
 
-1.  Data description, data quality, and approach to analysis:  
-    a. How many observations were available, and how many were usable after preliminary data management (e.g. dropping NAs after merging)?
-    b. What variables are available and which ones are of scientific interest?
-    c. When were the data collected and in what area?
-    d. What steps did you follow to accomplish the scientific analyses you discuss in the rest of the report?
+1.  Data description, data quality, and approach to analysis:
+    a.  How many observations were available, and how many were usable after 
+        preliminary data management (e.g. dropping NAs after merging)?
+    b.  What variables are available and which ones are of scientific interest?
+    c.  When were the data collected and in what area?
+    d.  What steps did you follow to accomplish the scientific analyses you 
+        discuss in the rest of the report?
+
 2.  Scientific analyses:
-    a.  Plot a time series plot for the screened and unscreened P-Trak data on one plot.  Do you see a different pattern for the two measurements of ultrafine particles?
-    b. Look at the autocorrelation in the unscreend P-Trak data.  Compare autocorrelation plots at the 1-second time scale with autocorrelation plots at the 5-minute time scale.  Describe the patterns and comment on their similarities and differences.
-    c. Choose one additional analysis of interest to you that will allow you to highlight a feature of the time-varying data that is of scientific interest to you.  Justify your reasoning for your choice, leveraging your understanding from the lecture and/or Brantley paper.  For instance, you might consider comparing different background estimation approaches, showing a time series with background overlaid or removed, comparing the difference between the screened and unscreened P-Traks over space and/or time, or, identifying peak concentrations.  Present an appropriate choice of plots and/or maps to support your analysis.  Interpret these and connect your interpretation to the material discussed in the lecture.
-    
+    a.  Plot a time series plot for the screened and unscreened P-Trak data on 
+        one plot.  Do you see a different pattern for the two measurements of 
+        ultrafine particles?
+    b.  Look at the autocorrelation in the unscreend P-Trak data. Compare 
+        autocorrelation plots at the 1-second time scale with autocorrelation 
+        plots at the 5-minute time scale. Describe the patterns and comment on 
+        their similarities and differences.
+    c.  Choose one additional analysis of interest to you that will allow you to
+        highlight a feature of the time-varying data that is of scientific 
+        interest to you. Justify your reasoning for your choice, leveraging your
+        understanding from the lecture and/or Brantley paper.  For instance, you
+        might consider comparing different background estimation approaches, 
+        showing a time series with background overlaid or removed, comparing the
+        difference between the screened and unscreened P-Traks over space and/or
+        time, or, identifying peak concentrations. Present an appropriate 
+        choice of plots and/or maps to support your analysis. Interpret these 
+        and connect your interpretation to the material discussed in the 
+        lecture.
+
 
 # Code Appendix
 
