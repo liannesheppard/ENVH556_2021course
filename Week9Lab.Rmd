@@ -36,7 +36,7 @@ my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.
-pacman::p_load(knitr, dplyr, tidyr, readr, stringr, ggplot2, hms, 
+pacman::p_load(knitr, dplyr, tidyr, readr, stringr, ggplot2, hms, zoo,
                lubridate, purrr, tsibble, feasts, slider, ggmap, ggrepel)
 
 ```
@@ -241,7 +241,7 @@ gps
 
 These instruments collect ultrafine particles (UFPs) at 1-second time
 resolution. An unscreened P-Trak collects particles in the range of 20 - 1,000
-nm while the screened P-Trak collects particles in the range of 50-1,000 nm.
+nm while the screened P-Trak collects particles in the range of 36-1,000 nm.
 Thus, having both allows some rudimentary understanding of particle size
 distributions. The instruments measure particle number concentration, with units
 expressed as particles/cm^3^, #/cm^3^, pt/cm^3^, or 1/cm^3^.
@@ -451,7 +451,7 @@ lapply(instrument_list, function(i){
    datetimes <- i[["datetime"]]
    
    # get a vector of the differences between consecutive measurements
-   time_diff <- datetimes[2:length(datetimes)] - datetimes[1:length(datetimes)-1]
+   time_diff <- datetimes - lag(datetimes)
    
    # summarize differences
    table(time_diff)
@@ -568,6 +568,7 @@ different from zero. At what time do the CO<sub>2</sub> appear less correlated?
 #-----autocorrelation-----
 
 ts_data %>% ACF(co2_conc, lag_max = 60) %>% autoplot()
+ts_data %>% PACF(co2_conc, lag_max = 60) %>% autoplot()
 
 ```
 
@@ -776,6 +777,12 @@ first (or work interactively within the `if()` statement).
 # define the bounding box for the map using `make_bbox()` 
 bbox <- make_bbox(ts_data)
 
+#refine bbox to align with study domain. Take out the approach to the study region (drive from UW and include location of the airport on the map).
+
+bbox[["top"]] = 47.6
+bbox[["bottom"]] = 47.43
+
+
 # download stamen map if needed, otherwise just load it from a previous download
 if (!file.exists(file.path(data_dir, "map.rds"))) {
   
@@ -834,7 +841,7 @@ map_co2 <- basemap +
                   force_pull = -.02 ) +
   
   # color scale, chosen so that high values are darker
-  scale_color_continuous(low = "#56B1F7", high = "#132B43") +  
+  scale_color_continuous(type = "viridis") +  
   
   # labels
   labs(color = "CO2 (ppm)") +
@@ -1031,17 +1038,44 @@ a large vehicle like a truck.
 # specify the time in minutes from which to calculate the percentile
 time_pct <- 5
 
+#specify the rolling time window
+window_val = 60
+
+#specify windsorize cut-point (percentile)
+wp = 0.95
+
 # specify the percentile considered to be peaks
 pct <- 0.95
 
 # we can use use `slider` to calculate these rolling statistics
 # use our previous adjusted co2 from the rolling 5th percentile (co2_adj_pct)
+
 ts_data <- ts_data %>% 
-  mutate(co2_peak = slide_dbl(co2_adj_pct, 
-                              ~quantile(.x, probs = pct, na.rm = TRUE), 
-                              .before = (time_pct*60)/2, 
-                              .after = (time_pct*60)/2), 
-         co2_is_peak = if_else(co2_adj_pct >= co2_peak, TRUE, FALSE)
+  mutate(co2_adj = (co2_conc - co2_background_min),
+    
+        co2_lag = lead(co2_adj), 
+         
+         #calculate squared difference in CO2
+         co2_diff_sq = (co2_adj - co2_lag)^2,
+         
+         #windsorize
+         co2_diff_sq = replace(co2_diff_sq, co2_diff_sq> 
+                                  quantile(co2_diff_sq, wp,  na.rm=T), 
+                                quantile(co2_diff_sq, wp,  na.rm=T)),
+        
+         #calculate a 2 minute rolling mean of CO2 differences
+         roll_co2_diff = rollapply(co2_diff_sq, 
+                                   window_val,
+                                   mean,
+                                   align='center',
+                                   fill=NA, 
+                                   partial = window_val/2))
+#specify cutoff for peak change in slope values
+pqv = 0.6
+
+ts_data <- ts_data %>% 
+  mutate(
+         co2_is_peak = if_else(roll_co2_diff >= quantile(roll_co2_diff, pqv, na.rm=T), TRUE, FALSE)
          ) 
 
 ```
@@ -1088,34 +1122,37 @@ Next, we'll use the P-Trak emission ratio data to explore the idea of pollutant
 emission ratios described in ([Kolb et al.,
 2004](https://doi.org/10.1021/es030718p)), which normalizes pollutant
 concentrations to CO<sub>2</sub> concentrations, potentially helping identify
-emission sources in data with both temporal and spatial variability.
+emission sources in data with both temporal and spatial variability. We'll use the P-Trak data to explore the idea of pollutant ratios by plotting the proportion of smallest particles (20-36 nm to the total cocentration of UFP particles)
 
 ```{r map.emission.ratios, warning=FALSE}
-#-----map emission.ratios----
-
-# calculate ratio, this time using adjusted co2 from the rolling minimum
-# (co2_adj_min)
+# calculate ratio
 ts_data <- ts_data %>% 
-  mutate(ptrak_ratio = ptrak_screen_conc / co2_adj_min)
+  mutate(ptrak_ratio = (ptrak_noscreen_conc- ptrak_screen_conc) / ptrak_noscreen_conc)
+
+#display ratios that are greater than zero 
+
+
 
 # map concentrations
 map_ratios <- basemap +
     
-# locations with ratios
-geom_jitter(data = ts_data %>% drop_na(ptrak_ratio), 
+# locations with concentrations
+geom_point(data = ts_data %>% drop_na(ptrak_ratio), 
            aes(x = longitude, y = latitude, color = ptrak_ratio)) + 
 
 # color scale
-scale_color_continuous(low = "#56B1F7", high = "#132B43") +  
+scale_color_continuous(type = "viridis", limits = c(0,1)) +  
+  
 
 # labels
-labs(color = "P-trak (screened) \nEmission Ratio") +
+labs(color = "P-trak Ratio \nscreened:unscreened") +
 
 # theme
 theme_void() 
 
 # show map
 map_ratios
+
 
 ```
 
