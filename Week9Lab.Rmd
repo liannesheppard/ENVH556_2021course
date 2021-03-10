@@ -557,7 +557,7 @@ ts_data %>% PACF(co2_conc, lag_max = 60) %>% autoplot()
 ```
 
 
-# Temporal Smoothing with New Time Scales -- Moving averages
+# Temporal Smoothing with New Time Scales -- Moving Averages
 
 A common task with time series data is averaging to different time scales. From
 the autocorrelation plot above, we can see at a lag of 60 seconds, the
@@ -668,7 +668,7 @@ techniques above, you'll be able to average different time intervals to a common
 schedule. Once the measurements are on a shared time scale, they can be
 merged/joined as we have shown in the "Merge & Inspect Instrument Data" section.
 
-## Plot Different time scales
+## Plot Different Time Scales
 
 Let's inspect the time series of our different averages:
 
@@ -763,8 +763,8 @@ bbox <- ts_data %>%
   
   # first filter to time period (and therefore geographic area) of interest
   filter(between(datetime, 
-                 as.POSIXct("2018-07-19 13:13:00"),
-                 as.POSIXct("2018-07-19 16:32:00") ) ) %>% 
+                 as.POSIXct("2018-07-19 13:13:00", tz = "US/Pacific"),
+                 as.POSIXct("2018-07-19 16:32:00", tz = "US/Pacific")) ) %>% 
   
   # then pipe into `make_bbox()` 
   make_bbox()
@@ -1174,14 +1174,14 @@ sessionInfo()
 
 ```
 
-## Code in the R Markdown file
+## Code in the R Markdown File
 
 ```{r appendix.code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), include=T}
 #-----appendix code-----
 
 ```
 
-## User-written functions loaded in the R Markdown environment
+## User-Written Functions Loaded in the R Markdown Environment
 
 ```{r functions.used.in.this.Rmd, eval = TRUE}
 #-----functions used in this Rmd-----
@@ -1190,7 +1190,8 @@ sessionInfo()
 lsf.str()
 
 # Show the definitions of all functions loaded into the current environment  
-lapply(c(lsf.str()), getAnywhere)
+sapply(lsf.str(), function(i) { get(i, .GlobalEnv) }, 
+       simplify = FALSE, USE.NAMES = TRUE)
 
 ```
 
