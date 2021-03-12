@@ -35,7 +35,7 @@ my_repo <- 'http://cran.r-project.org'
 if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 
 # Load the other packages, installing as needed.
-pacman::p_load(knitr, dplyr, ggplot2, egg, multcomp, modelr)
+pacman::p_load(knitr, dplyr, purrr, ggplot2, egg, multcomp, modelr)
 
 ```
 
@@ -57,7 +57,7 @@ file_path <- file.path(data_path, file_name)
 
 # Download the file if it is not already present
 if (!file.exists(file_path)) {
-    url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
+    url <- paste("https://faculty.washington.edu/sheppard/envh556/Datasets", 
                  file_name, sep = '/')
     download.file(url = url, destfile = file_path)
 }
@@ -335,7 +335,7 @@ sessionInfo()
 lsf.str()
 
 # Show the definitions of all functions loaded into the current environment  
-lapply(c(lsf.str()), getAnywhere)
+lsf.str() %>% set_names() %>% map(get, .GlobalEnv)
 
 ```
 

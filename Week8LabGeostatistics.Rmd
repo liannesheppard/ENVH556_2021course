@@ -64,7 +64,7 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
   # sp: spatial data methods -- will eventually be superseded by `sf`
   # rgdal:  projections, coordinate systems
   # downloader: download files over HTTP and HTTPS
-pacman::p_load(tidyverse, knitr, dplyr, maps, ggmap, stars, gstat,
+pacman::p_load(tidyverse, knitr, dplyr, purrr, maps, ggmap, stars, gstat,
                funModeling, Hmisc, scales, akima, sp, rgdal, downloader, sf)
 
 # Note: this lab will only knit if the latest version of ggmap is installed.  
@@ -1326,7 +1326,7 @@ sessionInfo()
 lsf.str()
 
 # Show the definitions of all functions loaded into the current environment  
-lsf.str() %>% set_names() %>% purrr::map(get, .GlobalEnv)
+lapply(c(lsf.str()), getAnywhere)
 ```
 
 

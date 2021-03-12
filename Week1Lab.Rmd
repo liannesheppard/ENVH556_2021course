@@ -195,7 +195,7 @@ DEMS_path <- file.path(data_path, DEMS_file)
 
 # Only download the file if it's not already present
 if (!file.exists(DEMS_path)) {
-    url <- paste("https://staff.washington.edu/high/envh556/Datasets", 
+    url <- paste("https://faculty.washington.edu/sheppard/envh556/Datasets", 
                  DEMS_file, sep = '/')
     download.file(url = url, destfile = DEMS_path)
 }
@@ -802,6 +802,6 @@ sessionInfo()
 lsf.str()
 
 # Show the definitions of all functions loaded into the current environment  
-lapply(c(lsf.str()), getAnywhere)
+lsf.str() %>% set_names() %>% purrr::map(get, .GlobalEnv)
 
 ```

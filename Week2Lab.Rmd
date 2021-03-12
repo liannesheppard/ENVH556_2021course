@@ -67,7 +67,7 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 # Hmisc:  describe
 # EnvStats: geoMean, geoSD, probability plotting functions
 # MKmisc:  quantileCI
-pacman::p_load(dplyr, tidyr, knitr, ggplot2, Hmisc, EnvStats, MKmisc)
+pacman::p_load(dplyr, tidyr, knitr, purrr, ggplot2, Hmisc, EnvStats, MKmisc)
 
 ```
 
@@ -543,6 +543,6 @@ sessionInfo()
 lsf.str()
 
 # Show the definitions of all functions loaded into the current environment  
-lapply(c(lsf.str()), getAnywhere)
+lsf.str() %>% set_names() %>% map(get, .GlobalEnv)
 
 ```
