@@ -455,13 +455,9 @@ match.  Does it make sense to you that these records haven't matched?
 # This has 855 observations per facility (n = 8 facilities) and 57 per job (n=15
 # jobs).
 
-JEM_REC %>% group_by(facilityno, job) %>%
-    summarise( N = n(),
-            AM_missing = sum(is.na(rec_AM) ),
-            mean_AM = mean(rec_AM),
-            sd_AM = sd(rec_AM),
-            zero_AM = sum(rec_AM == 0),
-            .groups = "drop")
+JEM_REC %>% 
+    group_by(facilityno, job) %>%
+    summarise(mean_AM = mean(rec_AM), .groups = "drop")
 
 # It would be good to spot check some AM values or otherwise verify that the join worked properly.  There is a value for every job and facility except facility J.  Does this make sense scientifically and given the way we generated the data?
 
