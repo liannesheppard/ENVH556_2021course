@@ -1190,8 +1190,7 @@ sessionInfo()
 lsf.str()
 
 # Show the definitions of all functions loaded into the current environment  
-sapply(lsf.str(), function(i) { get(i, .GlobalEnv) }, 
-       simplify = FALSE, USE.NAMES = TRUE)
+lsf.str() %>% set_names() %>% purrr::map(get, .GlobalEnv)
 
 ```
 
