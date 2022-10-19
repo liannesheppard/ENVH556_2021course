@@ -51,7 +51,7 @@ if (!require("pacman")) {install.packages("pacman", repos = my_repo)}
 # modelr:  part of tidyverse and need for add_predictions and add_residuals
 # boot:  cv tools are available
 # Hmisc:  describe
-pacman::p_load(tidyverse, knitr, mutlcomp, dplyr, modelr, Hmisc)  
+pacman::p_load(tidyverse, knitr, multcomp, dplyr, modelr, Hmisc)  
 ```
 
 ```{r read.data.from.a.web.site, eval=TRUE, echo=FALSE}
